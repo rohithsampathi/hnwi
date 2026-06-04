@@ -21,6 +21,13 @@ interface OpportunityExpandedContentProps {
 
 export function OpportunityExpandedContent({ opportunity, scoring }: OpportunityExpandedContentProps) {
   const { theme } = useTheme()
+  const rawSource = `${opportunity.marketplace_source || opportunity.source || ""}`.toLowerCase()
+  const isSiyaPrive = rawSource.includes("siya") && (rawSource.includes("privé") || rawSource.includes("prive"))
+  const executorName =
+    (isSiyaPrive ? "Siya Privé" : null) ||
+    opportunity.executor_name ||
+    opportunity.executor ||
+    opportunity.execution_partner
 
   // Get conviction styling
   const getConvictionStyle = (conviction: string) => {
@@ -120,6 +127,23 @@ export function OpportunityExpandedContent({ opportunity, scoring }: Opportunity
             )}
           </div>
         </div>
+
+        {/* Execution Desk */}
+        {executorName && (
+          <div className="mb-6 pb-6 border-b border-border/30 text-center">
+            <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-2">
+              Executor
+            </div>
+            <div className={`text-lg md:text-xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>
+              {executorName}
+            </div>
+            {isSiyaPrive && (
+              <div className="text-xs text-muted-foreground mt-1 uppercase tracking-wide">
+                Property execution desk
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Bottom bar - Geographic + Sector */}
         {(opportunity.region || opportunity.industry) && (

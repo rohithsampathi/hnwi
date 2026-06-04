@@ -170,7 +170,7 @@ export function formatSource(source: string | undefined): string | undefined {
     return 'Live HNWI Data'
   }
 
-  if (lowerSource === 'prive exchange' || lowerSource === 'privé exchange') {
+  if (lowerSource.includes('prive') || lowerSource.includes('privé')) {
     return 'Market Place'
   }
 
@@ -204,9 +204,9 @@ export function generateTier(value: string | undefined, source: string | undefin
   const valueStr = String(value)
   const sourceStr = String(source)
 
-  // Only generate tier for Prive Exchange/Market Place
+  // Only generate tier for Privé/Siya Privé marketplace opportunities
   const lowerSource = sourceStr.toLowerCase()
-  if (lowerSource !== 'prive exchange' && lowerSource !== 'privé exchange') {
+  if (!lowerSource.includes('prive') && !lowerSource.includes('privé')) {
     return undefined
   }
 

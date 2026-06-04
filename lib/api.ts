@@ -239,6 +239,13 @@ export interface Opportunity {
   is_active: boolean;
   is_featured?: boolean;
   is_new?: boolean;
+  source?: string;
+  marketplace_source?: string;
+  executor?: string;
+  executor_name?: string;
+  execution_partner?: string;
+  executor_id?: string;
+  synced_from_siya?: boolean;
 
   // TIER 1: Investment Thesis (30 seconds)
   investment_thesis?: {

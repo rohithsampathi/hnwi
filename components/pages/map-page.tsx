@@ -52,38 +52,40 @@ export function MapPage() {
       if (Array.isArray(commandCentreData)) {
         const opportunityCities = commandCentreData
           .filter((opp: any) => opp.latitude && opp.longitude)
-          .map((opp: any) => ({
-            _id: opp._id || opp.id || opp.opportunity_id,
-            id: opp.id || opp._id || opp.opportunity_id,
-            name: opp.location || opp.title,
-            country: opp.country || opp.product || 'Unknown',
-            latitude: Number(opp.latitude),
-            longitude: Number(opp.longitude),
-            type:
-              opp.source === 'User Crown Vault'
+          .map((opp: any) => {
+            const sourceLower = String(opp.source || '').toLowerCase()
+            return {
+              _id: opp._id || opp.id || opp.opportunity_id,
+              id: opp.id || opp._id || opp.opportunity_id,
+              name: opp.location || opp.title,
+              country: opp.country || opp.product || 'Unknown',
+              latitude: Number(opp.latitude),
+              longitude: Number(opp.longitude),
+              type: sourceLower.includes('crown vault')
                 ? 'crown'
-                : opp.source === 'Privé Exchange'
+                : sourceLower.includes('privé') || sourceLower.includes('prive')
                   ? 'prive'
                   : 'hnwi',
-            title: opp.title,
-            tier: opp.tier,
-            value: opp.value || opp.minimum_investment_display || opp.minimum_investment_usd?.toString() || '0',
-            category: opp.category,
-            industry: opp.industry,
-            product: opp.product,
-            analysis: opp.analysis,
-            elite_pulse_analysis: opp.elite_pulse_analysis,
-            victor_score: opp.victor_score || opp.prive_rating,
-            risk: opp.risk_level || opp.risk || 'medium',
-            source: opp.source,
-            start_date: opp.start_date || opp.date,
-            projection_status: opp.projection_status,
-            is_stale_projection: opp.is_stale_projection || opp.map_visibility === 'stale_historical',
-            map_visibility: opp.map_visibility,
-            devIds: opp.devIds || opp.dev_ids || (opp.devid ? [opp.devid] : undefined),
-            hasCitations: Array.isArray(opp.devIds || opp.dev_ids) ? true : !!opp.devid,
-            is_new: opp.is_new || false
-          }))
+              title: opp.title,
+              tier: opp.tier,
+              value: opp.value || opp.minimum_investment_display || opp.minimum_investment_usd?.toString() || '0',
+              category: opp.category,
+              industry: opp.industry,
+              product: opp.product,
+              analysis: opp.analysis,
+              elite_pulse_analysis: opp.elite_pulse_analysis,
+              victor_score: opp.victor_score || opp.prive_rating,
+              risk: opp.risk_level || opp.risk || 'medium',
+              source: opp.source,
+              start_date: opp.start_date || opp.date,
+              projection_status: opp.projection_status,
+              is_stale_projection: opp.is_stale_projection || opp.map_visibility === 'stale_historical',
+              map_visibility: opp.map_visibility,
+              devIds: opp.devIds || opp.dev_ids || (opp.devid ? [opp.devid] : undefined),
+              hasCitations: Array.isArray(opp.devIds || opp.dev_ids) ? true : !!opp.devid,
+              is_new: opp.is_new || false
+            }
+          })
         allCities.push(...opportunityCities)
       }
 

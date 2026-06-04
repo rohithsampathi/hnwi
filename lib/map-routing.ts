@@ -161,8 +161,10 @@ export function getOpportunityRoute(opportunity: City): string {
     return 'crown-vault'
   }
 
-  // Privé Exchange opportunity with Victor analysis - go to Privé Exchange with ID
-  if (opportunity.victor_score) {
+  const sourceLower = String(opportunity.source || '').toLowerCase()
+
+  // Privé / Siya Privé marketplace opportunity - go to Privé Exchange with ID
+  if (opportunity.victor_score || sourceLower.includes('privé') || sourceLower.includes('prive')) {
     const opportunityParam = opportunity._id || opportunity.id || encodeURIComponent(opportunity.title || opportunity.name || '')
     return `prive-exchange?opportunity=${opportunityParam}`
   }
