@@ -11,18 +11,6 @@ import {
   Zap
 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  Area,
-  AreaChart
-} from 'recharts';
-import {
   WealthProjectionData,
   ScenarioName,
   formatCurrency
@@ -56,6 +44,14 @@ interface WealthProjectionSectionProps {
   optimalStructureName?: string;
 }
 
+interface ScenarioChartPoint {
+  year: number;
+  value: number;
+  property?: number;
+  liquid?: number;
+  rental?: number;
+}
+
 // Scenario icon component
 function ScenarioIcon({ type, color }: { type: 'base' | 'stress' | 'opportunity'; color: string }) {
   const icons = {
@@ -78,6 +74,193 @@ function ValueGauge({ value, label, subtext, highlight = false }: { value: strin
       <p className={`text-lg font-bold ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
       {subtext && <p className="text-[10px] text-muted-foreground">{subtext}</p>}
     </div>
+  );
+}
+
+function formatSignedPct(value: number) {
+  if (!Number.isFinite(value)) return 'N/A';
+  return `${value > 0 ? '+' : ''}${value.toFixed(0)}%`;
+}
+
+function formatPlainCurrency(value: number | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'N/A';
+  return value < 0 ? `-${formatCurrency(Math.abs(value))}` : formatCurrency(value);
+}
+
+function formatSignedCurrency(value: number | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'N/A';
+  return `${value > 0 ? '+' : ''}${formatPlainCurrency(value)}`;
+}
+
+function formatLossCurrency(value: number | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'N/A';
+  return formatCurrency(Math.abs(value));
+}
+
+function ScenarioTrajectoryChart({
+  data,
+  yDomain,
+  gradientId,
+  secondaryKey,
+  secondaryLabel,
+}: {
+  data: ScenarioChartPoint[];
+  yDomain: [number, number];
+  gradientId: string;
+  secondaryKey?: 'liquid' | 'rental';
+  secondaryLabel?: string;
+}) {
+  const cleanData = data.filter((point) => (
+    Number.isFinite(point.year) &&
+    Number.isFinite(point.value)
+  ));
+
+  if (cleanData.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center rounded-lg border border-border/70 bg-muted/20 text-xs text-muted-foreground">
+        Scenario trajectory unavailable
+      </div>
+    );
+  }
+
+  const width = 720;
+  const height = 250;
+  const margin = { top: 18, right: 18, bottom: 34, left: 54 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const maxYear = Math.max(10, ...cleanData.map((point) => point.year));
+  const maxValue = Math.max(1, yDomain[1] || 0, ...cleanData.map((point) => point.value));
+  const baselineY = margin.top + plotHeight;
+  const yTicks = [0, maxValue / 2, maxValue];
+
+  const xFor = (year: number) => margin.left + (Math.max(0, year) / maxYear) * plotWidth;
+  const yFor = (value: number) => margin.top + (1 - Math.max(0, value) / maxValue) * plotHeight;
+  const pointsFor = (key: keyof ScenarioChartPoint) => cleanData
+    .map((point) => {
+      const raw = key === 'value' ? point.value : point[key];
+      const value = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
+      return value === undefined ? null : `${xFor(point.year)},${yFor(value)}`;
+    })
+    .filter(Boolean)
+    .join(' ');
+  const valuePoints = pointsFor('value');
+  const propertyPoints = pointsFor('property');
+  const secondaryPoints = secondaryKey ? pointsFor(secondaryKey) : '';
+  const firstPoint = cleanData[0];
+  const lastPoint = cleanData[cleanData.length - 1];
+  const areaPoints = `${xFor(firstPoint.year)},${baselineY} ${valuePoints} ${xFor(lastPoint.year)},${baselineY}`;
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="h-full w-full overflow-visible"
+      preserveAspectRatio="none"
+      role="img"
+      aria-label="Scenario trajectory chart"
+      data-testid="scenario-trajectory-svg"
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.28} />
+          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+        </linearGradient>
+      </defs>
+
+      {yTicks.map((tick) => {
+        const y = yFor(tick);
+        return (
+          <g key={`y-${tick}`}>
+            <line
+              x1={margin.left}
+              x2={width - margin.right}
+              y1={y}
+              y2={y}
+              stroke="hsl(var(--border))"
+              strokeDasharray="4 4"
+              opacity={0.65}
+            />
+            <text
+              x={margin.left - 10}
+              y={y + 4}
+              textAnchor="end"
+              className="fill-muted-foreground text-[10px]"
+            >
+              ${tick.toFixed(1)}M
+            </text>
+          </g>
+        );
+      })}
+
+      {cleanData.map((point) => (
+        <g key={`x-${point.year}`}>
+          <line
+            x1={xFor(point.year)}
+            x2={xFor(point.year)}
+            y1={margin.top}
+            y2={baselineY}
+            stroke="hsl(var(--border))"
+            opacity={0.25}
+          />
+          <text
+            x={xFor(point.year)}
+            y={height - 10}
+            textAnchor="middle"
+            className="fill-muted-foreground text-[10px]"
+          >
+            Y{point.year}
+          </text>
+        </g>
+      ))}
+
+      <polygon points={areaPoints} fill={`url(#${gradientId})`} />
+      <polyline
+        points={valuePoints}
+        fill="none"
+        stroke="hsl(var(--primary))"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      {propertyPoints ? (
+        <polyline
+          points={propertyPoints}
+          fill="none"
+          stroke="hsl(var(--primary))"
+          strokeOpacity={0.7}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      ) : null}
+      {secondaryPoints ? (
+        <polyline
+          points={secondaryPoints}
+          fill="none"
+          stroke="hsl(var(--muted-foreground))"
+          strokeWidth={2}
+          strokeDasharray="5 5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        >
+          <title>{secondaryLabel}</title>
+        </polyline>
+      ) : null}
+      {cleanData.map((point) => (
+        <circle
+          key={`dot-${point.year}`}
+          cx={xFor(point.year)}
+          cy={yFor(point.value)}
+          r={3.5}
+          fill="hsl(var(--background))"
+          stroke="hsl(var(--primary))"
+          strokeWidth={2}
+          vectorEffect="non-scaling-stroke"
+        />
+      ))}
+    </svg>
   );
 }
 
@@ -643,8 +826,8 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
     const dynamicMetrics = {
       startingValue: `$${startingValue.toFixed(2)}M`,
       year10Value: `$${year10Value.toFixed(2)}M`,
-      totalCreation: `+$${totalCreation.toFixed(2)}M`,
-      percentGain: `+${percentGain.toFixed(0)}%`
+      totalCreation: `${totalCreation > 0 ? '+' : ''}$${totalCreation.toFixed(2)}M`,
+      percentGain: `${percentGain > 0 ? '+' : ''}${percentGain.toFixed(0)}%`
     };
     const fallbackCostOfInaction = annualEngineNarrativeData?.costOfInaction;
     const fallbackWeighted = annualEngineNarrativeData?.overall;
@@ -701,7 +884,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
             <div className="flex flex-col md:flex-row items-center gap-6">
               {/* Value Gauge */}
               <div className="flex flex-col items-center">
-                {(() => { const r = 50, sw = 8, hc = Math.PI * r, fill = Math.min(95, percentGain / 3); return (
+                {(() => { const r = 50, sw = 8, hc = Math.PI * r, fill = Math.max(0, Math.min(95, percentGain / 3)); return (
                 <div className="relative w-36 h-[76px]">
                   <svg viewBox="0 0 120 68" className="w-full h-full overflow-visible">
                     <path d={`M ${60-r} 60 A ${r} ${r} 0 0 1 ${60+r} 60`} fill="none" stroke="currentColor" strokeWidth={sw} className="text-muted" />
@@ -759,30 +942,13 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               </span>
             </div>
             <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" opacity={0.5} />
-                  <XAxis dataKey="year" tickFormatter={(v) => `Y${v}`} tick={{ fontSize: 10 }} />
-                  <YAxis tickFormatter={(v) => `$${v}M`} width={50} tick={{ fontSize: 10 }} domain={yAxisDomain} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }}
-                    formatter={(value: number, name: string) => [`$${value}M`, name]}
-                    itemSorter={(item) => {
-                      const order: Record<string, number> = { 'Total Value': 0, 'Property': 1, 'Liquid': 2 };
-                      return order[item.name as string] ?? 99;
-                    }}
-                  />
-                  <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#colorValue)" strokeWidth={2} name="Total Value" />
-                  <Line type="monotone" dataKey="property" stroke="hsl(var(--primary))" strokeWidth={1.5} strokeOpacity={0.7} dot={false} name="Property" />
-                  <Line type="monotone" dataKey="liquid" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="4 4" dot={false} name="Liquid" />
-                </AreaChart>
-              </ResponsiveContainer>
+              <ScenarioTrajectoryChart
+                data={chartData}
+                yDomain={yAxisDomain}
+                gradientId="colorValue"
+                secondaryKey="liquid"
+                secondaryLabel="Liquid"
+              />
             </div>
             <div className="flex justify-center gap-6 mt-3">
               <div className="flex items-center gap-2">
@@ -906,7 +1072,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               </div>
               <div className="text-center p-4 bg-primary/20 rounded-lg border-2 border-primary/50">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Net Benefit</p>
-                <p className="text-2xl font-bold text-primary">+{fallbackWeighted ? formatCurrency(fallbackWeighted.netBenefit) : metrics.costOfInaction}</p>
+                <p className="text-2xl font-bold text-primary">{fallbackWeighted ? formatSignedCurrency(fallbackWeighted.netBenefit) : metrics.costOfInaction}</p>
               </div>
             </div>
           </motion.div>
@@ -1032,10 +1198,10 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       type: 'base' as const,
       probability: baseScenario?.probability || 0.6,
       assumptions: baseScenario?.assumptions || [],
-      outcome: baseOutcome ? formatCurrency(baseOutcome.total_value_creation) : 'N/A',
-      netOutcome: baseOutcome ? formatCurrency((baseOutcome as unknown as Record<string, number>).net_value_creation ?? baseOutcome.total_value_creation) : 'N/A',
-      percentGain: baseOutcome ? `+${baseOutcome.percentage_gain.toFixed(0)}%` : 'N/A',
-      trueRoi: baseOutcome ? `+${(((baseOutcome as unknown as Record<string, number>).true_roi_pct as number | undefined) ?? baseOutcome.percentage_gain).toFixed(0)}%` : 'N/A',
+      outcome: baseOutcome ? formatSignedCurrency(baseOutcome.total_value_creation) : 'N/A',
+      netOutcome: baseOutcome ? formatSignedCurrency((baseOutcome as unknown as Record<string, number>).net_value_creation ?? baseOutcome.total_value_creation) : 'N/A',
+      percentGain: baseOutcome ? formatSignedPct(baseOutcome.percentage_gain) : 'N/A',
+      trueRoi: baseOutcome ? formatSignedPct(((baseOutcome as unknown as Record<string, number>).true_roi_pct as number | undefined) ?? baseOutcome.percentage_gain) : 'N/A',
       verdict: 'Primary trajectory aligned with projections'
     },
     {
@@ -1043,10 +1209,10 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       type: 'stress' as const,
       probability: stressScenario?.probability || 0.2,
       assumptions: stressScenario?.assumptions || [],
-      outcome: stressOutcome ? formatCurrency(stressOutcome.total_value_creation) : 'N/A',
-      netOutcome: stressOutcome ? formatCurrency((stressOutcome as unknown as Record<string, number>).net_value_creation ?? stressOutcome.total_value_creation) : 'N/A',
-      percentGain: stressOutcome ? `+${stressOutcome.percentage_gain.toFixed(0)}%` : 'N/A',
-      trueRoi: stressOutcome ? `+${(((stressOutcome as unknown as Record<string, number>).true_roi_pct as number | undefined) ?? stressOutcome.percentage_gain).toFixed(0)}%` : 'N/A',
+      outcome: stressOutcome ? formatSignedCurrency(stressOutcome.total_value_creation) : 'N/A',
+      netOutcome: stressOutcome ? formatSignedCurrency((stressOutcome as unknown as Record<string, number>).net_value_creation ?? stressOutcome.total_value_creation) : 'N/A',
+      percentGain: stressOutcome ? formatSignedPct(stressOutcome.percentage_gain) : 'N/A',
+      trueRoi: stressOutcome ? formatSignedPct(((stressOutcome as unknown as Record<string, number>).true_roi_pct as number | undefined) ?? stressOutcome.percentage_gain) : 'N/A',
       verdict: 'Survivable with no leverage'
     },
     {
@@ -1054,10 +1220,10 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       type: 'opportunity' as const,
       probability: opportunityScenario?.probability || 0.2,
       assumptions: opportunityScenario?.assumptions || [],
-      outcome: opportunityOutcome ? formatCurrency(opportunityOutcome.total_value_creation) : 'N/A',
-      netOutcome: opportunityOutcome ? formatCurrency((opportunityOutcome as unknown as Record<string, number>).net_value_creation ?? opportunityOutcome.total_value_creation) : 'N/A',
-      percentGain: opportunityOutcome ? `+${opportunityOutcome.percentage_gain.toFixed(0)}%` : 'N/A',
-      trueRoi: opportunityOutcome ? `+${(((opportunityOutcome as unknown as Record<string, number>).true_roi_pct as number | undefined) ?? opportunityOutcome.percentage_gain).toFixed(0)}%` : 'N/A',
+      outcome: opportunityOutcome ? formatSignedCurrency(opportunityOutcome.total_value_creation) : 'N/A',
+      netOutcome: opportunityOutcome ? formatSignedCurrency((opportunityOutcome as unknown as Record<string, number>).net_value_creation ?? opportunityOutcome.total_value_creation) : 'N/A',
+      percentGain: opportunityOutcome ? formatSignedPct(opportunityOutcome.percentage_gain) : 'N/A',
+      trueRoi: opportunityOutcome ? formatSignedPct(((opportunityOutcome as unknown as Record<string, number>).true_roi_pct as number | undefined) ?? opportunityOutcome.percentage_gain) : 'N/A',
       verdict: 'Bull market upside potential'
     }
   ];
@@ -1124,13 +1290,14 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
   // Display backend data directly - no frontend calculations
   // Use final_value (new field) with fallback to final_total_value (legacy field)
   const activeNetCreation = ((activeOutcome as unknown as Record<string, number> | undefined)?.net_value_creation as number | undefined);
+  const activeTotalCreation = ((activeOutcome as unknown as Record<string, number> | undefined)?.total_value_creation as number | undefined);
   const structuredDynamicMetrics = {
     percentGain: activeOutcome?.percentage_gain || 0,
     year10Value: (activeOutcome?.final_value || activeOutcome?.final_total_value)
       ? formatCurrency(activeOutcome.final_value || activeOutcome.final_total_value || 0)
       : 'N/A',
-    valueCreation: activeOutcome?.total_value_creation ? formatCurrency(activeOutcome.total_value_creation ?? 0) : 'N/A',
-    netCreation: activeNetCreation !== undefined ? formatCurrency(activeNetCreation) : 'N/A'
+    valueCreation: activeTotalCreation !== undefined ? formatSignedCurrency(activeTotalCreation) : 'N/A',
+    netCreation: activeNetCreation !== undefined ? formatSignedCurrency(activeNetCreation) : 'N/A'
   };
 
   return (
@@ -1209,14 +1376,14 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
           <div className="flex flex-col md:flex-row items-center gap-6">
             {/* Value Gauge */}
             <div className="flex flex-col items-center">
-              {(() => { const r = 50, sw = 8, hc = Math.PI * r, fill = Math.min(95, structuredDynamicMetrics.percentGain / 3); return (
+              {(() => { const r = 50, sw = 8, hc = Math.PI * r, fill = Math.max(0, Math.min(95, structuredDynamicMetrics.percentGain / 3)); return (
               <div className="relative w-36 h-[76px]">
                 <svg viewBox="0 0 120 68" className="w-full h-full overflow-visible">
                   <path d={`M ${60-r} 60 A ${r} ${r} 0 0 1 ${60+r} 60`} fill="none" stroke="currentColor" strokeWidth={sw} className="text-muted" />
                   <path d={`M ${60-r} 60 A ${r} ${r} 0 0 1 ${60+r} 60`} fill="none" stroke="currentColor" strokeWidth={sw} strokeDasharray={hc} strokeDashoffset={hc - (hc * fill / 100)} strokeLinecap="round" className="text-primary" />
                 </svg>
                 <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
-                  <span className="text-2xl font-bold text-foreground">+{structuredDynamicMetrics.percentGain.toFixed(0)}%</span>
+                  <span className="text-2xl font-bold text-foreground">{formatSignedPct(structuredDynamicMetrics.percentGain)}</span>
                 </div>
               </div>); })()}
               <span className="mt-2 text-xs font-bold px-3 py-1 rounded-full bg-primary/20 text-primary">
@@ -1244,7 +1411,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               </div>
               {stampDutiesPaid > 0 && (
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Includes ${formatCurrency(stampDutiesPaid)} of day-one transfer fees in the deployed-capital basis.
+                  Includes {formatCurrency(stampDutiesPaid)} of day-one transfer fees in the deployed-capital basis.
                 </p>
               )}
             </div>
@@ -1273,35 +1440,11 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               </span>
             </div>
             <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="colorValueStructured" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" opacity={0.5} />
-                  <XAxis dataKey="year" tickFormatter={(v) => `Y${v}`} tick={{ fontSize: 10 }} />
-                  <YAxis
-                    tickFormatter={(v) => `$${v.toFixed(1)}M`}
-                    width={55}
-                    tick={{ fontSize: 10 }}
-                    domain={structuredYAxisDomain}
-                    allowDataOverflow={false}
-                  />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }}
-                    formatter={(value: number, name: string) => [`$${value.toFixed(2)}M`, name]}
-                    itemSorter={(item) => {
-                      const order: Record<string, number> = { 'Total Value': 0, 'Property': 1 };
-                      return order[item.name as string] ?? 99;
-                    }}
-                  />
-                  <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#colorValueStructured)" strokeWidth={2} name="Total Value" />
-                  <Line type="monotone" dataKey="property" stroke="hsl(var(--primary))" strokeWidth={1.5} strokeOpacity={0.7} dot={false} name="Property" />
-                </AreaChart>
-              </ResponsiveContainer>
+              <ScenarioTrajectoryChart
+                data={chartData}
+                yDomain={structuredYAxisDomain}
+                gradientId="colorValueStructured"
+              />
             </div>
             <div className="flex justify-center gap-6 mt-3">
               <div className="flex items-center gap-2">
@@ -1375,21 +1518,21 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
             <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
               <div className="bg-card rounded-lg p-2 sm:p-3 text-center border border-border">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 1</p>
-                <p className="text-sm sm:text-lg font-bold text-muted-foreground">-{formatCurrency(activeCOI.year_1)}</p>
+                <p className="text-sm sm:text-lg font-bold text-muted-foreground">-{formatLossCurrency(activeCOI.year_1)}</p>
               </div>
               <div className="bg-card rounded-lg p-2 sm:p-3 text-center border border-border">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 5</p>
-                <p className="text-sm sm:text-lg font-bold text-muted-foreground">-{formatCurrency(activeCOI.year_5)}</p>
+                <p className="text-sm sm:text-lg font-bold text-muted-foreground">-{formatLossCurrency(activeCOI.year_5)}</p>
               </div>
               <div className="bg-card rounded-lg p-2 sm:p-3 text-center border-2 border-primary/50">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 10</p>
-                <p className="text-base sm:text-xl font-bold text-foreground">-{formatCurrency(activeCOI.year_10)}</p>
+                <p className="text-base sm:text-xl font-bold text-foreground">-{formatLossCurrency(activeCOI.year_10)}</p>
               </div>
             </div>
 
             <div className="bg-card rounded-lg p-3">
               <p className="text-xs text-foreground break-words">
-                <span className="font-semibold text-foreground">&ldquo;Do Nothing&rdquo; Locks Out {formatCurrency(activeCOI.year_10)}</span>
+                <span className="font-semibold text-foreground">&ldquo;Do Nothing&rdquo; Locks Out {formatLossCurrency(activeCOI.year_10)}</span>
                 {' '}— Primary: {activeCOI.primary_driver}
               </p>
               {activeCOI.structure_blocked && activeCOI.context_note && (
@@ -1431,7 +1574,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                 </div>
                 <div className="text-center p-4 bg-card rounded-lg">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Value Creation</p>
-                  <p className="text-xl font-bold text-primary">{formatCurrency(weightedOutcome.expected_value_creation)}</p>
+                  <p className="text-xl font-bold text-primary">{formatSignedCurrency(weightedOutcome.expected_value_creation)}</p>
                 </div>
                 <div className="text-center p-4 bg-card rounded-lg">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">If Stay (4% cash)</p>
@@ -1439,7 +1582,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                 </div>
                 <div className="text-center p-4 bg-primary/20 rounded-lg border-2 border-primary/50">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Net Benefit</p>
-                  <p className="text-2xl font-bold text-primary">+{formatCurrency(weightedOutcome.net_benefit_of_move)}</p>
+                  <p className="text-2xl font-bold text-primary">{formatSignedCurrency(weightedOutcome.net_benefit_of_move)}</p>
                 </div>
               </div>
               <p className="mt-3 text-xs text-muted-foreground text-center">

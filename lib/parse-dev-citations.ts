@@ -48,8 +48,8 @@ function getFromMapOrObject(
   if (typeof (mapOrObj as any).get === 'function') {
     return (mapOrObj as Map<string, number>).get(key)
   }
-  // Plain object - return undefined (don't use object values for citation numbers)
-  return undefined
+  const objectValue = (mapOrObj as Record<string, any>)[key]
+  return typeof objectValue === 'number' ? objectValue : undefined
 }
 
 export function parseDevCitations(

@@ -5,34 +5,35 @@ import { ArrowRight, Check, Share2 } from 'lucide-react';
 import { SectionReveal } from '@/components/ui/section-reveal';
 import { computeMemoProps } from '@/lib/decision-memo/compute-memo-props';
 import { computeRiskRadarScores } from '@/lib/decision-memo/compute-risk-radar-scores';
+import { resolveDecisionMemoDisplayReference } from '@/lib/decision-memo/memo-id-aliases';
 import { resolveIntelligenceBasisCounts } from '@/lib/decision-memo/resolve-intelligence-basis-counts';
 import type { PdfMemoData } from '@/lib/pdf/pdf-types';
-import { DecisionMemoRenderProvider } from './decision-memo-render-context';
-import { MemoCoverPage } from './MemoCoverPage';
-import { AuditOverviewSection } from './AuditOverviewSection';
-import { MemoHeader } from './MemoHeader';
-import { PrintPaginationOptimizer } from './PrintPaginationOptimizer';
-import { RiskRadarChart } from './RiskRadarChart';
-import { Page2AuditVerdict } from './Page2AuditVerdict';
-import { LiquidityTrapFlowchart } from './LiquidityTrapFlowchart';
-import { CrossBorderTaxAudit } from './CrossBorderTaxAudit';
-import { PeerBenchmarkTicker } from './PeerBenchmarkTicker';
-import { StructureComparisonMatrix } from './StructureComparisonMatrix';
-import { Page1TaxDashboard } from './Page1TaxDashboard';
-import { RegimeIntelligenceSection } from './RegimeIntelligenceSection';
-import WealthProjectionSection from './WealthProjectionSection';
-import { Page3PeerIntelligence } from './Page3PeerIntelligence';
-import HNWITrendsSection from './HNWITrendsSection';
-import { TransparencyRegimeSection } from './TransparencyRegimeSection';
-import RealAssetAuditSection from './RealAssetAuditSection';
-import { CrisisResilienceSection } from './CrisisResilienceSection';
-import GoldenVisaIntelligenceSection from './GoldenVisaIntelligenceSection';
-import GoldenVisaSection from './GoldenVisaSection';
-import ScenarioTreeSection from './ScenarioTreeSection';
-import HeirManagementSection from './HeirManagementSection';
-import ReferencesSection from './ReferencesSection';
-import { RegulatorySourcesSection } from './RegulatorySourcesSection';
-import { MemoLastPage } from './MemoLastPage';
+import { DecisionMemoRenderProvider } from '../decision-memo-render-context';
+import { MemoCoverPage } from './MemoCoverPage.classic-legacy';
+import { AuditOverviewSection } from '../AuditOverviewSection';
+import { MemoHeader } from '../MemoHeader';
+import { PrintPaginationOptimizer } from '../PrintPaginationOptimizer';
+import { RiskRadarChart } from '../RiskRadarChart';
+import { Page2AuditVerdict } from '../Page2AuditVerdict';
+import { LiquidityTrapFlowchart } from '../LiquidityTrapFlowchart';
+import { CrossBorderTaxAudit } from '../CrossBorderTaxAudit';
+import { PeerBenchmarkTicker } from '../PeerBenchmarkTicker';
+import { StructureComparisonMatrix } from '../StructureComparisonMatrix';
+import { Page1TaxDashboard } from '../Page1TaxDashboard';
+import { RegimeIntelligenceSection } from '../RegimeIntelligenceSection';
+import WealthProjectionSection from '../WealthProjectionSection';
+import { Page3PeerIntelligence } from '../Page3PeerIntelligence';
+import HNWITrendsSection from '../HNWITrendsSection';
+import { TransparencyRegimeSection } from '../TransparencyRegimeSection';
+import RealAssetAuditSection from '../RealAssetAuditSection';
+import { CrisisResilienceSection } from '../CrisisResilienceSection';
+import GoldenVisaIntelligenceSection from '../GoldenVisaIntelligenceSection';
+import GoldenVisaSection from '../GoldenVisaSection';
+import ScenarioTreeSection from '../ScenarioTreeSection';
+import HeirManagementSection from '../HeirManagementSection';
+import ReferencesSection from '../ReferencesSection';
+import { RegulatorySourcesSection } from '../RegulatorySourcesSection';
+import { MemoLastPage } from '../MemoLastPage';
 
 type RenderMode = 'screen' | 'print';
 
@@ -143,8 +144,38 @@ export default function DecisionMemoLinearReport({
   const doctrineMetadata = memoData.preview_data.scenario_tree_data?.doctrine_metadata;
   const riskRadar = doctrineMetadata ? computeRiskRadarScores(memoData, isViaNegativa) : null;
   const legalReferences = memoData.preview_data.legal_references;
+  const resolvedRiskAssessment =
+    resolvedBackendData.risk_assessment ||
+    memoData.preview_data.risk_assessment ||
+    resolvedArtifact.risk_assessment;
+  const resolvedDataQuality =
+    memoData.preview_data.data_quality ||
+    memoData.preview_data.peer_cohort_stats?.data_quality ||
+    resolvedArtifact.data_quality;
+  const resolvedDataQualityNote =
+    memoData.preview_data.data_quality_note ||
+    memoData.preview_data.peer_cohort_stats?.data_quality_note ||
+    resolvedArtifact.data_quality_note;
+  const resolvedMitigationTimeline =
+    resolvedBackendData.mitigationTimeline ||
+    resolvedBackendData.mitigation_timeline ||
+    resolvedRiskAssessment?.mitigation_timeline ||
+    memoData.preview_data.risk_assessment?.mitigation_timeline ||
+    resolvedArtifact.risk_assessment?.mitigation_timeline;
   const regulatoryCitations =
     memoData.preview_data?.regulatory_citations || legalReferences?.regulatory_sources || [];
+  const canonicalReference = resolveDecisionMemoDisplayReference(intakeId);
+  const headlineMetric = memoData.preview_data.executive_summary?.headline_metric?.value ?? memoData.preview_data.total_savings ?? '';
+  const verdictLabel =
+    memoData.preview_data.risk_assessment?.structure_verdict ??
+    memoData.preview_data.structure_optimization?.verdict ??
+    memoData.preview_data.risk_assessment?.verdict ??
+    memoData.preview_data.verdict ??
+    '';
+  const normalizedVerdict = (() => {
+    const value = String(verdictLabel).replace(/_/g, ' ').toUpperCase();
+    return value.includes('PROCEED MODIFIED') ? 'CONDITIONAL' : value;
+  })();
 
   const acqAudit = crossBorderAudit?.acquisition_audit;
   const liquidityTrapProps = acqAudit
@@ -218,7 +249,14 @@ export default function DecisionMemoLinearReport({
     intelligenceBasisCounts.failurePatternsMatched ||
     doctrineMetadata?.failure_mode_count ||
     doctrineMetadata?.failure_modes?.length ||
+    (Array.isArray((memoData.preview_data.pattern_intelligence as any)?.patterns)
+      ? (memoData.preview_data.pattern_intelligence as any).patterns.length
+      : 0) ||
     0;
+  const failurePatternEvidenceLabel =
+    failurePatternsMatched > 0
+      ? `${Number(failurePatternsMatched).toLocaleString()} failure patterns`
+      : 'failure-pattern count evidence-gated';
   const sequencingRulesApplied =
     intelligenceBasisCounts.sequencingRulesApplied ||
     memoData.preview_data.execution_sequence?.length ||
@@ -244,6 +282,43 @@ export default function DecisionMemoLinearReport({
             totalSavings={memoData.preview_data.total_savings}
             viaNegativa={viaNegativaContext}
           />
+        </ReportSection>
+      )}
+
+      {mode === 'screen' && (
+        <ReportSection
+          mode={mode}
+          reveal={{ delay: 0.02 }}
+          screenClassName="mx-auto w-full max-w-6xl px-4 sm:px-8 lg:px-12"
+          motionEnabled={motionEnabled}
+        >
+          <section className="border border-border bg-card px-5 py-6 sm:px-8 sm:py-8">
+            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  HNWI Chronicles
+                </p>
+                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Private Intelligence Division
+                </p>
+                <h1 className="mt-5 text-3xl font-semibold tracking-normal text-foreground sm:text-4xl">
+                  Full Decision Memo
+                </h1>
+                <p className="mt-3 text-sm font-medium text-muted-foreground">
+                  {memoData.preview_data.source_jurisdiction} / {memoData.preview_data.destination_jurisdiction}
+                </p>
+              </div>
+              <div className="grid gap-3 text-left md:text-right">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                  Confidential
+                </p>
+                <p className="text-sm font-mono text-foreground">Reference: {canonicalReference}</p>
+                <p className="text-sm text-muted-foreground">45-page report structure</p>
+                <p className="text-sm font-semibold text-foreground">{headlineMetric}</p>
+                <p className="text-sm font-semibold text-gold">{normalizedVerdict}</p>
+              </div>
+            </div>
+          </section>
         </ReportSection>
       )}
 
@@ -319,10 +394,10 @@ export default function DecisionMemoLinearReport({
           ddChecklist={memoData.preview_data.dd_checklist}
           sourceJurisdiction={memoData.preview_data.source_jurisdiction}
           destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-          dataQuality={memoData.preview_data.peer_cohort_stats?.data_quality}
-          dataQualityNote={memoData.preview_data.peer_cohort_stats?.data_quality_note}
-          mitigationTimeline={resolvedBackendData.mitigationTimeline || resolvedBackendData.risk_assessment?.mitigation_timeline}
-          riskAssessment={resolvedBackendData.risk_assessment || memoData.preview_data.risk_assessment}
+          dataQuality={resolvedDataQuality}
+          dataQualityNote={resolvedDataQualityNote}
+          mitigationTimeline={resolvedMitigationTimeline}
+          riskAssessment={resolvedRiskAssessment}
           viaNegativa={isViaNegativa ? viaNegativaContext : undefined}
         />
       </ReportSection>
@@ -465,7 +540,7 @@ export default function DecisionMemoLinearReport({
       {hasTransparencySection && (
         <ReportSection mode={mode} motionEnabled={motionEnabled}>
           <TransparencyRegimeSection
-            transparencyData={memoData.preview_data.transparency_data}
+            transparencyData={memoData.preview_data.transparency_data as any}
             content={memoData.preview_data.transparency_regime_impact}
             sourceJurisdiction={memoData.preview_data.source_jurisdiction}
             destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
@@ -491,7 +566,7 @@ export default function DecisionMemoLinearReport({
       {(memoData.preview_data.crisis_data || memoData.preview_data.crisis_resilience_stress_test) && (
         <ReportSection mode={mode} reveal={{ direction: 'scale' }} motionEnabled={motionEnabled}>
           <CrisisResilienceSection
-            crisisData={memoData.preview_data.crisis_data}
+            crisisData={memoData.preview_data.crisis_data as Record<string, unknown> | undefined}
             content={memoData.preview_data.crisis_resilience_stress_test}
             sourceJurisdiction={memoData.preview_data.source_jurisdiction}
             destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
@@ -576,7 +651,7 @@ export default function DecisionMemoLinearReport({
                 ) : null}
                 {' '}matched{' '}
                 <span className="text-foreground font-medium">
-                  {Number(failurePatternsMatched || 0).toLocaleString()} failure patterns
+                  {failurePatternEvidenceLabel}
                 </span>
                 , and applied{' '}
                 <span className="text-foreground font-medium">
@@ -589,7 +664,7 @@ export default function DecisionMemoLinearReport({
               <div className="px-4 py-2 bg-primary/10 border border-primary/20 rounded-xl">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Reference</p>
                 <p className="text-sm font-mono font-medium text-primary">
-                  {intakeId.slice(0, 20).toUpperCase()}
+                  {canonicalReference}
                 </p>
               </div>
             </div>

@@ -3,10 +3,9 @@
 
 'use client'
 
-import { isValidElement, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { MessageCircle, Share2, Check, ArrowLeft, User, Clock, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import ReactMarkdown from 'react-markdown'
 import VisualizationEngine, { type VisualizationCommand } from '@/components/ask-rohith-jarvis/VisualizationEngine'
 import { CitationText } from '@/components/elite/citation-text'
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel'
@@ -186,14 +185,6 @@ function cleanSharedMessageContentForDisplay(content: string, seenTopics: Set<st
   }
 
   return `${kept.join(' ')}${citations ? ` ${citations}` : ''}`.trim()
-}
-
-function reactNodeToText(node: any): string {
-  if (node === null || node === undefined || typeof node === 'boolean') return ''
-  if (typeof node === 'string' || typeof node === 'number') return String(node)
-  if (Array.isArray(node)) return node.map(reactNodeToText).join('')
-  if (isValidElement(node)) return reactNodeToText((node.props as any)?.children)
-  return ''
 }
 
 function normalizeVisualizationRow(row: any) {
@@ -595,6 +586,13 @@ function compactText(value: string): string {
     .trim()
 }
 
+function assistantParagraphs(value: string): string[] {
+  return String(value || '')
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+}
+
 export default function SharedConversationClient({ conversation, shareId }: SharedConversationClientProps) {
   const [linkCopied, setLinkCopied] = useState(false)
   const [citationPanelOpen, setCitationPanelOpen] = useState(false)
@@ -673,6 +671,17 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
 
     return { citations: nextCitations, citationMap: nextMap }
   }, [messages, packets])
+  const citationNumberLookup = useMemo(
+    () => {
+      const lookup: Record<string, number> = {}
+      citationMap.forEach((number, id) => {
+        lookup[id] = number
+        lookup[String(id).trim().toLowerCase()] = number
+      })
+      return lookup
+    },
+    [citationMap]
+  )
 
   const preloadedSources = useMemo(() => {
     const sources = new Map<string, ReturnType<typeof makePreloadedDevelopment>>()
@@ -793,17 +802,17 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
               size="sm"
               className={linkCopied
                 ? "border-green-500/50 bg-green-500/10 text-green-600"
-                : ""
+                : "border-border/50 transition-colors hover:border-primary hover:bg-primary hover:text-white [&_svg]:text-current"
               }
             >
               {linkCopied ? (
                 <>
-                  <Check className="w-4 h-4 mr-2" />
+                  <Check className="w-4 h-4 mr-2 text-current" />
                   Link Copied
                 </>
               ) : (
                 <>
-                  <Share2 className="w-4 h-4 mr-2" />
+                  <Share2 className="w-4 h-4 mr-2 text-current" />
                   Share
                 </>
               )}
@@ -847,102 +856,20 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
                     </div>
                     <div className="max-w-[760px] text-[15px] leading-relaxed text-foreground">
                       <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground prose-code:text-gold prose-code:bg-gold/10 prose-code:px-1 prose-code:rounded">
-                              <ReactMarkdown
-                                components={{
-                            p: ({ children }) => {
-                              const cleanedText = cleanSharedMessageContent(reactNodeToText(children))
-                              return (
-                                <p className="mb-4 text-foreground leading-relaxed text-[15px] last:mb-0">
-                                  <CitationText
-                                    text={cleanedText}
-                                    onCitationClick={handleCitationClick}
-                                    citationMap={citationMap}
-                                    options={{
-                                      convertMarkdownBold: true,
-                                      preserveLineBreaks: true,
-                                      trim: true,
-                                    }}
-                                  />
-                                </p>
-                              )
-                            },
-                            strong: ({ children }) => (
-                              <strong className="font-semibold text-foreground">{children}</strong>
-                            ),
-                            ul: ({ children }) => (
-                              <ul className="list-disc list-inside space-y-1.5 my-3">{children}</ul>
-                            ),
-                            ol: ({ children }) => (
-                              <ol className="list-decimal list-inside space-y-1.5 my-3">{children}</ol>
-                            ),
-                            li: ({ children }) => {
-                              const cleanedText = cleanSharedMessageContent(reactNodeToText(children))
-                              return (
-                                <li className="text-foreground text-[15px] leading-relaxed">
-                                  <CitationText
-                                    text={cleanedText}
-                                    onCitationClick={handleCitationClick}
-                                    citationMap={citationMap}
-                                    options={{
-                                      convertMarkdownBold: true,
-                                      preserveLineBreaks: false,
-                                      trim: true,
-                                    }}
-                                  />
-                                </li>
-                              )
-                            },
-                            h1: ({ children }) => (
-                              <h1 className="text-2xl font-bold text-foreground mt-6 mb-3">{children}</h1>
-                            ),
-                            h2: ({ children }) => (
-                              <h2 className="text-xl font-bold text-foreground mt-5 mb-2.5">{children}</h2>
-                            ),
-                            h3: ({ children }) => (
-                              <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">{children}</h3>
-                            ),
-                            code: ({ children, className }) => {
-                              const isInline = !className
-                              return isInline ? (
-                                <code className="text-xs font-mono text-gold bg-gold/10 px-1.5 py-0.5 rounded">
-                                  {children}
-                                </code>
-                              ) : (
-                                <code className={className}>{children}</code>
-                              )
-                            },
-                            pre: ({ children }) => (
-                              <pre className="bg-surface border border-border rounded-lg p-4 overflow-x-auto my-3">
-                                {children}
-                              </pre>
-                            ),
-                            table: ({ children }) => (
-                              <div className="my-4 overflow-x-auto rounded-xl border border-border/40 bg-card/40">
-                                <table className="min-w-full border-collapse text-left text-sm">{children}</table>
-                              </div>
-                            ),
-                            thead: ({ children }) => (
-                              <thead className="border-b border-border/40 bg-muted/40">{children}</thead>
-                            ),
-                            th: ({ children }) => (
-                              <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                {children}
-                              </th>
-                            ),
-                            td: ({ children }) => (
-                              <td className="border-t border-border/30 px-3 py-2 align-top text-sm text-foreground/90">
-                                {children}
-                              </td>
-                            ),
-                            blockquote: ({ children }) => (
-                              <blockquote className="my-4 border-l-2 border-gold/50 pl-4 text-foreground/85">
-                                {children}
-                              </blockquote>
-                            ),
-                          }}
-                        >
-                          {displayContent}
-                        </ReactMarkdown>
+                        {assistantParagraphs(displayContent).map((paragraph, paragraphIndex) => (
+                          <p key={paragraphIndex} className="mb-4 text-foreground leading-relaxed text-[15px] last:mb-0">
+                            <CitationText
+                              text={paragraph}
+                              onCitationClick={handleCitationClick}
+                              citationMap={citationNumberLookup}
+                              options={{
+                                convertMarkdownBold: true,
+                                preserveLineBreaks: true,
+                                trim: true,
+                              }}
+                            />
+                          </p>
+                        ))}
                       </div>
                     </div>
                   {(getMessageSourceCount(message) > 0 || thoughtTimeLabel(message.metadata?.processing_time_ms || message.context?.responseTime)) && (
@@ -997,7 +924,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
             setCitationPanelOpen(false)
             setSelectedCitationId(null)
           }}
-          onCitationSelect={handleCitationClick}
+          onCitationSelect={(citationId) => setSelectedCitationId(citationId)}
           citationMap={citationMap}
           preloadedSources={preloadedSources}
           shareId={shareId}

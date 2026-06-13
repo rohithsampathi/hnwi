@@ -246,7 +246,13 @@ export interface MemoVariables {
 
   // Structure Optimization (MCP Core Output)
   structureOptimization: StructureOptimization | undefined;
-  optimalStructure: { name?: string; type?: string; net_benefit_10yr?: number } | undefined;
+  optimalStructure: {
+    name?: string;
+    type?: string;
+    net_benefit_10yr?: number;
+    net_benefit_display?: string;
+    net_benefit_label?: string;
+  } | undefined;
 
   // Cross-Border Tax Audit
   crossBorderAudit: CrossBorderAuditSummary | null;
@@ -464,7 +470,13 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
   // Structure Optimization
   const structureOptimization = preview_data.structure_optimization as StructureOptimization | undefined;
   const optimalStructure = structureOptimization?.optimal_structure
-    ? { name: structureOptimization.optimal_structure.name, type: structureOptimization.optimal_structure.type, net_benefit_10yr: structureOptimization.optimal_structure.net_benefit_10yr }
+    ? {
+        name: structureOptimization.optimal_structure.name,
+        type: structureOptimization.optimal_structure.type,
+        net_benefit_10yr: structureOptimization.optimal_structure.net_benefit_10yr,
+        net_benefit_display: structureOptimization.optimal_structure.net_benefit_display,
+        net_benefit_label: structureOptimization.optimal_structure.net_benefit_label,
+      }
     : undefined;
 
   // Cross-Border Tax Audit (nested in wealth projection)

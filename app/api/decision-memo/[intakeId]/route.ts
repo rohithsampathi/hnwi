@@ -7,6 +7,10 @@ import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 import { safeError } from '@/lib/security/api-response';
 import { clearReportAuthCookie, getReportAuthTokenFromRequest } from '@/lib/security/report-auth';
+import {
+  encodeDecisionMemoIdForPath,
+  resolveCanonicalDecisionMemoId,
+} from '@/lib/decision-memo/memo-id-aliases';
 
 export const maxDuration = 300; // 5 minutes
 
@@ -21,16 +25,19 @@ export async function GET(
   context: RouteParams
 ) {
   const { intakeId } = await context.params;
+  const canonicalIntakeId = resolveCanonicalDecisionMemoId(intakeId);
 
   try {
-    logger.info('Unified endpoint fetch', { intakeId });
+    logger.info('Unified endpoint fetch', { intakeId, canonicalIntakeId });
 
     // Call backend unified endpoint
-    const backendUrl = `${API_BASE_URL}/api/decision-memo/${intakeId}`;
-    logger.info('Calling backend unified endpoint', { intakeId });
+    const backendUrl = `${API_BASE_URL}/api/decision-memo/${encodeDecisionMemoIdForPath(canonicalIntakeId)}`;
+    logger.info('Calling backend unified endpoint', { intakeId, canonicalIntakeId });
 
     // Forward auth headers AND session cookies to backend
-    const authHeader = getReportAuthTokenFromRequest(request, intakeId);
+    const authHeader =
+      getReportAuthTokenFromRequest(request, intakeId) ??
+      getReportAuthTokenFromRequest(request, canonicalIntakeId);
     const cookieHeader = request.headers.get('cookie');
     const backendHeaders: Record<string, string> = { 'Accept': 'application/json' };
     if (authHeader) {
@@ -56,6 +63,7 @@ export async function GET(
         }
       );
       clearReportAuthCookie(unauthorizedResponse, intakeId);
+      clearReportAuthCookie(unauthorizedResponse, canonicalIntakeId);
       return unauthorizedResponse;
     }
 
@@ -72,7 +80,11 @@ export async function GET(
     }
 
     const data = await response.json();
-    logger.info('Backend unified response received', { intakeId, isUnlocked: data.is_unlocked });
+    logger.info('Backend unified response received', {
+      intakeId,
+      canonicalIntakeId,
+      isUnlocked: data.is_unlocked,
+    });
 
     // Return the unified response directly
     // Backend now provides:

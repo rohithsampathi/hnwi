@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { API_BASE_URL } from "@/config/api";
+import { resolvePublicDecisionMemoPath } from "@/lib/decision-memo/memo-id-aliases";
 
 const PUBLIC_API_ENDPOINTS = ["/api/auth/csrf-token", "/api/og", "/api/auth/refresh"];
 
@@ -94,6 +95,17 @@ export async function middleware(request: NextRequest) {
     securityHeaders["X-CSP-Nonce"] = nonce;
     securityHeaders["Strict-Transport-Security"] =
       "max-age=31536000; includeSubDomains; preload";
+  }
+
+  const publicDecisionMemoPath = resolvePublicDecisionMemoPath(url.pathname);
+  if (publicDecisionMemoPath) {
+    const redirectUrl = url.clone();
+    redirectUrl.pathname = publicDecisionMemoPath;
+    const redirectResponse = NextResponse.redirect(redirectUrl, 308);
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      redirectResponse.headers.set(key, value);
+    });
+    return redirectResponse;
   }
 
   // Block debug routes in production

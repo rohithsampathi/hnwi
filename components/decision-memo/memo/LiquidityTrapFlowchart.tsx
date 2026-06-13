@@ -164,7 +164,7 @@ export function LiquidityTrapFlowchart({
                   <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
 
                   <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-destructive/25 bg-destructive/[0.05]">
-                    <span className="text-xs tracking-[0.15em] uppercase font-medium text-destructive/80">Capital Destroyed</span>
+                    <span className="text-xs tracking-[0.15em] uppercase font-medium text-destructive/80">Duty Drag</span>
                     <span className="text-xl md:text-2xl font-medium text-destructive">
                       -{formatCurrency(totalLoss)}
                     </span>

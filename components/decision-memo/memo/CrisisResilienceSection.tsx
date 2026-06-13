@@ -78,6 +78,7 @@ export interface NormalizedCrisisData {
   sourceFamilies: string[];
   decisionWindowDays?: number;
   stressDrawdownFloorPct?: number;
+  signalCount?: number;
   eventCount?: number;
   marketRegimeCount?: number;
   sourceCount?: number;
@@ -95,6 +96,18 @@ function toFiniteNumber(value: unknown): number | undefined {
     return Number.isFinite(parsed) ? parsed : undefined;
   }
   return undefined;
+}
+
+function firstPositiveCount(...values: Array<unknown>): number | undefined {
+  for (const value of values) {
+    const count = toFiniteNumber(value);
+    if (count !== undefined && count > 0) return count;
+  }
+  return undefined;
+}
+
+function formatCountMetric(value?: number): string {
+  return value && value > 0 ? value.toLocaleString() : "Not scored";
 }
 
 function toStringList(value: unknown): string[] {
@@ -207,10 +220,17 @@ export function normalizeCrisisData(
       impact:
         typeof scenario.impact === "string"
           ? scenario.impact
-          : typeof scenario.portfolio_drawdown === "string"
-            ? scenario.portfolio_drawdown
+          : typeof scenario.damage === "string"
+            ? scenario.damage
+            : typeof scenario.portfolio_drawdown === "string"
+              ? scenario.portfolio_drawdown
+              : undefined,
+      recovery:
+        typeof scenario.recovery === "string"
+          ? scenario.recovery
+          : typeof scenario.mitigation === "string"
+            ? scenario.mitigation
             : undefined,
-      recovery: typeof scenario.recovery === "string" ? scenario.recovery : undefined,
       riskLevel: riskLevel(scenario.risk_level || scenario.severity || scenario.status),
       stressFactor:
         typeof scenario.stress_factor === "string"
@@ -253,6 +273,19 @@ export function normalizeCrisisData(
     ...toStringList(commanderBrief.source_families).map(canonicalSourceFamily),
     ...scenarios.flatMap((scenario) => scenario.sources),
   ].filter(Boolean));
+  const signalCount = firstPositiveCount(
+    parsed.signal_count,
+    parsed.crisis_signal_count,
+    parsed.intelligence_count,
+    parsed.event_count,
+    priorityEvents.length,
+    routeRisks.length,
+    scenarios.length,
+  );
+  const eventCount = firstPositiveCount(parsed.event_count, priorityEvents.length, routeRisks.length, scenarios.length);
+  const marketRegimeCount = firstPositiveCount(parsed.market_regime_count, marketRegimes.length);
+  const sourceCount = firstPositiveCount(parsed.source_count, sourceFamilies.length);
+  const overallScore = toFiniteNumber(overallRecord.score);
 
   const worstCaseLoss =
     (typeof keyMetrics.worst_case_loss === "string" ? keyMetrics.worst_case_loss : undefined) ||
@@ -274,11 +307,18 @@ export function normalizeCrisisData(
 
   return {
     overall: {
-      score: toFiniteNumber(overallRecord.score),
-      rating: typeof overallRecord.rating === "string" ? overallRecord.rating : undefined,
+      score: overallScore,
+      rating:
+        typeof overallRecord.rating === "string"
+          ? overallRecord.rating
+          : overallScore === undefined
+            ? "Evidence gated"
+            : undefined,
       summary:
         (typeof overallRecord.summary === "string" ? overallRecord.summary : undefined) ||
         (typeof commanderBrief.route_read === "string" ? commanderBrief.route_read : undefined) ||
+        (typeof commanderBrief.govinda_judgment === "string" ? commanderBrief.govinda_judgment : undefined) ||
+        (typeof bottomLine.one_sentence === "string" ? bottomLine.one_sentence : undefined) ||
         (typeof parsed.alert_summary === "string" ? parsed.alert_summary : undefined),
       worstCaseLoss,
       recoveryTime,
@@ -291,6 +331,8 @@ export function normalizeCrisisData(
     },
     liveRead:
       (typeof commanderBrief.route_read === "string" ? commanderBrief.route_read : undefined) ||
+      (typeof commanderBrief.govinda_judgment === "string" ? commanderBrief.govinda_judgment : undefined) ||
+      (typeof bottomLine.one_sentence === "string" ? bottomLine.one_sentence : undefined) ||
       (typeof parsed.alert_summary === "string" ? parsed.alert_summary : undefined),
     executionFocus: typeof commanderBrief.execution_focus === "string" ? commanderBrief.execution_focus : undefined,
     macroRegime: typeof commanderBrief.macro_regime === "string" ? commanderBrief.macro_regime : undefined,
@@ -307,9 +349,10 @@ export function normalizeCrisisData(
     sourceFamilies,
     decisionWindowDays: toFiniteNumber(parsed.decision_window_days),
     stressDrawdownFloorPct: toFiniteNumber(parsed.stress_drawdown_floor_pct),
-    eventCount: toFiniteNumber(parsed.event_count) ?? priorityEvents.length ?? scenarios.length,
-    marketRegimeCount: toFiniteNumber(parsed.market_regime_count) ?? marketRegimes.length,
-    sourceCount: toFiniteNumber(parsed.source_count) ?? sourceFamilies.length,
+    signalCount,
+    eventCount,
+    marketRegimeCount,
+    sourceCount,
     bottomLine: {
       surviveVerdict: typeof bottomLine.survive_verdict === "string" ? bottomLine.survive_verdict : undefined,
       thriveVerdict: typeof bottomLine.thrive_verdict === "string" ? bottomLine.thrive_verdict : undefined,
@@ -347,27 +390,29 @@ function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
-function ResilienceGauge({ score = 0, rating = "MODERATE" }: { score?: number; rating?: string }) {
+function ResilienceGauge({ score, rating = "Evidence gated" }: { score?: number; rating?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-50px" });
   const [animatedScore, setAnimatedScore] = useState(0);
+  const hasScore = typeof score === "number" && Number.isFinite(score);
+  const scoreValue = hasScore ? score : 0;
 
   useEffect(() => {
-    if (!inView) return;
+    if (!inView || !hasScore) return;
     let startTime = 0;
     const duration = 1200;
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 4);
-      setAnimatedScore(Math.round(score * eased));
+      setAnimatedScore(Math.round(scoreValue * eased));
       if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
-  }, [inView, score]);
+  }, [hasScore, inView, scoreValue]);
 
   const ring = Math.PI * 54;
-  const offset = ring - (ring * Math.max(0, Math.min(100, score))) / 100;
+  const offset = ring - (ring * Math.max(0, Math.min(100, scoreValue))) / 100;
 
   return (
     <div ref={ref} className="flex flex-col items-center">
@@ -388,8 +433,14 @@ function ResilienceGauge({ score = 0, rating = "MODERATE" }: { score?: number; r
           />
         </svg>
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
-          <span className={memoNumberClass('hero', 'default')}>{animatedScore}</span>
-          <span className="text-sm text-muted-foreground/60">/100</span>
+          {hasScore ? (
+            <>
+              <span className={memoNumberClass('hero', 'default')}>{animatedScore}</span>
+              <span className="text-sm text-muted-foreground/60">/100</span>
+            </>
+          ) : (
+            <span className="text-xl font-medium tracking-tight text-foreground">Unscored</span>
+          )}
         </div>
       </div>
       <span className="mt-3 text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/80">
@@ -431,8 +482,11 @@ export function CrisisResilienceSection({
         transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
       >
         <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
-          Crisis Resilience Stress Test
+          Bank Compliance Escalation Simulation
         </h2>
+        <p className="text-sm text-muted-foreground/70 mb-4">
+          Crisis resilience, banking acceptance, absence, and family-veto pressure before release.
+        </p>
         <div className="h-px bg-border" />
       </motion.div>
 
@@ -458,22 +512,22 @@ export function CrisisResilienceSection({
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Worst Case</p>
-                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.worstCaseLoss || "—"}</p>
+                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.worstCaseLoss || "Not quantified"}</p>
                 </div>
                 <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Recovery</p>
-                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.recoveryTime || "—"}</p>
+                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.recoveryTime || "Response gated"}</p>
                 </div>
                 <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Decision Window</p>
                   <p className={memoNumberClass('small', 'default')}>
-                    {normalized.decisionWindowDays ? `${normalized.decisionWindowDays} days` : normalized.operatingWindow || "—"}
+                    {normalized.decisionWindowDays ? `${normalized.decisionWindowDays} days` : normalized.operatingWindow || "Gate by event"}
                   </p>
                 </div>
                 <div className="text-center rounded-xl border border-primary/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Drawdown Floor</p>
                   <p className={memoNumberClass('small', 'default')}>
-                    {normalized.stressDrawdownFloorPct !== undefined ? `${normalized.stressDrawdownFloorPct.toFixed(0)}%` : normalized.overall.bufferRequired || "—"}
+                    {normalized.stressDrawdownFloorPct !== undefined ? `${normalized.stressDrawdownFloorPct.toFixed(0)}%` : normalized.overall.bufferRequired || "Evidence gated"}
                   </p>
                 </div>
               </div>
@@ -532,16 +586,16 @@ export function CrisisResilienceSection({
             </div>
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Events</p>
-                <p className={memoNumberClass('stat', 'default')}>{normalized.eventCount ?? normalized.scenarios.length}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Signals</p>
+                <p className={memoNumberClass('stat', 'default')}>{formatCountMetric(normalized.signalCount ?? normalized.eventCount)}</p>
               </div>
               <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Regimes</p>
-                <p className={memoNumberClass('stat', 'default')}>{normalized.marketRegimeCount ?? normalized.marketRegimes.length}</p>
+                <p className={memoNumberClass('stat', 'default')}>{formatCountMetric(normalized.marketRegimeCount)}</p>
               </div>
               <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Sources</p>
-                <p className={memoNumberClass('stat', 'default')}>{normalized.sourceCount ?? normalized.sourceFamilies.length}</p>
+                <p className={memoNumberClass('stat', 'default')}>{formatCountMetric(normalized.sourceCount)}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -590,11 +644,11 @@ export function CrisisResilienceSection({
                 <div className="grid grid-cols-2 gap-4 mb-5">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Impact</p>
-                    <p className="text-sm font-medium text-primary">{scenario.impact || "—"}</p>
+                    <p className="text-sm font-medium text-primary">{scenario.impact || "Not quantified"}</p>
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Recovery</p>
-                    <p className="text-sm font-medium text-foreground">{scenario.recovery || "—"}</p>
+                    <p className="text-sm font-medium text-foreground">{scenario.recovery || "Response gated"}</p>
                   </div>
                 </div>
 

@@ -51,6 +51,8 @@ interface Structure {
   type?: string;
   verdict?: string;
   net_benefit_10yr?: number;
+  net_benefit_display?: string;
+  net_benefit_label?: string;
   tax_savings_pct?: number;
   viable?: boolean;
   warnings?: StringOrObject[];
@@ -71,6 +73,8 @@ interface StructureComparisonMatrixProps {
       name?: string;
       type?: string;
       net_benefit_10yr?: number;
+      net_benefit_display?: string;
+      net_benefit_label?: string;
       tax_savings_pct?: number;
       warnings?: StringOrObject[];
       setup_cost?: number;
@@ -111,6 +115,24 @@ function formatCost(value?: number): string {
 function formatRate(value?: number): string {
   if (value === undefined || value === null) return '\u2014';
   return `${value.toFixed(1)}%`;
+}
+
+function benefitDisplay(structure?: Structure | null): string {
+  if (!structure) return '\u2014';
+  if (structure.net_benefit_display) return structure.net_benefit_display;
+  return formatBenefit(structure.net_benefit_10yr ?? 0);
+}
+
+function benefitLabel(structure?: Structure | null): string {
+  return structure?.net_benefit_label || 'Decision Benefit';
+}
+
+function hasPositiveAmount(value?: number): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function hasStructureCosts(structure?: Structure | null): boolean {
+  return Boolean(structure && (hasPositiveAmount(structure.setup_cost) || hasPositiveAmount(structure.annual_cost)));
 }
 
 // Animated counter
@@ -317,17 +339,16 @@ export function StructureComparisonMatrix({
                 <p className="text-2xl sm:text-3xl font-normal text-foreground tracking-tight mb-1">{optimal_structure.name || 'Unnamed Structure'}</p>
                 <p className="text-sm text-muted-foreground/60 font-normal mb-6">{optimal_structure.type || 'Unknown type'}</p>
 
-                {((optimal_structure.setup_cost !== undefined && optimal_structure.setup_cost > 0) ||
-                 (optimal_structure.annual_cost !== undefined && optimal_structure.annual_cost > 0)) && (
+                {hasStructureCosts(optimal_structure) && (
                   <div className="rounded-xl border border-border/20 bg-card/50 p-5 mb-5 space-y-3">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Implementation Costs</p>
-                    {optimal_structure.setup_cost !== undefined && optimal_structure.setup_cost > 0 && (
+                    {hasPositiveAmount(optimal_structure.setup_cost) && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground/60 font-normal">Setup Cost</span>
                         <span className="font-medium text-foreground tabular-nums">{formatCost(optimal_structure.setup_cost)}</span>
                       </div>
                     )}
-                    {optimal_structure.annual_cost !== undefined && optimal_structure.annual_cost > 0 && (
+                    {hasPositiveAmount(optimal_structure.annual_cost) && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground/60 font-normal">Annual Maintenance</span>
                         <span className="font-medium text-foreground tabular-nums">{formatCost(optimal_structure.annual_cost)}/yr</span>
@@ -367,15 +388,17 @@ export function StructureComparisonMatrix({
 
               <div className="flex flex-col gap-6">
                 <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-6 text-center">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">10-Year Net Benefit</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">{benefitLabel(optimal_structure)}</p>
                   <p className={`text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight ${
                     (optimal_structure.net_benefit_10yr ?? 0) >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'
                   }`}>
-                    <AnimatedBenefit value={optimal_structure.net_benefit_10yr ?? 0} />
+                    {optimal_structure.net_benefit_display ? optimal_structure.net_benefit_display : <AnimatedBenefit value={optimal_structure.net_benefit_10yr ?? 0} />}
                   </p>
-                  <p className="text-sm text-muted-foreground/60 mt-3 font-normal">
-                    {(optimal_structure.tax_savings_pct ?? 0) >= 0 ? '+' : ''}{(optimal_structure.tax_savings_pct ?? 0).toFixed(1)}% tax savings vs. current structure
-                  </p>
+                  {typeof optimal_structure.tax_savings_pct === 'number' && (
+                    <p className="text-sm text-muted-foreground/60 mt-3 font-normal">
+                      {optimal_structure.tax_savings_pct >= 0 ? '+' : ''}{optimal_structure.tax_savings_pct.toFixed(1)}% tax savings vs. current structure
+                    </p>
+                  )}
                 </div>
 
                 {/* Estate Tax Exposure Callout */}
@@ -511,9 +534,9 @@ export function StructureComparisonMatrix({
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:gap-5 text-xs">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">10yr Benefit</p>
+                    <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">{benefitLabel(structure)}</p>
                     <p className={`font-medium tabular-nums ${isPositive ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
-                      {formatBenefit(structure.net_benefit_10yr ?? 0)}
+                      {benefitDisplay(structure)}
                     </p>
                   </div>
                   {!allIdenticalRates && (
@@ -524,10 +547,12 @@ export function StructureComparisonMatrix({
                       </p>
                     </div>
                   )}
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">Setup / Annual</p>
-                    <p className="font-medium tabular-nums text-muted-foreground/60">{formatCost(structure.setup_cost)} / {formatCost(structure.annual_cost)}</p>
-                  </div>
+                  {hasStructureCosts(structure) && (
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">Setup / Annual</p>
+                      <p className="font-medium tabular-nums text-muted-foreground/60">{formatCost(structure.setup_cost)} / {formatCost(structure.annual_cost)}</p>
+                    </div>
+                  )}
                   {!allIdenticalRates && (
                     <div>
                       <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">
@@ -556,7 +581,7 @@ export function StructureComparisonMatrix({
                 <tr className="border-b border-border/20">
                   <th className="text-left px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60 w-8">#</th>
                   <th className="text-left px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60 min-w-[100px] sm:min-w-[180px]">Structure</th>
-                  <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">10yr Benefit</th>
+                  <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">{benefitLabel(optimal_structure)}</th>
                   {!allIdenticalRates && (
                     <>
                       <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Rental</th>
@@ -566,8 +591,12 @@ export function StructureComparisonMatrix({
                       </th>
                     </>
                   )}
-                  <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Setup</th>
-                  <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Annual</th>
+                  {structures_analyzed.some(hasStructureCosts) && (
+                    <>
+                      <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Setup</th>
+                      <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Annual</th>
+                    </>
+                  )}
                   <th className="text-center px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Verdict</th>
                 </tr>
               </thead>
@@ -604,7 +633,7 @@ export function StructureComparisonMatrix({
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className={`text-sm font-medium tabular-nums ${isPositive ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
-                          {formatBenefit(structure.net_benefit_10yr ?? 0)}
+                          {benefitDisplay(structure)}
                         </span>
                       </td>
                       {!allIdenticalRates && (
@@ -626,12 +655,16 @@ export function StructureComparisonMatrix({
                           </td>
                         </>
                       )}
-                      <td className="px-4 py-4 text-right">
-                        <span className="text-xs font-medium tabular-nums text-muted-foreground/60">{formatCost(structure.setup_cost)}</span>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <span className="text-xs font-medium tabular-nums text-muted-foreground/60">{formatCost(structure.annual_cost)}</span>
-                      </td>
+                      {structures_analyzed.some(hasStructureCosts) && (
+                        <>
+                          <td className="px-4 py-4 text-right">
+                            <span className="text-xs font-medium tabular-nums text-muted-foreground/60">{formatCost(structure.setup_cost)}</span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <span className="text-xs font-medium tabular-nums text-muted-foreground/60">{formatCost(structure.annual_cost)}</span>
+                          </td>
+                        </>
+                      )}
                       <td className="px-4 py-4 text-center">
                         <VerdictBadge verdict={structure.verdict || 'DO_NOT_PROCEED'} compact />
                       </td>
@@ -680,9 +713,13 @@ export function StructureComparisonMatrix({
                       <tr className="border-b border-border/20">
                         <th className="text-left px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60 w-8">#</th>
                         <th className="text-left px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Structure</th>
-                        <th className="text-right px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">10yr Benefit</th>
-                        <th className="text-right px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Setup</th>
-                        <th className="text-right px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Annual</th>
+                        <th className="text-right px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">{benefitLabel(optimal_structure)}</th>
+                        {structures_analyzed.some(hasStructureCosts) && (
+                          <>
+                            <th className="text-right px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Setup</th>
+                            <th className="text-right px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Annual</th>
+                          </>
+                        )}
                         <th className="text-center px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Verdict</th>
                       </tr>
                     </thead>
@@ -701,15 +738,19 @@ export function StructureComparisonMatrix({
                             <span className={`text-xs font-medium tabular-nums ${
                               (structure.net_benefit_10yr ?? 0) >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'
                             }`}>
-                              {formatBenefit(structure.net_benefit_10yr ?? 0)}
+                              {benefitDisplay(structure)}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right text-xs font-medium tabular-nums text-muted-foreground/60">
-                            {formatCost(structure.setup_cost)}
-                          </td>
-                          <td className="px-4 py-3 text-right text-xs font-medium tabular-nums text-muted-foreground/60">
-                            {formatCost(structure.annual_cost)}
-                          </td>
+                          {structures_analyzed.some(hasStructureCosts) && (
+                            <>
+                              <td className="px-4 py-3 text-right text-xs font-medium tabular-nums text-muted-foreground/60">
+                                {formatCost(structure.setup_cost)}
+                              </td>
+                              <td className="px-4 py-3 text-right text-xs font-medium tabular-nums text-muted-foreground/60">
+                                {formatCost(structure.annual_cost)}
+                              </td>
+                            </>
+                          )}
                           <td className="px-4 py-3 text-center">
                             <VerdictBadge verdict={structure.verdict || 'DO_NOT_PROCEED'} compact />
                           </td>

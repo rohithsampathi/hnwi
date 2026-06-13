@@ -96,7 +96,7 @@ export function getComponentProps(
 
   const formattedTaxSavings =
     executiveSummary.underwriting_snapshot
-      ? '$0'
+      ? 'Not credited'
       : memoData.preview_data.tax_savings ||
         memoData.preview_data.tax_differential?.savings ||
         memoData.preview_data.total_savings;
@@ -262,14 +262,26 @@ export function getComponentProps(
         : undefined;
     })();
 
-  const underwritingSnapshot =
+  const rawUnderwritingSnapshot =
     executiveSummary.underwriting_snapshot ||
     [
       { label: 'Gross Yield', value: formattedAnnualRentalIncome },
       { label: 'Net Yield', value: formatPct(startingPosition.net_rental_yield_pct) },
       { label: 'Appreciation Basis', value: formattedAnnualAppreciation },
-      { label: 'Tax Arbitrage', value: '$0', note: 'No relocation-linked credit taken' },
+      { label: 'Tax Arbitrage', value: 'Not credited', note: 'No relocation-linked credit taken' },
     ].filter((item) => item.value);
+  const underwritingSnapshot = rawUnderwritingSnapshot.map((item: any) => {
+    const label = String(item?.label || '').toLowerCase();
+    const value = String(item?.value || '').trim();
+    if (label.includes('tax') && value === '$0') {
+      return {
+        ...item,
+        value: 'Not credited',
+        note: item?.note || 'No relocation-linked credit taken',
+      };
+    }
+    return item;
+  });
 
   const baseProps = {
     intakeId,

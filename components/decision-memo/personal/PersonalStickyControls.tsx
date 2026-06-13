@@ -12,6 +12,15 @@ interface PersonalStickyControlsProps {
   onSwitchToReportView?: () => void;
 }
 
+function formatMemoReference(intakeId: string): string {
+  const normalized = intakeId.trim();
+  if (/^[A-Za-z0-9]{8,18}$/.test(normalized)) {
+    return normalized.toUpperCase();
+  }
+
+  return (normalized.slice(10, 22) || normalized.slice(0, 12)).toUpperCase();
+}
+
 export default function PersonalStickyControls({
   intakeId,
   onExportPDF,
@@ -70,7 +79,7 @@ export default function PersonalStickyControls({
               <div>
                 <p className="text-foreground font-semibold">Decision Memo</p>
                 <p className="text-muted-foreground text-xs">
-                  Ref: {intakeId.slice(7, 19).toUpperCase()}
+                  Ref: {formatMemoReference(intakeId)}
                 </p>
               </div>
             </button>

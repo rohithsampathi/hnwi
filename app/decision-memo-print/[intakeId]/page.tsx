@@ -1,6 +1,6 @@
 import '@/styles/pdf-print.css';
 import { headers } from 'next/headers';
-import DecisionMemoLinearReport from '@/components/decision-memo/memo/DecisionMemoLinearReport';
+import DecisionMemoLinearReport from '@/components/decision-memo/memo/legacy/DecisionMemoLinearReport.classic-legacy';
 import { fetchDecisionMemoSurfaceData } from '@/lib/decision-memo/fetch-decision-memo-surface-data';
 
 interface PageProps {

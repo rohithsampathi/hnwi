@@ -18,7 +18,7 @@ interface DoctrineScore {
 
 interface RiskRadarChartProps {
   scores: DoctrineScore[];
-  antifragilityAssessment?: string;
+  antifragilityAssessment?: unknown;
   failureModeCount?: number;
   totalRiskFlags?: number;
   /** Whether the deal was vetoed (DO_NOT_PROCEED) */
@@ -38,6 +38,33 @@ function getAvgScoreGradient(avg: number): { center: string; edge: string; strok
   if (avg <= 5) return { center: 'rgba(249,115,22,0.3)', edge: 'rgba(249,115,22,0.05)', stroke: '#f97316' };
   if (avg <= 7) return { center: 'rgba(234,179,8,0.25)', edge: 'rgba(234,179,8,0.05)', stroke: '#eab308' };
   return { center: 'rgba(16,185,129,0.3)', edge: 'rgba(16,185,129,0.05)', stroke: '#10b981' };
+}
+
+function normalizeAssessmentLabel(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    if (value <= 3) return 'RUIN_EXPOSED';
+    if (value <= 5) return 'FRAGILE';
+    if (value >= 8) return 'ANTIFRAGILE';
+    return 'RESILIENCE_GATED';
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return normalizeAssessmentLabel(
+      record.label ??
+      record.assessment ??
+      record.verdict ??
+      record.status ??
+      record.rating,
+    );
+  }
+
+  return null;
 }
 
 // SVG Radar chart — no external library needed
@@ -272,6 +299,7 @@ export function RiskRadarChart({
   const minScore = Math.min(...scores.map(s => s.score));
   const imbalance = maxScore - minScore;
   const criticalCount = scores.filter(s => s.score <= 3).length;
+  const assessmentLabel = normalizeAssessmentLabel(antifragilityAssessment);
 
   return (
     <motion.div
@@ -428,13 +456,13 @@ export function RiskRadarChart({
                 {criticalCount} Critical
               </span>
             )}
-            {antifragilityAssessment && (
+            {assessmentLabel && (
               <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${
-                antifragilityAssessment === 'ANTIFRAGILE' ? 'border-emerald-500/20 text-emerald-500/80' :
-                antifragilityAssessment === 'FRAGILE' ? 'border-orange-500/20 text-orange-500/80' :
+                assessmentLabel === 'ANTIFRAGILE' ? 'border-emerald-500/20 text-emerald-500/80' :
+                assessmentLabel === 'FRAGILE' ? 'border-orange-500/20 text-orange-500/80' :
                 'border-red-500/20 text-red-500/80'
               }`}>
-                {antifragilityAssessment.replace(/_/g, ' ')}
+                {assessmentLabel.replace(/_/g, ' ')}
               </span>
             )}
           </div>

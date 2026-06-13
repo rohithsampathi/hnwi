@@ -70,6 +70,20 @@ function formatLargeCurrency(amount?: number | null): string {
   return `$${amount.toLocaleString()}`;
 }
 
+function formatEvidenceCurrency(amount?: number | null, fallback = 'Not quantified'): string {
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || amount === 0) {
+    return fallback;
+  }
+  return formatLargeCurrency(amount);
+}
+
+function formatHeirTaxRate(rate: number | undefined, summary?: string): string {
+  if (summary && summary.trim()) return summary.trim();
+  if (typeof rate !== 'number' || !Number.isFinite(rate)) return 'Counsel-gated';
+  if (rate === 0) return 'No estate duty';
+  return `${(rate * 100).toFixed(0)}%`;
+}
+
 function toFiniteNumber(value: unknown): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {
@@ -187,7 +201,9 @@ function RiskGauge({ current, improved, label }: { current: number; improved: nu
         </svg>
       </div>
       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 font-medium -mt-3">{label}</p>
-      <p className="text-sm font-medium text-gold/80">↓ {Math.round(reduction)} pts</p>
+      <p className="text-sm font-medium text-gold/80">
+        {Math.round(reduction) === 0 ? 'No modeled uplift yet' : `↓ ${Math.round(reduction)} pts`}
+      </p>
     </div>
   );
 }
@@ -538,10 +554,14 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     const g3RetentionWithoutStructure = toFiniteNumber(g2ToG3?.retention_score_without_structure);
     const g3RetentionWithStructure = toFiniteNumber(withStructure?.retention_score);
     const forcedSaleHaircut = toFiniteNumber(g2ToG3?.forced_sale_haircut_pct);
-    const successionDollarsAtRisk =
+    const successionDollarsAtRiskCandidate =
       toFiniteNumber(topRisk?.dollars_at_risk) ??
       toFiniteNumber(g1ToG2?.estate_tax_hit) ??
       toFiniteNumber(g1?.unplanned_loss);
+    const successionDollarsAtRisk =
+      successionDollarsAtRiskCandidate !== undefined && successionDollarsAtRiskCandidate > 0
+        ? successionDollarsAtRiskCandidate
+        : undefined;
     const g3Status =
       titleCaseLabel((hughesFramework?.components as any)?.g3?.status) ||
       titleCaseLabel(withStructure?.preservation_rating) ||
@@ -676,9 +696,11 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                         {displayLossArrow ? (
                           <p className="text-lg font-medium text-gold/80">{displayLossArrow}</p>
                         ) : improvementPts !== undefined ? (
-                          <p className="text-xl font-medium text-gold/80">↓{improvementPts} pts</p>
+                          <p className="text-xl font-medium text-gold/80">{improvementPts === 0 ? 'No modeled uplift yet' : `↓${improvementPts} pts`}</p>
                         ) : thirdGenCurrentRisk !== undefined && thirdGenImprovedRisk !== undefined ? (
-                          <p className="text-xl font-medium text-gold/80">↓{thirdGenCurrentRisk - thirdGenImprovedRisk} pts</p>
+                          <p className="text-xl font-medium text-gold/80">
+                            {thirdGenCurrentRisk - thirdGenImprovedRisk === 0 ? 'No modeled uplift yet' : `↓${thirdGenCurrentRisk - thirdGenImprovedRisk} pts`}
+                          </p>
                         ) : (
                           <p className="text-xl font-bold text-muted-foreground/60">\u2014</p>
                         )}
@@ -740,7 +762,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                   <div className="text-center rounded-xl border border-gold/20 bg-gold/[0.03] p-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Dollars At Risk</p>
                     <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">
-                      {successionDollarsAtRisk !== undefined ? formatLargeCurrency(successionDollarsAtRisk) : '\u2014'}
+                      {successionDollarsAtRisk !== undefined ? formatLargeCurrency(successionDollarsAtRisk) : 'Not quantified'}
                     </p>
                   </div>
                   <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
@@ -989,7 +1011,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                         <Heart className="w-5 h-5 text-gold/70 mx-auto mb-3" />
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Spouse</p>
                         <p className={`text-xl md:text-2xl font-bold tabular-nums tracking-tight ${estateTaxByHeirType.spouse_rate === 0 ? 'text-emerald-500/80' : 'text-foreground'}`}>
-                          {estateTaxByHeirType.spouse_summary || `${(estateTaxByHeirType.spouse_rate * 100).toFixed(0)}%`}
+                          {formatHeirTaxRate(estateTaxByHeirType.spouse_rate, estateTaxByHeirType.spouse_summary)}
                         </p>
                       </div>
 
@@ -998,7 +1020,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                         <User className="w-5 h-5 text-gold/70 mx-auto mb-3" />
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Children</p>
                         <p className={`text-xl md:text-2xl font-bold tabular-nums tracking-tight ${estateTaxByHeirType.children_rate === 0 ? 'text-emerald-500/80' : estateTaxByHeirType.children_rate > 0.3 ? 'text-amber-500/80' : 'text-foreground'}`}>
-                          {estateTaxByHeirType.children_summary || `${(estateTaxByHeirType.children_rate * 100).toFixed(0)}%`}
+                          {formatHeirTaxRate(estateTaxByHeirType.children_rate, estateTaxByHeirType.children_summary)}
                         </p>
                       </div>
 
@@ -1007,7 +1029,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                         <Users className="w-5 h-5 text-muted-foreground/60 mx-auto mb-3" />
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Non-Lineal</p>
                         <p className={`text-xl md:text-2xl font-bold tabular-nums tracking-tight ${estateTaxByHeirType.non_lineal_rate > 0.3 ? 'text-amber-500/80' : 'text-foreground'}`}>
-                          {(estateTaxByHeirType.non_lineal_rate * 100).toFixed(0)}%
+                          {formatHeirTaxRate(estateTaxByHeirType.non_lineal_rate, (estateTaxByHeirType as any).non_lineal_summary)}
                         </p>
                       </div>
                     </div>
@@ -1109,7 +1131,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                   <p className="text-sm text-foreground font-normal mb-3">{parseMarkdownBold(topRisk.trigger)}</p>
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">At Risk</p>
-                    <p className="text-xl font-bold tabular-nums tracking-tight text-foreground">{formatLargeCurrency(topRisk.dollars_at_risk)}</p>
+                    <p className="text-xl font-bold tabular-nums tracking-tight text-foreground">{formatEvidenceCurrency(topRisk.dollars_at_risk)}</p>
                   </div>
                 </div>
 

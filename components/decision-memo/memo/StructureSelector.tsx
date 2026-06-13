@@ -9,6 +9,8 @@ interface Structure {
   name?: string;
   type?: string;
   net_benefit_10yr?: number;
+  net_benefit_display?: string;
+  net_benefit_label?: string;
   tax_savings_pct?: number;
   viable?: boolean;
   verdict?: string;
@@ -46,6 +48,23 @@ function formatBenefit(value: number): string {
   return value >= 0 ? `+${formatted}` : `-${formatted}`;
 }
 
+function benefitDisplay(structure?: Structure): string {
+  if (!structure) return '\u2014';
+  return structure.net_benefit_display || formatBenefit(structure.net_benefit_10yr ?? 0);
+}
+
+function benefitLabel(structure?: Structure): string {
+  return structure?.net_benefit_label || 'Decision Benefit';
+}
+
+function hasNumber(value?: number): boolean {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isMetricItem(item: { label: string; value: string } | null): item is { label: string; value: string } {
+  return item !== null;
+}
+
 export const StructureSelector: React.FC<StructureSelectorProps> = ({
   structures,
   selectedStructureName,
@@ -79,7 +98,7 @@ export const StructureSelector: React.FC<StructureSelectorProps> = ({
                 const isOpt = structure.name === optimalStructureName;
                 return (
                   <option key={structure.name} value={structure.name}>
-                    {structure.name || 'Unnamed Structure'} {isOpt ? '*' : ''} ({formatBenefit(structure.net_benefit_10yr ?? 0)})
+                    {structure.name || 'Unnamed Structure'} {isOpt ? '*' : ''} ({benefitDisplay(structure)})
                   </option>
                 );
               })}
@@ -114,7 +133,7 @@ export const StructureSelector: React.FC<StructureSelectorProps> = ({
                 </span>
               )}
               <span className={`text-base font-medium tabular-nums ${benefitPositive ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
-                {formatBenefit(selectedStructure.net_benefit_10yr ?? 0)} 10yr
+                {benefitDisplay(selectedStructure)}
               </span>
               <span className="text-muted-foreground/20">&middot;</span>
               <span className="text-xs text-muted-foreground/60 font-normal">{(selectedStructure.type || 'structure').replace(/_/g, ' ')}</span>
@@ -123,12 +142,13 @@ export const StructureSelector: React.FC<StructureSelectorProps> = ({
             {/* Tax rates grid */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {[
-                { label: 'Rental Tax', value: `${(selectedStructure.rental_income_rate ?? 0).toFixed(1)}%` },
-                { label: 'CGT', value: `${(selectedStructure.capital_gains_rate ?? 0).toFixed(1)}%` },
-                { label: 'Estate', value: `${(selectedStructure.estate_tax_rate ?? 0).toFixed(1)}%` },
-                { label: 'Setup', value: formatCurrency(selectedStructure.setup_cost ?? 0) },
-                { label: 'Annual', value: formatCurrency(selectedStructure.annual_cost ?? 0) },
-              ].map((item) => (
+                hasNumber(selectedStructure.rental_income_rate) ? { label: 'Rental Tax', value: `${selectedStructure.rental_income_rate?.toFixed(1)}%` } : null,
+                hasNumber(selectedStructure.capital_gains_rate) ? { label: 'CGT', value: `${selectedStructure.capital_gains_rate?.toFixed(1)}%` } : null,
+                hasNumber(selectedStructure.estate_tax_rate) ? { label: 'Estate', value: `${selectedStructure.estate_tax_rate?.toFixed(1)}%` } : null,
+                selectedStructure.setup_cost && selectedStructure.setup_cost > 0 ? { label: 'Setup', value: formatCurrency(selectedStructure.setup_cost) } : null,
+                selectedStructure.annual_cost && selectedStructure.annual_cost > 0 ? { label: 'Annual', value: formatCurrency(selectedStructure.annual_cost) } : null,
+                { label: benefitLabel(selectedStructure), value: benefitDisplay(selectedStructure) },
+              ].filter(isMetricItem).map((item) => (
                 <div key={item.label} className="rounded-xl border border-border/20 bg-card/50 p-3 text-center">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{item.label}</p>
                   <p className="text-base font-medium tabular-nums text-foreground">{item.value}</p>

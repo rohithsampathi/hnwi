@@ -27,8 +27,10 @@ type StringOrObject = string | Record<string, unknown>;
 interface OptimalStructure {
   name: string;
   type: string;
-  net_benefit_10yr: number;
-  tax_savings_pct: number;
+  net_benefit_10yr?: number;
+  net_benefit_display?: string;
+  net_benefit_label?: string;
+  tax_savings_pct?: number;
   warnings: StringOrObject[];
   setup_cost?: number;
   annual_cost?: number;
@@ -42,8 +44,10 @@ interface AnalyzedStructure {
   name: string;
   type: string;
   verdict: string;
-  net_benefit_10yr: number;
-  tax_savings_pct: number;
+  net_benefit_10yr?: number;
+  net_benefit_display?: string;
+  net_benefit_label?: string;
+  tax_savings_pct?: number;
   viable: boolean;
   warnings: StringOrObject[];
   setup_cost?: number;
@@ -97,6 +101,19 @@ function formatRate(v?: number): string {
   return `${v.toFixed(1)}%`;
 }
 
+function benefitDisplay(structure?: { net_benefit_10yr?: number; net_benefit_display?: string }): string {
+  if (!structure) return "\u2014";
+  return structure.net_benefit_display || formatBenefit(structure.net_benefit_10yr || 0);
+}
+
+function benefitLabel(structure?: { net_benefit_label?: string }): string {
+  return (structure?.net_benefit_label || "Decision Benefit").toUpperCase();
+}
+
+function hasPositiveAmount(value?: number): boolean {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
 function verdictLabel(verdict: string): string {
   switch (verdict) {
     case "PROCEED":
@@ -148,7 +165,7 @@ export const PdfStructureComparisonPage: React.FC<
     if (a.name === optimal_structure?.name) return -1;
     if (b.name === optimal_structure?.name) return 1;
     if (a.viable !== b.viable) return a.viable ? -1 : 1;
-    return b.net_benefit_10yr - a.net_benefit_10yr;
+    return (b.net_benefit_10yr ?? 0) - (a.net_benefit_10yr ?? 0);
   });
 
   const top5 = sorted.slice(0, 5);
@@ -167,30 +184,38 @@ export const PdfStructureComparisonPage: React.FC<
 
   const hasOptimalCosts =
     optimal_structure &&
-    ((optimal_structure.setup_cost !== undefined &&
-      optimal_structure.setup_cost > 0) ||
-      (optimal_structure.annual_cost !== undefined &&
-        optimal_structure.annual_cost > 0));
+    (hasPositiveAmount(optimal_structure.setup_cost) ||
+      hasPositiveAmount(optimal_structure.annual_cost));
+  const hasAnyCosts = structures_analyzed.some(
+    (structure) => hasPositiveAmount(structure.setup_cost) || hasPositiveAmount(structure.annual_cost),
+  );
 
   if (structures_analyzed.length === 0) {
     return null;
   }
 
   // Build table rows
-  const tableHeaders = ["#", "STRUCTURE", "10YR BENEFIT", "SETUP", "ANNUAL", "VERDICT"];
-  const tableColumnWidths = [0.4, 2.5, 1.2, 0.8, 0.8, 1];
+  const tableHeaders = hasAnyCosts
+    ? ["#", "STRUCTURE", benefitLabel(optimal_structure), "SETUP", "ANNUAL", "VERDICT"]
+    : ["#", "STRUCTURE", benefitLabel(optimal_structure), "VERDICT"];
+  const tableColumnWidths = hasAnyCosts ? [0.4, 2.5, 1.2, 0.8, 0.8, 1] : [0.4, 2.8, 1.6, 1];
   const tableRows = top5.map((s, i) => {
     const isOptimal = s.name === optimal_structure?.name;
     const benefitColor =
-      s.net_benefit_10yr >= 0 ? colors.amber[500] : colors.red[700];
-    return [
+      (s.net_benefit_10yr ?? 0) >= 0 ? colors.amber[500] : colors.red[700];
+    const row: Array<{ text: string; bold?: boolean; color: string }> = [
       { text: isOptimal ? "\u2605" : String(i + 1), bold: isOptimal, color: isOptimal ? colors.amber[500] : darkTheme.textMuted },
       { text: `${s.name} (${s.type})`, bold: isOptimal, color: isOptimal ? colors.amber[500] : darkTheme.textPrimary },
-      { text: formatBenefit(s.net_benefit_10yr), bold: true, color: benefitColor },
-      { text: formatCost(s.setup_cost), color: darkTheme.textMuted },
-      { text: formatCost(s.annual_cost), color: darkTheme.textMuted },
-      { text: verdictLabel(s.verdict), color: s.viable ? colors.amber[500] : colors.red[700] },
+      { text: benefitDisplay(s), bold: true, color: benefitColor },
     ];
+    if (hasAnyCosts) {
+      row.push(
+        { text: formatCost(s.setup_cost), color: darkTheme.textMuted },
+        { text: formatCost(s.annual_cost), color: darkTheme.textMuted },
+      );
+    }
+    row.push({ text: verdictLabel(s.verdict), color: s.viable ? colors.amber[500] : colors.red[700] });
+    return row;
   });
 
   return (
@@ -519,7 +544,7 @@ export const PdfStructureComparisonPage: React.FC<
                     marginBottom: spacing.sm,
                   }}
                 >
-                  10-YEAR NET BENEFIT
+                  {benefitLabel(optimal_structure)}
                 </Text>
                 <Text
                   style={{
@@ -527,25 +552,27 @@ export const PdfStructureComparisonPage: React.FC<
                     fontFamily: "Inter",
                     fontWeight: 700,
                     color:
-                      optimal_structure.net_benefit_10yr >= 0
+                      (optimal_structure.net_benefit_10yr ?? 0) >= 0
                         ? colors.amber[500]
                         : colors.red[700],
                     marginBottom: spacing.xs,
                   }}
                 >
-                  {formatBenefit(optimal_structure.net_benefit_10yr)}
+                  {benefitDisplay(optimal_structure)}
                 </Text>
-                <Text
-                  style={{
-                    ...typography.small,
-                    color: darkTheme.textMuted,
-                    textAlign: "center",
-                  }}
-                >
-                  {optimal_structure.tax_savings_pct >= 0 ? "+" : ""}
-                  {optimal_structure.tax_savings_pct.toFixed(1)}% tax savings vs.
-                  current structure
-                </Text>
+                {typeof optimal_structure.tax_savings_pct === "number" && (
+                  <Text
+                    style={{
+                      ...typography.small,
+                      color: darkTheme.textMuted,
+                      textAlign: "center",
+                    }}
+                  >
+                    {optimal_structure.tax_savings_pct >= 0 ? "+" : ""}
+                    {optimal_structure.tax_savings_pct.toFixed(1)}% tax savings vs.
+                    current structure
+                  </Text>
+                )}
               </View>
 
               {/* Anti-avoidance flags */}

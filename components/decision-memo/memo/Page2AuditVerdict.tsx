@@ -444,6 +444,10 @@ export function Page2AuditVerdict({
   const priorityRiskCount =
     riskAssessment?.priority_risks_total ??
     ((riskAssessment?.critical_items ?? 0) + highItemsCount);
+  const displayDataQuality = dataQuality || 'evidence gated';
+  const displayDataQualityNote =
+    dataQualityNote ||
+    'Family documents, banking rails, and counsel evidence remain the release boundary.';
 
   return (
     <div ref={sectionRef}>
@@ -653,9 +657,9 @@ export function Page2AuditVerdict({
                 dataQuality === 'limited' ? 'text-amber-500' :
                 'text-muted-foreground'
               }`}>
-                {dataQuality || '—'}
+                {displayDataQuality}
               </p>
-              <p className="text-xs text-muted-foreground/60 mt-1 line-clamp-1">{dataQualityNote || '—'}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1 line-clamp-1">{displayDataQualityNote}</p>
             </div>
           </motion.div>
 

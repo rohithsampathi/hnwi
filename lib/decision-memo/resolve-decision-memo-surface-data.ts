@@ -11,6 +11,8 @@ interface ResolveDecisionMemoSurfaceDataInput {
   fullArtifact?: RecordLike | ICArtifact | null;
 }
 
+const PRINCIPAL_SURFACE_CONTRACT = 'hnwi_principal_surface_v1';
+
 export interface ResolvedDecisionMemoSurfaceData {
   memoData: PdfMemoData;
   backendData: RecordLike;
@@ -20,6 +22,42 @@ export interface ResolvedDecisionMemoSurfaceData {
 
 function hasKeys(value: unknown): value is RecordLike {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as RecordLike).length > 0;
+}
+
+function isPrincipalSurfacePayload(value?: RecordLike | null): boolean {
+  return Boolean(
+    value &&
+      value.surface_contract === PRINCIPAL_SURFACE_CONTRACT &&
+      hasKeys(value.preview_data) &&
+      hasKeys(value.memo_data) &&
+      hasKeys(value.full_artifact),
+  );
+}
+
+function extractPrincipalSurfacePayload(
+  backendData?: RecordLike | null,
+  fullArtifact?: RecordLike | ICArtifact | null,
+): RecordLike | null {
+  const data = backendData as RecordLike | null | undefined;
+  if (isPrincipalSurfacePayload(data)) {
+    return data as RecordLike;
+  }
+
+  const nestedSurface = data?.decision_memo_surface;
+  if (isPrincipalSurfacePayload(nestedSurface)) {
+    return nestedSurface as RecordLike;
+  }
+
+  const nestedMemoData = data?.memoData;
+  if (isPrincipalSurfacePayload(nestedMemoData)) {
+    return nestedMemoData as RecordLike;
+  }
+
+  if (isPrincipalSurfacePayload(fullArtifact as RecordLike | null)) {
+    return fullArtifact as RecordLike;
+  }
+
+  return null;
 }
 
 function numericOrNull(value: unknown): number | null {
@@ -37,17 +75,441 @@ function numericOrNull(value: unknown): number | null {
   return null;
 }
 
+function numberOrNull(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const multiplier = /bn?\b/i.test(trimmed)
+      ? 1_000_000_000
+      : /m\b/i.test(trimmed)
+        ? 1_000_000
+        : /k\b/i.test(trimmed)
+          ? 1_000
+          : 1;
+    const parsed = Number(trimmed.replace(/[^0-9.-]/g, ''));
+    if (Number.isFinite(parsed)) {
+      return parsed * multiplier;
+    }
+  }
+
+  return null;
+}
+
+function formatUsd(value: unknown, options: Intl.NumberFormatOptions = {}): string | undefined {
+  const amount = numberOrNull(value);
+  if (amount === null) {
+    return undefined;
+  }
+
+  return `US$${Math.round(amount).toLocaleString('en-US', options)}`;
+}
+
+function normalizeProbability(value: unknown, fallback: number): number {
+  const parsed = numberOrNull(value);
+  if (parsed === null || parsed <= 0) {
+    return fallback;
+  }
+
+  return parsed > 1 ? parsed / 100 : parsed;
+}
+
+function projectValueAtYear(startValue: number, finalValue: number, year: number): number {
+  if (year === 0) {
+    return startValue;
+  }
+
+  if (startValue > 0 && finalValue >= 0) {
+    return startValue * Math.pow(finalValue / startValue, year / 10);
+  }
+
+  return startValue + ((finalValue - startValue) * year) / 10;
+}
+
+function normalizeCompactWealthProjection(projection?: RecordLike | null): RecordLike | null {
+  if (!hasKeys(projection)) {
+    return projection ?? null;
+  }
+
+  const normalized: RecordLike = { ...projection };
+  const startingPosition: RecordLike = {
+    ...(hasKeys(normalized.starting_position) ? normalized.starting_position : {}),
+  };
+  const acquisitionAudit = startingPosition.cross_border_audit_summary?.acquisition_audit ?? {};
+
+  const startingValue =
+    numberOrNull(normalized.starting_value) ??
+    numberOrNull(normalized.transaction_value) ??
+    numberOrNull(startingPosition.transaction_value) ??
+    numberOrNull(startingPosition.transaction_amount) ??
+    numberOrNull(startingPosition.purchase_price_sgd) ??
+    numberOrNull(acquisitionAudit.property_value) ??
+    0;
+  const capitalDeployed =
+    numberOrNull(startingPosition.total_acquisition_cost) ??
+    numberOrNull(startingPosition.all_in_outlay_sgd) ??
+    numberOrNull(acquisitionAudit.total_acquisition_cost) ??
+    startingValue;
+  const stampDutiesPaid =
+    numberOrNull(startingPosition.stamp_duties_paid) ??
+    numberOrNull(startingPosition.stamp_duty_drag_sgd) ??
+    numberOrNull(acquisitionAudit.total_stamp_duties) ??
+    0;
+
+  normalized.starting_position = {
+    ...startingPosition,
+    transaction_value: numberOrNull(startingPosition.transaction_value) ?? startingValue,
+    transaction_amount: numberOrNull(startingPosition.transaction_amount) ?? startingValue,
+    total_acquisition_cost: capitalDeployed,
+    stamp_duties_paid: stampDutiesPaid,
+  };
+  normalized.starting_value = numberOrNull(normalized.starting_value) ?? startingValue;
+  normalized.transaction_value = numberOrNull(normalized.transaction_value) ?? startingValue;
+
+  const probabilityWeighted = hasKeys(normalized.probability_weighted)
+    ? normalized.probability_weighted
+    : null;
+  if (!hasKeys(normalized.probability_weighted_outcome) && probabilityWeighted) {
+    normalized.probability_weighted_outcome = {
+      expected_net_worth:
+        numberOrNull(probabilityWeighted.expected_net_worth) ??
+        numberOrNull(probabilityWeighted.expected_total_value) ??
+        0,
+      expected_value_creation:
+        numberOrNull(probabilityWeighted.expected_value_creation) ??
+        numberOrNull(probabilityWeighted.value_creation) ??
+        0,
+      vs_stay_expected:
+        numberOrNull(probabilityWeighted.vs_stay_expected) ??
+        numberOrNull(probabilityWeighted.if_stay) ??
+        0,
+      net_benefit_of_move:
+        numberOrNull(probabilityWeighted.net_benefit_of_move) ??
+        numberOrNull(probabilityWeighted.net_benefit) ??
+        0,
+    };
+  }
+
+  if (hasKeys(normalized.probability_weighted_outcome)) {
+    const weightedOutcome = normalized.probability_weighted_outcome;
+    weightedOutcome.expected_value_formatted ??=
+      formatUsd(weightedOutcome.expected_net_worth ?? weightedOutcome.expected_total_value);
+    weightedOutcome.expected_net_worth_formatted ??=
+      formatUsd(weightedOutcome.expected_net_worth ?? weightedOutcome.expected_total_value);
+    weightedOutcome.expected_value_creation_formatted ??=
+      formatUsd(weightedOutcome.expected_value_creation);
+    weightedOutcome.net_benefit_of_move_formatted ??=
+      formatUsd(weightedOutcome.net_benefit_of_move ?? weightedOutcome.net_benefit);
+  }
+
+  if (hasKeys(normalized.cost_of_inaction)) {
+    normalized.cost_of_inaction = {
+      primary_driver:
+        normalized.cost_of_inaction.primary_driver ??
+        'Route value lost to duty drag, custody friction, and execution timing.',
+      secondary_driver:
+        normalized.cost_of_inaction.secondary_driver ??
+        'Authority, banking, and succession evidence must clear before release.',
+      ...normalized.cost_of_inaction,
+    };
+  }
+
+  if (Array.isArray(normalized.scenarios)) {
+    return normalized;
+  }
+
+  if (!hasKeys(normalized.scenarios)) {
+    return normalized;
+  }
+
+  const compactScenarios = normalized.scenarios;
+  const scenarioConfig = [
+    { key: 'base', name: 'BASE_CASE', fallbackProbability: 0.6 },
+    { key: 'stress', name: 'STRESS_CASE', fallbackProbability: 0.2 },
+    { key: 'opportunity', name: 'OPPORTUNITY_CASE', fallbackProbability: 0.2 },
+  ];
+
+  normalized.scenarios = scenarioConfig
+    .map(({ key, name, fallbackProbability }) => {
+      const compact = compactScenarios[key];
+      if (!hasKeys(compact)) {
+        return null;
+      }
+
+      const finalValue =
+        numberOrNull(compact.year_10_value) ??
+        numberOrNull(compact.final_value) ??
+        numberOrNull(compact.expected_net_worth) ??
+        startingValue;
+      const totalValueCreation = finalValue - startingValue;
+      const netValueCreation = finalValue - capitalDeployed;
+      const percentageGain = startingValue > 0 ? (totalValueCreation / startingValue) * 100 : 0;
+      const trueRoiPct = capitalDeployed > 0 ? (netValueCreation / capitalDeployed) * 100 : percentageGain;
+
+      return {
+        name,
+        probability: normalizeProbability(compact.probability, fallbackProbability),
+        assumptions: [
+          compact.growth_rate ? `Growth basis: ${String(compact.growth_rate)}` : null,
+          compact.name ? `Route condition: ${String(compact.name)}` : null,
+          compact.verdict ? `Release read: ${String(compact.verdict)}` : null,
+        ].filter(Boolean),
+        year_by_year: [0, 1, 5, 10].map((year) => {
+          const value = projectValueAtYear(startingValue, finalValue, year);
+          return {
+            year,
+            property_value: value,
+            liquid_assets: 0,
+            income: 0,
+            tax_saved: 0,
+            net_worth: value,
+            total_value: value,
+            rental_income: 0,
+          };
+        }),
+        ten_year_outcome: {
+          property_appreciation: totalValueCreation,
+          investment_growth: 0,
+          tax_savings_cumulative: 0,
+          total_value_creation: totalValueCreation,
+          net_value_creation: netValueCreation,
+          percentage_gain: percentageGain,
+          true_roi_pct: trueRoiPct,
+          final_value: finalValue,
+          final_total_value: finalValue,
+        },
+        compact_source: compact,
+      };
+    })
+    .filter(Boolean);
+
+  return normalized;
+}
+
+function applyCanonicalWealthProjectionScenarios(memoData: PdfMemoData) {
+  const previewData = memoData.preview_data;
+  if (!previewData) {
+    return;
+  }
+
+  previewData.wealth_projection_data = normalizeCompactWealthProjection(
+    previewData.wealth_projection_data,
+  ) ?? previewData.wealth_projection_data;
+
+  if (hasKeys(previewData.structure_projections)) {
+    previewData.structure_projections = Object.fromEntries(
+      Object.entries(previewData.structure_projections).map(([key, value]) => [
+        key,
+        normalizeCompactWealthProjection(value as RecordLike) ?? value,
+      ]),
+    );
+  }
+}
+
 function normalizeFullArtifact(
   backendData?: RecordLike | null,
   fullArtifact?: RecordLike | ICArtifact | null,
 ): RecordLike | null {
   return (
     (fullArtifact as RecordLike) ??
+    backendData?.memoData?.full_artifact ??
+    backendData?.memoData?.artifact ??
+    backendData?.memoData?.fullArtifact ??
     backendData?.full_artifact_v2 ??
     backendData?.full_artifact ??
     backendData?.fullArtifact ??
     null
   );
+}
+
+function resolveKingdomNativePreviewMemo(backendData?: RecordLike | null): RecordLike | null {
+  const candidates = [
+    backendData?.memo,
+    backendData?.full_artifact?.memo,
+    backendData?.fullArtifact?.memo,
+    backendData?.artifact?.memo,
+  ];
+
+  return candidates.find(hasKeys) ?? null;
+}
+
+function isKingdomNativePreviewPayload(backendData?: RecordLike | null): boolean {
+  if (!backendData) return false;
+  return (
+    backendData.status === 'kingdom_native_preview' ||
+    backendData.full_artifact?.status === 'kingdom_native_preview' ||
+    backendData.artifact?.status === 'kingdom_native_preview'
+  );
+}
+
+function buildKingdomNativePreviewSurface(
+  intakeId: string,
+  backendData?: RecordLike | null,
+): ResolvedDecisionMemoSurfaceData | null {
+  if (!isKingdomNativePreviewPayload(backendData)) {
+    return null;
+  }
+
+  const nativePayload = backendData as RecordLike;
+  const nativeMemo = resolveKingdomNativePreviewMemo(backendData);
+  const title = String(nativeMemo?.title || 'Kingdom Native Decision Memo Preview');
+  const executiveSummary = String(
+    nativeMemo?.executiveSummary ||
+    nativeMemo?.executive_summary ||
+    'The backend returned a native preview shell, but the completed audit payload is not present for this intake id.',
+  );
+  const libraryAuthority = String(nativeMemo?.libraryAuthority || 'Source library and backend memo store');
+  const nextStep = String(nativeMemo?.nextStep || 'Completed audit payload required from backend before full report findings can render.');
+  const generatedAt = String(nativePayload.generated_at || nativePayload.generatedAt || new Date().toISOString());
+
+  const previewData: RecordLike = {
+    source_jurisdiction: '',
+    destination_jurisdiction: '',
+    exposure_class: 'Backend incomplete',
+    total_savings: 'Pending',
+    hnwi_world_count: 0,
+    risk_level: 'Pending',
+    verdict: 'Backend memo payload incomplete',
+    executive_summary: {
+      headline_metric: {
+        label: 'Backend Status',
+        value: 'Awaiting completed memo',
+        description: executiveSummary,
+      },
+      strategy_label: 'Kingdom native preview',
+      evidence_basis_note: `${libraryAuthority}. ${nextStep}`,
+      underwriting_snapshot: [
+        {
+          label: 'Intake',
+          value: intakeId,
+          note: 'No completed audit rows were returned by the backend for this id.',
+        },
+        {
+          label: 'Backend status',
+          value: String(nativePayload.status || nativePayload.full_artifact?.status || 'kingdom_native_preview'),
+          note: 'This is a degraded native preview shell, not a full audit artifact.',
+        },
+      ],
+    },
+    input_snapshot: {
+      intake_id: intakeId,
+      backend_status: nativePayload.status || nativePayload.full_artifact?.status || 'kingdom_native_preview',
+      answer_count: nativePayload.answerCount ?? nativePayload.full_artifact?.answerCount ?? 0,
+      backend_incomplete: true,
+    },
+    all_opportunities: [],
+    all_mistakes: [],
+    wealth_projection_data: {
+      starting_position: {
+        cross_border_audit_summary: {
+          status: 'backend_incomplete',
+          summary: executiveSummary,
+          next_step: nextStep,
+        },
+      },
+    },
+  };
+
+  const memoData: PdfMemoData = {
+    success: true,
+    intake_id: intakeId,
+    generated_at: generatedAt,
+    preview_data: previewData,
+    memo_data: {
+      title,
+      executive_summary: executiveSummary,
+      kingdom_native: true,
+      backend_incomplete: true,
+      library_authority: libraryAuthority,
+      next_step: nextStep,
+    } as RecordLike,
+    full_memo_url: '',
+    full_artifact: {
+      ...nativePayload,
+      preview_data: previewData,
+    },
+  };
+
+  return {
+    memoData,
+    backendData: {
+      ...nativePayload,
+      preview_data: previewData,
+      memo_data: memoData.memo_data,
+      fullArtifact: memoData.full_artifact,
+      full_artifact: memoData.full_artifact,
+      resolvedDevelopmentsCount: 0,
+    },
+    fullArtifact: memoData.full_artifact ?? null,
+    developmentsCount: 0,
+  };
+}
+
+function buildPrincipalSurface(
+  intakeId: string,
+  surface: RecordLike,
+): ResolvedDecisionMemoSurfaceData {
+  const fullArtifact = hasKeys(surface.full_artifact) ? surface.full_artifact : null;
+  const publicIntakeId = String(surface.public_intake_id ?? surface.intake_id ?? intakeId);
+  const memoData = {
+    success: surface.success ?? true,
+    intake_id: publicIntakeId,
+    generated_at: surface.generated_at ?? surface.generatedAt ?? new Date().toISOString(),
+    documentTitle: surface.documentTitle,
+    memoReference: surface.memoReference ?? publicIntakeId,
+    surface_contract: surface.surface_contract,
+    surface_contract_version: surface.surface_contract_version,
+    preview_data: surface.preview_data,
+    memo_data: surface.memo_data,
+    full_memo_url: surface.full_memo_url ?? '',
+    full_artifact: fullArtifact ?? undefined,
+  } as PdfMemoData;
+
+  applyCanonicalCrossBorderAuditSummary(memoData, surface, fullArtifact);
+  applyCanonicalWealthProjectionScenarios(memoData);
+
+  const developmentsCount =
+    numericOrNull(memoData.preview_data?.hnwi_world_count) ??
+    numericOrNull(surface.preview_data?.hnwi_world_count);
+
+  const publicBackendData: RecordLike = {
+    status: surface.status ?? 'completed',
+    surface_contract: surface.surface_contract,
+    surface_contract_version: surface.surface_contract_version,
+    intake_id: publicIntakeId,
+    public_intake_id: publicIntakeId,
+    memoReference: surface.memoReference ?? publicIntakeId,
+    preview_data: memoData.preview_data,
+    memo_data: memoData.memo_data,
+    data_quality:
+      memoData.preview_data?.data_quality ??
+      fullArtifact?.data_quality,
+    data_quality_note:
+      memoData.preview_data?.data_quality_note ??
+      fullArtifact?.data_quality_note,
+    risk_assessment:
+      memoData.preview_data?.risk_assessment ??
+      fullArtifact?.risk_assessment,
+    mitigationTimeline:
+      memoData.preview_data?.risk_assessment?.mitigation_timeline ??
+      fullArtifact?.risk_assessment?.mitigation_timeline,
+    fullArtifact: fullArtifact ?? undefined,
+    full_artifact: fullArtifact ?? undefined,
+    resolvedDevelopmentsCount: developmentsCount ?? undefined,
+  };
+
+  return {
+    memoData,
+    backendData: publicBackendData,
+    fullArtifact,
+    developmentsCount,
+  };
 }
 
 function mergePreviewData(basePreviewData: RecordLike, backendData: RecordLike, fullArtifact: RecordLike | null): RecordLike {
@@ -244,6 +706,23 @@ function normalizeCrossBorderAuditSummary(summary?: RecordLike | null): RecordLi
     (derivedAcquisitionReliefPct !== null && totalTaxSavingsPct !== null && derivedAcquisitionReliefPct === totalTaxSavingsPct
       ? 0
       : null);
+  const propertyValue =
+    numberOrNull(acquisitionAudit.property_value_usd) ??
+    numberOrNull(acquisitionAudit.property_value);
+  const totalAcquisitionCost =
+    numberOrNull(acquisitionAudit.total_acquisition_cost_usd) ??
+    numberOrNull(acquisitionAudit.total_acquisition_cost);
+  const totalStampDuties =
+    numberOrNull(acquisitionAudit.total_stamp_duties_usd) ??
+    numberOrNull(acquisitionAudit.total_stamp_duties);
+  const bsd =
+    numberOrNull(acquisitionAudit.bsd_stamp_duty_usd) ??
+    numberOrNull(acquisitionAudit.bsd_stamp_duty) ??
+    numberOrNull(acquisitionAudit.bsd);
+  const absd =
+    numberOrNull(acquisitionAudit.absd_additional_stamp_duty_usd) ??
+    numberOrNull(acquisitionAudit.absd_additional_stamp_duty) ??
+    numberOrNull(acquisitionAudit.absd);
 
   return {
     ...summary,
@@ -252,6 +731,20 @@ function normalizeCrossBorderAuditSummary(summary?: RecordLike | null): RecordLi
     fta_acquisition_savings_usd: derivedAcquisitionReliefUsd ?? summary.fta_acquisition_savings_usd,
     acquisition_audit: {
       ...acquisitionAudit,
+      property_value_formatted:
+        acquisitionAudit.property_value_formatted ?? formatUsd(propertyValue),
+      total_acquisition_cost_formatted:
+        acquisitionAudit.total_acquisition_cost_formatted ?? formatUsd(totalAcquisitionCost),
+      total_stamp_duties_formatted:
+        acquisitionAudit.total_stamp_duties_formatted ?? formatUsd(totalStampDuties),
+      day_one_loss_amount:
+        acquisitionAudit.day_one_loss_amount ?? totalStampDuties ?? undefined,
+      day_one_loss_amount_formatted:
+        acquisitionAudit.day_one_loss_amount_formatted ?? formatUsd(totalStampDuties),
+      bsd_stamp_duty_formatted:
+        acquisitionAudit.bsd_stamp_duty_formatted ?? formatUsd(bsd),
+      absd_additional_stamp_duty_formatted:
+        acquisitionAudit.absd_additional_stamp_duty_formatted ?? formatUsd(absd),
       fta_acquisition_savings_pct:
         derivedAcquisitionReliefPct ?? acquisitionAudit.fta_acquisition_savings_pct,
       fta_acquisition_savings_usd:
@@ -291,6 +784,16 @@ export function resolveDecisionMemoSurfaceData({
   backendData,
   fullArtifact,
 }: ResolveDecisionMemoSurfaceDataInput): ResolvedDecisionMemoSurfaceData | null {
+  const principalSurface = extractPrincipalSurfacePayload(backendData, fullArtifact);
+  if (principalSurface) {
+    return buildPrincipalSurface(intakeId, principalSurface);
+  }
+
+  const kingdomNativePreviewSurface = buildKingdomNativePreviewSurface(intakeId, backendData);
+  if (kingdomNativePreviewSurface) {
+    return kingdomNativePreviewSurface;
+  }
+
   const normalizedBackendData = backendData
     ? ({
         ...backendData,
@@ -299,11 +802,15 @@ export function resolveDecisionMemoSurfaceData({
         full_artifact:
           backendData.full_artifact_v2 ??
           backendData.full_artifact ??
-          backendData.fullArtifact,
+          backendData.fullArtifact ??
+          backendData.memoData?.full_artifact ??
+          backendData.memoData?.artifact,
         fullArtifact:
           backendData.full_artifact_v2 ??
           backendData.fullArtifact ??
-          backendData.full_artifact,
+          backendData.full_artifact ??
+          backendData.memoData?.full_artifact ??
+          backendData.memoData?.artifact,
         risk_assessment:
           backendData.risk_assessment ??
           backendData.preview_data_v2?.risk_assessment ??
@@ -373,6 +880,7 @@ export function resolveDecisionMemoSurfaceData({
     normalizedBackendData,
     normalizedFullArtifact,
   );
+  applyCanonicalWealthProjectionScenarios(memoData);
 
   const developmentsCount =
     numericOrNull(memoData.preview_data?.hnwi_world_count) ??

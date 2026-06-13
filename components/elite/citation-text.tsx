@@ -23,6 +23,40 @@ interface CitationTextProps {
   citationDisplay?: "inline" | "block"
 }
 
+function normalizeCitationId(value: string): string {
+  return String(value || '').trim().toLowerCase()
+}
+
+function citationNumberFromMap(
+  citationMap: CitationTextProps['citationMap'],
+  citationId: string
+): number | undefined {
+  if (!citationMap) return undefined
+
+  const exactId = String(citationId || '').trim()
+  const normalizedId = normalizeCitationId(exactId)
+
+  if (typeof (citationMap as any).get === 'function') {
+    const exactValue = (citationMap as Map<string, number>).get(exactId)
+    if (typeof exactValue === 'number') return exactValue
+
+    const normalizedValue = (citationMap as Map<string, number>).get(normalizedId)
+    if (typeof normalizedValue === 'number') return normalizedValue
+    return undefined
+  }
+
+  const plainMap = citationMap as Record<string, any>
+  const exactValue = plainMap[exactId]
+  if (typeof exactValue === 'number') return exactValue
+
+  const normalizedValue = plainMap[normalizedId]
+  if (typeof normalizedValue === 'number') return normalizedValue
+
+  const matchingKey = Object.keys(plainMap).find((key) => normalizeCitationId(key) === normalizedId)
+  const matchingValue = matchingKey ? plainMap[matchingKey] : undefined
+  return typeof matchingValue === 'number' ? matchingValue : undefined
+}
+
 const convertMarkdownBold = (value: string): string => {
   // Convert markdown bold (**text**) to HTML bold
   let formatted = value.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -36,6 +70,27 @@ const convertMarkdownBold = (value: string): string => {
   )
 
   return formatted
+}
+
+const protectCitationReferences = (
+  value: string,
+  transform: (input: string) => string
+): string => {
+  const citations: string[] = []
+  const protectedValue = value.replace(
+    /\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]\r\n]+\]/gi,
+    (match) => {
+      const token = `__HNWI_CITATION_${citations.length}__`
+      citations.push(match)
+      return token
+    }
+  )
+
+  const transformed = transform(protectedValue)
+  return citations.reduce(
+    (next, citation, index) => next.replace(`__HNWI_CITATION_${index}__`, citation),
+    transformed
+  )
 }
 
 const convertLineBreaks = (value: string): string => {
@@ -129,7 +184,7 @@ export function CitationText({
   }
 
   if (shouldConvertBold) {
-    processedText = convertMarkdownBold(processedText)
+    processedText = protectCitationReferences(processedText, convertMarkdownBold)
   }
   if (preserveLineBreaks) {
     // convertLineBreaks now handles citation cleanup internally
@@ -167,18 +222,14 @@ export function CitationText({
     // Clean up multiple spaces before citations
     .replace(/\s{2,}(<citation)/gi, ' $1')
 
-  const sanitizedFormattedText = sanitizeRichHtml(cleanedFormattedText, {
-    allowCitations: true,
-    allowLinks: true,
-  })
-
   // If no citations, return plain formatted text
   if (citations.length === 0) {
     return <span className={className} dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(processedText, { allowLinks: true }) }} />
   }
 
-  // Convert the formatted text with citation tags to React elements
-  const parts = sanitizedFormattedText.split(/(<citation[^>]*>.*?<\/citation>)/g)
+  // Convert citation tags to React directly before sanitizing surrounding HTML.
+  // Sanitizing the whole custom-tag payload can expose data-id attributes as text.
+  const parts = cleanedFormattedText.split(/(<citation[^>]*>.*?<\/citation>)/g)
 
   return (
     <span className={className}>
@@ -188,7 +239,7 @@ export function CitationText({
 
         if (citationMatch) {
           const [, citationId, citationNumber] = citationMatch
-          const displayNumber = citationNumber
+          const displayNumber = citationNumberFromMap(citationMap, citationId) ?? Number(citationNumber)
           if (!onCitationClick) {
             return (
               <span
@@ -216,8 +267,8 @@ export function CitationText({
           )
         }
 
-        // Render as HTML to preserve bold tags and other formatting
-        return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />
+        // Render surrounding HTML only after the citation markers have been split out.
+        return <span key={index} dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(part, { allowLinks: true }) }} />
       })}
     </span>
   )

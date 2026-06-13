@@ -33,6 +33,21 @@ const crownVaultOwnerQuery = (ownerId?: string): string => {
   return `?owner_id=${encodeURIComponent(safeOwnerId)}`;
 };
 
+const optionalCrownVaultOwnerQuery = (ownerId?: string): string => {
+  const user = getCurrentUser();
+  const safeOwnerId = resolveCanonicalUserId(
+    { user_id: ownerId },
+    user,
+    { user_id: getCurrentUserId() },
+  );
+
+  if (!safeOwnerId || isSyntheticKingdomUserId(safeOwnerId)) {
+    return "";
+  }
+
+  return `?owner_id=${encodeURIComponent(safeOwnerId)}`;
+};
+
 // Helper function to check if error is authentication-related
 const isAuthError = (error: any): boolean => {
   const errorMessage = error?.message || error?.toString() || '';
@@ -239,13 +254,6 @@ export interface Opportunity {
   is_active: boolean;
   is_featured?: boolean;
   is_new?: boolean;
-  source?: string;
-  marketplace_source?: string;
-  executor?: string;
-  executor_name?: string;
-  execution_partner?: string;
-  executor_id?: string;
-  synced_from_siya?: boolean;
 
   // TIER 1: Investment Thesis (30 seconds)
   investment_thesis?: {
@@ -1137,7 +1145,7 @@ const deriveCrownVaultAssetTitle = (asset: any): string => {
 // Crown Vault Assets API
 export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultAsset[]> {
   try {
-    const ownerQuery = crownVaultOwnerQuery(ownerId);
+    const ownerQuery = optionalCrownVaultOwnerQuery(ownerId);
     // Call backend API directly for assets using authenticated client
     // Backend derives the owner from auth cookies; owner_id is included only when canonical.
     const data = await secureApi.get(`/api/crown-vault/assets/detailed${ownerQuery}`, {
@@ -1329,7 +1337,7 @@ export async function refreshLatestKatherineAnalysis(userId?: string): Promise<a
 
 export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultStats> {
   try {
-    const ownerQuery = crownVaultOwnerQuery(ownerId);
+    const ownerQuery = optionalCrownVaultOwnerQuery(ownerId);
     
     // ONLY fetch stats endpoint - do NOT fetch heirs and assets here
     // The Crown Vault page already calls getCrownVaultAssets and getCrownVaultHeirs separately
@@ -1395,7 +1403,7 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
 
 export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHeir[]> {
   try {
-    const ownerQuery = crownVaultOwnerQuery(ownerId);
+    const ownerQuery = optionalCrownVaultOwnerQuery(ownerId);
     
     // Call backend API directly using authenticated client
     const data = await secureApi.get(`/api/crown-vault/heirs${ownerQuery}`, {

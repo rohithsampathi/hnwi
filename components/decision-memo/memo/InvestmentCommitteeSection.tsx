@@ -333,7 +333,7 @@ export function InvestmentCommitteeSection({
                   </div>
                   {(liquidityAnalysis.capitalDestroyed || liquidityAnalysis.barrierCosts) !== liquidityAnalysis.barrierCosts && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-foreground">Capital Destroyed</span>
+                      <span className="text-sm text-foreground">Duty Drag</span>
                       <span className="text-sm font-bold text-red-500">{liquidityAnalysis.capitalDestroyed || liquidityAnalysis.barrierCosts}</span>
                     </div>
                   )}

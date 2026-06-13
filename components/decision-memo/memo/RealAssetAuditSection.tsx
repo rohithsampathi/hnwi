@@ -146,7 +146,36 @@ interface RouteNativeAssetSummary {
   routeModeLabel: string;
 }
 
+interface CompactAssetGateSummary {
+  destinationLabel: string;
+  propertyGate: string;
+  absdForeigner: string;
+  absdAmount?: string;
+  landedProperty: string;
+  routeModeLabel: string;
+}
+
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
+
+function formatCompactCurrency(value: number) {
+  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+  return `$${value.toLocaleString()}`;
+}
+
+function formatCurrency(value: number) {
+  return formatCompactCurrency(value);
+}
+
+function humanizeCompactValue(value: unknown): string {
+  if (typeof value === 'number' && Number.isFinite(value)) return `${value}`;
+  if (typeof value !== 'string') return '';
+  return value
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
 
 export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
   data: rawData,
@@ -163,6 +192,33 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
   useEffect(() => {
     if (isInView) setIsVisible(true);
   }, [isInView]);
+
+  const compactAssetGateSummary = useMemo<CompactAssetGateSummary | null>(() => {
+    const record = rawData && typeof rawData === 'object' && !Array.isArray(rawData)
+      ? rawData as Record<string, unknown>
+      : {};
+    const propertyGate = record.property_gate;
+    const absdForeigner = record.absd_foreigner;
+    const landedProperty = record.landed_property;
+    if (!propertyGate && !absdForeigner && !landedProperty) return null;
+
+    const absdText = humanizeCompactValue(absdForeigner) || 'Evidence gated';
+    const absdRate = typeof absdForeigner === 'string'
+      ? Number(absdForeigner.replace(/[^0-9.]/g, ''))
+      : undefined;
+
+    return {
+      destinationLabel: destinationJurisdiction || 'Singapore',
+      propertyGate: humanizeCompactValue(propertyGate) || 'Gate before close',
+      absdForeigner: absdText,
+      absdAmount:
+        transactionValue > 0 && Number.isFinite(absdRate)
+          ? `${formatCompactCurrency(Math.round(transactionValue * ((absdRate || 0) / 100)))} on ${formatCompactCurrency(transactionValue)}`
+          : undefined,
+      landedProperty: humanizeCompactValue(landedProperty) || 'Counsel confirmation required',
+      routeModeLabel: 'Private residential apartment route; title, ABSD, custody rail, and succession evidence must clear before release.',
+    };
+  }, [destinationJurisdiction, rawData, transactionValue]);
 
   // Filter out underscore-prefixed keys (internal/global data - not jurisdiction cards)
   // e.g., _global_succession_vehicles, _best_dynasty_trust_jurisdictions
@@ -302,12 +358,6 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
     return null;
   }
 
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-    return `$${value.toLocaleString()}`;
-  };
-
   const handleSourceClick = (title: string, source: string, url?: string, statute?: string) => {
     // openPanel expects (devIds: string[], options)
     openPanel([], {
@@ -316,6 +366,115 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
       source
     });
   };
+
+  if (compactAssetGateSummary) {
+    const cards = [
+      {
+        label: 'Purchase Gate',
+        value: compactAssetGateSummary.propertyGate,
+        note: 'Property execution remains late-stage until authority and evidence clear.',
+        tone: 'default',
+      },
+      {
+        label: 'Foreigner ABSD',
+        value: compactAssetGateSummary.absdForeigner,
+        note: compactAssetGateSummary.absdAmount || 'ABSD must be confirmed in the closing model.',
+        tone: 'primary',
+      },
+      {
+        label: 'Landed Property',
+        value: compactAssetGateSummary.landedProperty,
+        note: 'Restriction analysis stays separate from the penthouse route.',
+        tone: 'default',
+      },
+      {
+        label: 'Route Mode',
+        value: 'Evidence gated',
+        note: compactAssetGateSummary.routeModeLabel,
+        tone: 'default',
+      },
+    ];
+
+    return (
+      <div ref={sectionRef}>
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
+        >
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+            Real Asset Audit Intelligence
+          </h2>
+          <div className="h-px bg-border" />
+        </motion.div>
+
+        <motion.div
+          className="relative rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.1, ease: EASE_OUT_EXPO }}
+        >
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+
+          <div className="relative px-5 sm:px-8 md:px-12 py-10 md:py-12">
+            <div className="flex items-center gap-2 mb-6 sm:mb-8">
+              <div className="w-2 h-2 rounded-full bg-primary/40" />
+              <span className="text-xs uppercase tracking-[0.25em] text-muted-foreground/60 font-medium">
+                Singapore Property Gate
+              </span>
+            </div>
+
+            <p className="text-sm text-muted-foreground/70 leading-loose sm:leading-relaxed mb-8">
+              {compactAssetGateSummary.destinationLabel} property exposure is not being treated as a tax-loophole search. The pressure test is whether ABSD cost, title route, banking rail, authority, and succession proof clear before the penthouse purchase is released.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+              {cards.map((card) => (
+                <div
+                  key={card.label}
+                  className={`p-4 sm:p-5 rounded-xl border bg-card/50 ${
+                    card.tone === 'primary' ? 'border-primary/20' : 'border-border/20'
+                  }`}
+                >
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">{card.label}</p>
+                  <p className={`text-2xl sm:text-3xl font-bold tabular-nums tracking-tight ${
+                    card.tone === 'primary' ? 'text-primary/80' : 'text-foreground'
+                  }`}>
+                    {card.value}
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 mt-2 leading-relaxed">{card.note}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT_EXPO }}
+        >
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-4">
+            Route Read
+          </p>
+          <div className="space-y-3">
+            {[
+              'The live issue is not whether Singapore property is attractive; it is whether the family can absorb the acquisition through a governed route.',
+              'ABSD is a release-gate cost, not a footnote. The room should see it before authority, custody, and succession are signed off.',
+              'The purchase should not harden until title evidence, source-of-funds evidence, and bank acceptance describe the same route.',
+            ].map((line) => (
+              <div key={line} className="flex items-start gap-3">
+                <span className="text-primary/50 mt-0.5">→</span>
+                <p className="text-sm text-muted-foreground/70 leading-relaxed">{line}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (routeNativeSummary) {
     return (

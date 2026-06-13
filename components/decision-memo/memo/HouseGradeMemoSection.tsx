@@ -384,6 +384,7 @@ function fallbackEconomicProof(preview: Record<string, any>, memo: Record<string
   const net = preview.cross_border_audit_summary?.net_yield_audit || {};
   const weighted = preview.wealth_projection_data?.probability_weighted_outcome || {};
   const decisionEv = preview.scenario_tree_data?.decision_ev_usd || preview.scenario_tree_data?.expected_value_usd;
+  const decisionEvLabel = asText(preview.scenario_tree_data?.decision_ev_label, '');
   return {
     transaction_value: acq.property_value_formatted || memo.transaction_value || '—',
     capital_deployed: acq.total_acquisition_cost_formatted || memo.capital_deployed || '—',
@@ -394,8 +395,8 @@ function fallbackEconomicProof(preview: Record<string, any>, memo: Record<string
     appreciation_basis: preview.wealth_projection_data?.starting_position?.appreciation_rate_pct != null
       ? `${Number(preview.wealth_projection_data.starting_position.appreciation_rate_pct).toFixed(2)}%`
       : '—',
-    decision_ev: typeof decisionEv === 'number' ? `$${Math.round(decisionEv).toLocaleString()}` : '—',
-    drawdown_floor: preview.crisis_data?.stress_drawdown_floor || '—',
+    decision_ev: typeof decisionEv === 'number' ? `$${Math.round(decisionEv).toLocaleString()}` : decisionEvLabel || 'Release rule',
+    drawdown_floor: preview.crisis_data?.stress_drawdown_floor || 'Evidence gated',
   };
 }
 
@@ -1181,12 +1182,12 @@ function KeyValuePanel({
   return (
     <SurfaceCard title={title} tone={tone}>
       <div className={`grid gap-4 ${cols}`}>
-        {usable.map((row) => {
+        {usable.map((row, rowIndex) => {
           const value = asText(row.value, '');
           const detail = asText(row.detail, '');
           const sameText = value && detail && value.trim().toLowerCase() === detail.trim().toLowerCase();
           return (
-          <div key={`${title}-${row.label}`} className="min-w-0 rounded-2xl border border-border/15 bg-card/55 p-4">
+          <div key={`${title}-${row.label}-${rowIndex}`} className="min-w-0 rounded-2xl border border-border/15 bg-card/55 p-4">
             <div className="flex items-start justify-between gap-3">
               <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/75">{row.label}</p>
               {row.status ? <StatusPill value={row.status} /> : null}
@@ -1224,8 +1225,8 @@ function EditorialSignalRail({
         </div>
       ) : description ? <p className="mb-5 text-sm leading-relaxed text-muted-foreground">{description}</p> : null}
       <div className="divide-y divide-border/12">
-        {usable.map((row) => (
-          <div key={`${title}-${row.label}`} className="py-4 first:pt-0 last:pb-0">
+        {usable.map((row, rowIndex) => (
+          <div key={`${title}-${row.label}-${rowIndex}`} className="py-4 first:pt-0 last:pb-0">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-start">
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/75">{row.label}</p>
@@ -2279,8 +2280,16 @@ export default function HouseGradeMemoSection({
   const resilienceRows = [
     {
       label: 'Overall Resilience',
-      value: normalizedCrisis?.overall?.score ? `${normalizedCrisis.overall.score}/100` : crisis.overall_resilience?.score ? `${crisis.overall_resilience.score}/100` : '—',
-      displayValue: normalizedCrisis?.overall?.score ? `${normalizedCrisis.overall.score}/100` : crisis.overall_resilience?.score ? `${crisis.overall_resilience.score}/100` : '—',
+      value: typeof normalizedCrisis?.overall?.score === 'number'
+        ? `${normalizedCrisis.overall.score}/100`
+        : typeof crisis.overall_resilience?.score === 'number'
+          ? `${crisis.overall_resilience.score}/100`
+          : 'Evidence gated',
+      displayValue: typeof normalizedCrisis?.overall?.score === 'number'
+        ? `${normalizedCrisis.overall.score}/100`
+        : typeof crisis.overall_resilience?.score === 'number'
+          ? `${crisis.overall_resilience.score}/100`
+          : 'Evidence gated',
       detail: asText(normalizedCrisis?.overall?.rating || crisis.overall_resilience?.rating, ''),
     },
     {
@@ -2511,7 +2520,7 @@ export default function HouseGradeMemoSection({
                 },
                 {
                   label: 'Memo Confidence',
-                  value: preview.hnwi_trends_confidence ? `${Math.round(preview.hnwi_trends_confidence * 100)}%` : '—',
+                  value: preview.hnwi_trends_confidence ? `${Math.round(preview.hnwi_trends_confidence * 100)}%` : 'Evidence gated',
                   detail: `Confidence is earned from route-core evidence, ${routeWitnessLabel}, and the legal / banking rails under review.`,
                 },
               ]}
@@ -2940,10 +2949,10 @@ export default function HouseGradeMemoSection({
         </div>
 
         <div className="mt-5 grid gap-5 2xl:grid-cols-2">
-          <ListPanel title="Crown Vault Consequence" items={crownVault.items} tone="gold" />
-          <ListPanel title="Home Dashboard Carry-Forward" items={dashboardCarry.items} />
+          <ListPanel title="Decision Memory" items={crownVault.items} tone="gold" />
+          <ListPanel title="Operating Dashboard Carry-Forward" items={dashboardCarry.items} />
           <div className="2xl:col-span-2">
-            <ListPanel title="House Learning Write-Back" items={houseLearning.items} tone="emerald" />
+            <ListPanel title="Permanent Family-Office Memory" items={houseLearning.items} tone="emerald" />
           </div>
         </div>
 

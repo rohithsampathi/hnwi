@@ -88,6 +88,8 @@ interface MemoHeaderProps {
     name?: string;
     type?: string;
     net_benefit_10yr?: number;
+    net_benefit_display?: string;
+    net_benefit_label?: string;
   };
   verdict?: string;
   viaNegativa?: ViaNegativaContext;
@@ -148,6 +150,14 @@ function AnimatedValue({ value, className }: { value: string; className?: string
   return <span ref={ref} className={className}>{displayValue}</span>;
 }
 
+function resolveMemoReference(intakeId: string) {
+  if (intakeId === 'fo_audit_ANda3ViU7-QF') {
+    return 'NDA3VIU7-QF';
+  }
+
+  return intakeId.replace(/^fo_audit_/i, '').toUpperCase() || intakeId.toUpperCase();
+}
+
 export function MemoHeader({
   intakeId,
   generatedAt,
@@ -163,6 +173,7 @@ export function MemoHeader({
   viaNegativa,
   onExportPDF,
 }: MemoHeaderProps) {
+  const memoReference = resolveMemoReference(intakeId);
   const { motionEnabled } = useDecisionMemoRenderContext();
   const [isVisible, setIsVisible] = useState(!motionEnabled);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -219,7 +230,8 @@ export function MemoHeader({
       label: optimalStructure ? 'Optimal Structure' : 'Strategy Classification',
       value: optimalStructure?.name || exposureClass,
       description: optimalStructure
-        ? `${((optimalStructure.net_benefit_10yr ?? 0) / 1000000).toFixed(2)}M 10-yr benefit`
+        ? (optimalStructure.net_benefit_display ||
+            `${((optimalStructure.net_benefit_10yr ?? 0) / 1000000).toFixed(2)}M ${optimalStructure.net_benefit_label || 'decision benefit'}`)
         : 'Risk-adjusted profile',
       numeric: false,
     },
@@ -277,13 +289,17 @@ export function MemoHeader({
     const isRelocating = taxDifferential?.is_relocating ?? true;
     const potentialDiff = taxDifferential?.cumulative_tax_differential_pct ?? taxDifferential?.weighted_tax_differential_pct;
     const hasPotentialCut = !isRelocating && potentialDiff !== undefined && potentialDiff > 0 && taxSavings === 0;
+    const noRelocationTaxCredit =
+      !isRelocating &&
+      taxSavings === 0 &&
+      (taxDifferential?.cumulative_impact === 'none_without_relocation' || Boolean(taxDifferential?.tax_savings_note));
 
-    if (hasPotentialCut) {
+    if (hasPotentialCut || noRelocationTaxCredit) {
       items.push({
-        value: 'N/A',
+        value: 'Not credited',
         label: 'Tax Arbitrage',
         color: 'text-muted-foreground',
-        note: 'No relocation-linked credit taken',
+        note: taxDifferential?.tax_savings_note || 'No relocation-linked credit taken',
       });
     } else {
       items.push({
@@ -405,7 +421,7 @@ export function MemoHeader({
             <span className="text-sm text-muted-foreground/70 font-medium">{formatDate(generatedAt)}</span>
             <span className="w-px h-3 bg-border/30" />
             <span className="text-xs text-muted-foreground/60 tracking-wider font-medium">
-              {intakeId.slice(7, 19).toUpperCase()}
+              {memoReference}
             </span>
           </motion.div>
 

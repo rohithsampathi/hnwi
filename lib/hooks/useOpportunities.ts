@@ -42,6 +42,9 @@ interface Opportunity {
   start_date?: string;
   end_date?: string;
   source_article_date?: string;
+  activity_at?: string;
+  last_activity_at?: string;
+  updated_at?: string;
   created_at?: string;
   generated_at?: string;
   projection_status?: string;
@@ -164,7 +167,7 @@ const cleanCategoryName = (category: string): string => {
 };
 
 const getOpportunityDate = (opp: Opportunity): string | undefined =>
-  opp.start_date || opp.source_article_date || opp.generated_at || opp.created_at;
+  opp.activity_at || opp.last_activity_at || opp.updated_at || opp.created_at || opp.source_article_date || opp.generated_at || opp.start_date;
 
 const isStaleProjection = (opp: Opportunity): boolean => {
   const projectionStatus = (opp.projection_status || '').toLowerCase();
@@ -388,7 +391,8 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         // Authenticated users should still see Crown Vault rows in all-mode when requested.
         const shouldIncludeCrownVault = includeCrownVault;
 
-        const apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}`;
+        const limitParam = timeframeParam === 'ALL' || timeframeParam === 'LIVE' ? 500 : 250;
+        const apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}&limit=${limitParam}`;
 
         // Use secureApi for authenticated requests with cache busting when needed
         response = await secureApi.get(apiUrl, true, bustCache);
@@ -399,7 +403,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
         // Fallback: if personalized returned empty, retry with view=all
         if (opportunities.length === 0 && viewParam === 'personalized') {
-          const fallbackUrl = `/api/command-centre/opportunities?view=all&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}`;
+          const fallbackUrl = `/api/command-centre/opportunities?view=all&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}&limit=${limitParam}`;
           const fallbackResponse = await secureApi.get(fallbackUrl, true, bustCache);
           opportunities = fallbackResponse?.opportunities ||
                          (Array.isArray(fallbackResponse) ? fallbackResponse : []);
@@ -407,59 +411,10 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
         responseTotal = opportunities.length
 
-        // CLIENT-SIDE FILTERING: Apply timeframe and expiry filters
-        const now = new Date();
-
+        // Backend owns timeframe semantics. Frontend only removes explicitly stale/quarantined rows.
         opportunities = opportunities.filter(opp => {
           if (!includeStaleMap && isStaleProjection(opp)) {
             return false;
-          }
-
-          if (timeframeParam === 'ALL') {
-            return true;
-          }
-
-          const opportunityDate = getOpportunityDate(opp);
-          const sourceLower = (opp.source || '').toLowerCase();
-
-          // 1. Filter out expired HNWI Pattern/MOEv4 opportunities.
-          if ((sourceLower === 'moev4' || sourceLower === 'hnwi pattern') && opportunityDate) {
-            try {
-              const endDate = opp.end_date ? new Date(opp.end_date) : null;
-              const startDate = new Date(opportunityDate);
-              const expiryDate = new Date(startDate.getTime() + (180 * 24 * 60 * 60 * 1000)); // +180 days
-
-              // Filter out expired opportunities
-              if ((endDate && endDate < now) || expiryDate < now) {
-                return false;
-              }
-            } catch {
-              // Keep if date parsing fails
-            }
-          }
-
-          // 2. Apply timeframe filter based on start_date
-          if (timeframeParam !== 'LIVE' && opportunityDate) {
-            try {
-              const startDate = new Date(opportunityDate);
-
-              // Calculate cutoff date based on timeframe
-              let daysBack = 180; // Default for LIVE
-
-              if (timeframeParam === '7D') daysBack = 7;
-              else if (timeframeParam === '14D') daysBack = 14;
-              else if (timeframeParam === '21D') daysBack = 21;
-              else if (timeframeParam === '1M') daysBack = 30;
-              else if (timeframeParam === '3M') daysBack = 90;
-              else if (timeframeParam === '6M') daysBack = 180;
-
-              const cutoffDate = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
-
-              // Keep only opportunities added within the timeframe
-              if (startDate < cutoffDate) return false;
-            } catch {
-              // Keep if date parsing fails
-            }
           }
 
           return true;

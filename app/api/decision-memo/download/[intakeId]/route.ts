@@ -1,19 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import {
+  encodeDecisionMemoIdForPath,
+  resolveCanonicalDecisionMemoId,
+} from '@/lib/decision-memo/memo-id-aliases';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ intakeId: string }> }
 ) {
   const { intakeId } = await params;
+  const canonicalIntakeId = resolveCanonicalDecisionMemoId(intakeId);
+  const backendHeaders: Record<string, string> = {};
+  const cookieHeader = request.headers.get('cookie');
+  const authHeader = request.headers.get('authorization');
+  if (cookieHeader) {
+    backendHeaders.Cookie = cookieHeader;
+  }
+  if (authHeader) {
+    backendHeaders.Authorization = authHeader;
+  }
+
   const response = await fetch(
-    `${API_BASE_URL}/api/decision-memo/download/${encodeURIComponent(intakeId)}`,
+    `${API_BASE_URL}/api/decision-memo/download/${encodeDecisionMemoIdForPath(canonicalIntakeId)}`,
     {
       method: 'GET',
-      headers: {
-        'Cookie': request.headers.get('cookie') || '',
-        'Authorization': request.headers.get('authorization') || '',
-      },
+      headers: backendHeaders,
       signal: AbortSignal.timeout(30000),
     }
   );

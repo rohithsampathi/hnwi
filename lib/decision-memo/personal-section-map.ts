@@ -50,27 +50,6 @@ export interface SectionDefinition {
   description?: string;
 }
 
-const HOUSE_GRADE_WAR_VIEW_SECTION_IDS = [
-  'house-signal',
-  'house-governing-correction',
-  'house-read',
-  'house-validated-route',
-  'cross-border-audit',
-  'transparency-regime',
-  'real-asset-audit',
-  'house-live-market-crisis',
-  'peer-cohort',
-  'capital-corridors',
-  'geographic-distribution',
-  'hnwi-trends',
-  'crisis-resilience',
-  'house-continuity-office-carry',
-  'wealth-projection',
-  'scenario-tree',
-  'heir-management',
-  'house-evidence-ledger',
-] as const;
-
 export const CATEGORIES: Category[] = [
   {
     id: 'executive-summary',
@@ -518,16 +497,18 @@ export const SECTIONS: SectionDefinition[] = [
 ];
 
 // Helper functions
+function orderWarRoomSections(sections: SectionDefinition[], memoData: PdfMemoData): SectionDefinition[] {
+  if (!memoData.preview_data.house_grade_memo) return sections;
+
+  const legacySections = sections.filter((section) => !section.id.startsWith('house-'));
+  const houseGradeAdditions = sections.filter((section) => section.id.startsWith('house-'));
+  return [...legacySections, ...houseGradeAdditions];
+}
+
 export function getSectionsByCategory(categoryId: CategoryId, memoData: PdfMemoData): SectionDefinition[] {
-  if (memoData.preview_data.house_grade_memo) {
-    return HOUSE_GRADE_WAR_VIEW_SECTION_IDS
-      .map((id) => SECTIONS.find((section) => section.id === id))
-      .filter((section): section is SectionDefinition => section !== undefined)
-      .filter((section) => section.category === categoryId && section.shouldRender(memoData));
-  }
-  return SECTIONS.filter(
+  return orderWarRoomSections(SECTIONS.filter(
     section => section.category === categoryId && section.shouldRender(memoData)
-  );
+  ), memoData);
 }
 
 export function getSectionById(sectionId: string): SectionDefinition | undefined {
@@ -538,13 +519,10 @@ export function getSectionById(sectionId: string): SectionDefinition | undefined
 }
 
 export function getAllVisibleSections(memoData: PdfMemoData): SectionDefinition[] {
-  if (memoData.preview_data.house_grade_memo) {
-    return HOUSE_GRADE_WAR_VIEW_SECTION_IDS
-      .map((id) => SECTIONS.find((section) => section.id === id))
-      .filter((section): section is SectionDefinition => section !== undefined)
-      .filter((section) => section.shouldRender(memoData));
-  }
-  return SECTIONS.filter(section => section.shouldRender(memoData));
+  return orderWarRoomSections(
+    SECTIONS.filter(section => section.shouldRender(memoData)),
+    memoData
+  );
 }
 
 export function getNextSuggestion(currentSectionId: string, memoData: PdfMemoData): SectionDefinition | undefined {

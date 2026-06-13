@@ -1354,6 +1354,8 @@ export interface StructureAnalysisItem {
   type: string;
   verdict: string;
   net_benefit_10yr: number;
+  net_benefit_display?: string;
+  net_benefit_label?: string;
   tax_savings_pct: number;
   viable: boolean;
   warnings: (string | Record<string, unknown>)[];
@@ -1371,6 +1373,8 @@ export interface OptimalStructure {
   name: string;
   type: string;
   net_benefit_10yr: number;
+  net_benefit_display?: string;
+  net_benefit_label?: string;
   tax_savings_pct: number;
   warnings: (string | Record<string, unknown>)[];
   setup_cost?: number;

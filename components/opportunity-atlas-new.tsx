@@ -1438,7 +1438,7 @@ export function OpportunityAtlasNew({
     }
   };
 
-  // Handle talk to concierge functionality with Formspree - Mobile/PWA Safe
+  // Handle talk to concierge functionality through the internal API.
   const handleTalkToConcierge = async (opportunity: Opportunity) => {
     if (!opportunity?.id) {
       toast({

@@ -100,9 +100,9 @@ export function RegulatorySourcesSection({ citations }: RegulatorySourcesSection
 
               {/* Citation Cards */}
               <div className="space-y-3">
-                {items.map((citation) => (
+                {items.map((citation, citationIndex) => (
                   <div
-                    key={citation.citation_id}
+                    key={`${citation.citation_id || sourceType}-${citation.url || citation.title || citationIndex}-${citationIndex}`}
                     className="group relative pl-10 py-3 pr-4 rounded-xl border border-border/20
                                bg-card/50 hover:border-gold/20 transition-colors duration-300 overflow-hidden"
                   >

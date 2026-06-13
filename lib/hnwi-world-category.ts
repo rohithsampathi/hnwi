@@ -53,7 +53,32 @@ const CATEGORY_LABEL_OVERRIDES: Record<string, string> = {
   private_equity: "Financial Services",
   wealth_management: "Wealth Management",
   precious_metals: "Precious Metal",
+  luxury_and_collectibles: "Collectibles",
+  tax_and_succession: "Tax",
+  life_insurance_and_legacy: "Financial Services",
+  wealth_migration: "Immigration",
+  alternatives: "Financial Services",
+  hnwi_strategy: "Financial Services",
+  hnwi_intelligence: "Financial Services",
 }
+
+const APPROVED_CATEGORY_LABELS = new Set([
+  "Real Estate",
+  "Art",
+  "Collectibles",
+  "Financial Services",
+  "Immigration",
+  "Precious Metal",
+  "Tourism",
+  "Lifestyle",
+  "Automotive",
+  "Fintech",
+  "Hospitality",
+  "Wealth Management",
+  "Security",
+  "Tax",
+  "Luxury Travel",
+])
 
 function toCandidateList(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -97,19 +122,34 @@ export function formatHnwiWorldCategoryLabel(value: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
+function approvedCategoryLabel(value: unknown): string | null {
+  for (const candidate of toCandidateList(value)) {
+    if (!isUsableCategory(candidate)) continue
+    const formatted = formatHnwiWorldCategoryLabel(candidate)
+    if (APPROVED_CATEGORY_LABELS.has(formatted)) {
+      return formatted
+    }
+  }
+  return null
+}
+
 export function resolveHnwiWorldCategory(development: HNWIWorldDevelopment): string {
   const dev = development as DevelopmentWithCategoryFields
+  const approvedIndustry = approvedCategoryLabel(dev.industry)
+  if (approvedIndustry) {
+    return approvedIndustry
+  }
+
   const candidates = [
-    dev.category,
-    dev.category_name,
-    dev.primary_category,
-    dev.market_category,
     dev.metadata?.category,
     dev.metadata?.category_name,
     dev.metadata?.primary_category,
     dev.classification?.category,
     dev.classification?.primary_category,
-    dev.industry,
+    dev.category,
+    dev.category_name,
+    dev.primary_category,
+    dev.market_category,
     dev.sector,
     dev.vertical,
     dev.topic,
@@ -119,9 +159,17 @@ export function resolveHnwiWorldCategory(development: HNWIWorldDevelopment): str
   ]
 
   for (const candidate of candidates) {
+    const approvedValue = approvedCategoryLabel(candidate)
+    if (approvedValue) {
+      return approvedValue
+    }
+
     const usableValue = toCandidateList(candidate).find(isUsableCategory)
     if (usableValue) {
-      return formatHnwiWorldCategoryLabel(usableValue)
+      const formatted = formatHnwiWorldCategoryLabel(usableValue)
+      if (APPROVED_CATEGORY_LABELS.has(formatted)) {
+        return formatted
+      }
     }
   }
 

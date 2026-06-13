@@ -1,19 +1,11 @@
 // app/api/concierge/route.ts
 // Server-side proxy for concierge/interest form submissions
-// Keeps Formspree endpoint IDs out of client-side code
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { API_BASE_URL } from '@/config/api';
 import { safeError } from '@/lib/security/api-response';
 import { conciergeSchema } from '@/lib/security/validation-schemas';
-
-// Formspree endpoints — loaded from env vars, never hardcoded
-// Fallback to empty string so missing config fails gracefully (400 error)
-const FORMSPREE_ENDPOINTS: Record<string, string> = {
-  social_hub: process.env.FORMSPREE_EVENTS_ENDPOINT || '',
-  prive_exchange: process.env.FORMSPREE_OPPORTUNITIES_ENDPOINT || '',
-  calendar: process.env.FORMSPREE_EVENTS_ENDPOINT || '',
-};
 
 // Allowed origins — only accept submissions from our own domains
 const ALLOWED_ORIGINS = [
@@ -96,8 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Validate source
-    const endpoint = FORMSPREE_ENDPOINTS[source];
-    if (!source || !endpoint) {
+    if (!source) {
       return NextResponse.json(
         { error: 'Invalid form source' },
         { status: 400 }
@@ -112,20 +103,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 7. Forward to Formspree
-    const response = await fetch(endpoint, {
+    // 7. Forward to the Kingdom backend. Third-party form processors are not used.
+    const response = await fetch(`${API_BASE_URL}/api/concierge`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'Cookie': request.headers.get('cookie') || '',
       },
-      body: JSON.stringify(formData),
+      body: JSON.stringify({ source, ...formData }),
     });
 
     if (!response.ok) {
+      const status = response.status === 404 ? 503 : response.status;
       return NextResponse.json(
-        { error: 'Failed to submit form' },
-        { status: response.status }
+        { error: 'Concierge service unavailable' },
+        { status }
       );
     }
 

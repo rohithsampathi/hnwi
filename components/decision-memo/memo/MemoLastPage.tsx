@@ -35,6 +35,14 @@ const scaleFade = (delay: number) => ({
   transition: { duration: 0.8, delay, ease: EASE_OUT_EXPO },
 });
 
+function resolveMemoReference(intakeId: string) {
+  if (intakeId === 'fo_audit_ANda3ViU7-QF') {
+    return 'NDA3VIU7-QF';
+  }
+
+  return intakeId.replace(/^fo_audit_/i, '').toUpperCase() || intakeId.toUpperCase();
+}
+
 export function MemoLastPage({
   intakeId,
   precedentCount = 0,
@@ -42,6 +50,7 @@ export function MemoLastPage({
   viaNegativa
 }: MemoLastPageProps) {
   const currentYear = new Date().getFullYear();
+  const memoReference = resolveMemoReference(intakeId);
 
   return (
     <motion.div
@@ -248,7 +257,7 @@ export function MemoLastPage({
           className="text-xs text-muted-foreground/20 tracking-[0.15em] mb-5"
           {...fadeUp(0.8)}
         >
-          Reference: <span className="text-muted-foreground/60">{intakeId.slice(10, 22).toUpperCase()}</span>
+          Reference: <span className="text-muted-foreground/60">{memoReference}</span>
         </motion.p>
 
         {/* Website */}

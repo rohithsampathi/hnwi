@@ -19,6 +19,15 @@ interface FailurePattern {
 // FIX #24 SOTA: Pattern Intelligence from KGv3 - Verified data with provenance
 interface PatternIntelligence {
   found?: boolean;
+  patterns?: Array<{
+    pattern_id?: string;
+    pattern_name?: string;
+    name?: string;
+    title?: string;
+    description?: string;
+    summary?: string;
+    severity?: string;
+  }>;
   primary_pattern?: {
     pattern_id?: string;     // REAL ID from KGv3 (e.g., "FM_CON_001")
     pattern_name?: string;   // REAL name (e.g., "Concentration Risk")
@@ -138,11 +147,28 @@ export function PeerBenchmarkTicker({
 }: PeerBenchmarkTickerProps) {
   // FIX #24: Use KGv3 pattern data if available, otherwise use failure patterns
   const primaryPattern = failurePatterns?.[0];
-  const kgPattern = patternIntelligence?.primary_pattern;
+  const patternList = Array.isArray((patternIntelligence as any)?.patterns)
+    ? ((patternIntelligence as any).patterns as NonNullable<PatternIntelligence['patterns']>)
+    : [];
+  const firstPatternListEntry = patternList[0];
+  const kgPattern = patternIntelligence?.primary_pattern || (
+    firstPatternListEntry
+      ? {
+          pattern_id: firstPatternListEntry.pattern_id,
+          pattern_name: firstPatternListEntry.pattern_name || firstPatternListEntry.name || firstPatternListEntry.title,
+          description: firstPatternListEntry.description || firstPatternListEntry.summary,
+          severity: firstPatternListEntry.severity,
+        }
+      : undefined
+  );
+  const effectiveFailureModeCount = failureModeCount > 0 ? failureModeCount : failurePatterns.length;
+  const effectiveRiskFlags = totalRiskFlags > 0 ? totalRiskFlags : effectiveFailureModeCount;
+  const hasExplicitPatternCounts = effectiveRiskFlags > 0 || effectiveFailureModeCount > 0;
+  const patternCount = patternList.length;
 
   // Use KGv3 pattern ID and name if available
   const patternId = kgPattern?.pattern_id || null;
-  const patternName = kgPattern?.pattern_name || primaryPattern?.nightmareName || getPatternName(primaryPattern?.mode || '');
+  const patternName = kgPattern?.pattern_name || primaryPattern?.nightmareName || getPatternName(primaryPattern?.mode || '') || 'Route Pattern Under Review';
   const patternDescription = kgPattern?.description || primaryPattern?.description;
 
   // FIX #24: Use REAL historical failure rate from KGv3, NOT fabricated formula
@@ -352,7 +378,7 @@ export function PeerBenchmarkTicker({
           <div className="relative px-6 sm:px-10 py-6">
             <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent absolute top-0 left-0 right-0" />
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-4">
-              Additional Failure Modes Detected ({failureModeCount})
+              Additional Failure Modes Detected ({effectiveFailureModeCount})
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {failurePatterns.slice(1, 5).map((fp, i) => (
@@ -396,7 +422,11 @@ export function PeerBenchmarkTicker({
               )}
             </div>
             <span className="text-xs text-muted-foreground/60 tabular-nums">
-              {totalRiskFlags} risk flags &middot; {failureModeCount} failure modes
+              {hasExplicitPatternCounts
+                ? `${effectiveRiskFlags} risk flags · ${effectiveFailureModeCount} failure modes`
+                : patternCount > 0
+                  ? `${patternCount} corridor patterns · failure modes evidence-gated`
+                  : 'Pattern count evidence-gated'}
             </span>
           </div>
           {/* SOTA: Data sources */}

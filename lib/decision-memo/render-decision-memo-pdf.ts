@@ -1,17 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
-import puppeteer, { type Browser, type ConsoleMessage } from 'puppeteer';
 import { logger } from '@/lib/secure-logger';
 import { getReportAuthTokenFromRequest } from '@/lib/security/report-auth';
+import {
+  encodeDecisionMemoIdForPath,
+  resolveCanonicalDecisionMemoId,
+  resolvePublicDecisionMemoId,
+} from '@/lib/decision-memo/memo-id-aliases';
+
+type PdfBrowser = {
+  newPage: () => Promise<any>;
+  close: () => Promise<void>;
+};
+
+async function launchPdfBrowser(): Promise<PdfBrowser> {
+  const launchArgs = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--font-render-hinting=none',
+    '--disable-web-security',
+  ];
+
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const [{ default: chromium }, { default: puppeteerCore }] = await Promise.all([
+      import('@sparticuz/chromium'),
+      import('puppeteer-core'),
+    ]);
+    const executablePath = await chromium.executablePath();
+
+    return puppeteerCore.launch({
+      args: [...chromium.args, ...launchArgs],
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
+      headless: chromium.headless,
+    });
+  }
+
+  const { default: puppeteer } = await import('puppeteer');
+  return puppeteer.launch({
+    headless: true,
+    args: launchArgs,
+  });
+}
 
 export async function renderDecisionMemoPdf(request: NextRequest, intakeId: string) {
   if (!intakeId || intakeId.length < 5) {
     return NextResponse.json({ error: 'Invalid intakeId' }, { status: 400 });
   }
 
-  let browser: Browser | undefined;
+  const canonicalIntakeId = resolveCanonicalDecisionMemoId(intakeId);
+  const publicIntakeId = resolvePublicDecisionMemoId(intakeId);
+  let browser: PdfBrowser | undefined;
 
   try {
-    logger.info('Starting decision memo PDF generation', { intakeId });
+    logger.info('Starting decision memo PDF generation', {
+      intakeId: publicIntakeId,
+      canonicalIntakeId,
+    });
 
     const host = request.headers.get('host') || 'localhost:3000';
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
@@ -20,24 +66,16 @@ export async function renderDecisionMemoPdf(request: NextRequest, intakeId: stri
       process.env.PUPPETEER_BASE_URL ||
       `${protocol}://${host}`;
 
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--font-render-hinting=none',
-        '--disable-web-security',
-      ],
-    });
+    browser = await launchPdfBrowser();
 
     const page = await browser.newPage();
     await page.setViewport({ width: 794, height: 1123 });
     await page.emulateMediaType('print');
     await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
 
-    const authHeader = getReportAuthTokenFromRequest(request, intakeId);
+    const authHeader =
+      getReportAuthTokenFromRequest(request, intakeId) ??
+      getReportAuthTokenFromRequest(request, canonicalIntakeId);
     if (authHeader) {
       await page.setExtraHTTPHeaders({
         Authorization: authHeader,
@@ -49,7 +87,7 @@ export async function renderDecisionMemoPdf(request: NextRequest, intakeId: stri
       pageErrors.push(error.message);
       logger.error('Decision memo PDF page error', { intakeId, error: error.message });
     });
-    page.on('console', (message: ConsoleMessage) => {
+    page.on('console', (message: { type: () => string; text: () => string }) => {
       if (message.type() === 'error') {
         const text = message.text();
         pageErrors.push(`console.error: ${text}`);
@@ -75,8 +113,12 @@ export async function renderDecisionMemoPdf(request: NextRequest, intakeId: stri
       }
     }
 
-    const printUrl = `${serverUrl}/decision-memo-print/${intakeId}`;
-    logger.info('Navigating to decision memo print page', { intakeId, printUrl });
+    const printUrl = `${serverUrl}/decision-memo-print/${encodeDecisionMemoIdForPath(publicIntakeId)}`;
+    logger.info('Navigating to decision memo print page', {
+      intakeId: publicIntakeId,
+      canonicalIntakeId,
+      printUrl,
+    });
 
     await page.goto(printUrl, {
       waitUntil: 'networkidle0',
@@ -112,7 +154,8 @@ export async function renderDecisionMemoPdf(request: NextRequest, intakeId: stri
       });
 
       logger.error('Decision memo PDF page did not signal ready', {
-        intakeId,
+        intakeId: publicIntakeId,
+        canonicalIntakeId,
         pageState,
         pageErrors: pageErrors.slice(0, 5),
       });
@@ -149,8 +192,7 @@ export async function renderDecisionMemoPdf(request: NextRequest, intakeId: stri
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
     const refId =
-      intakeId.slice(10, 22).toUpperCase() ||
-      intakeId.slice(0, 12).toUpperCase();
+      publicIntakeId.toUpperCase();
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
@@ -194,7 +236,8 @@ export async function renderDecisionMemoPdf(request: NextRequest, intakeId: stri
     });
 
     logger.info('Decision memo PDF generated successfully', {
-      intakeId,
+      intakeId: publicIntakeId,
+      canonicalIntakeId,
       sizeKB: Math.round(pdfBuffer.length / 1024),
     });
 
@@ -211,7 +254,8 @@ export async function renderDecisionMemoPdf(request: NextRequest, intakeId: stri
     });
   } catch (error) {
     logger.error('Decision memo PDF generation failed', {
-      intakeId,
+      intakeId: publicIntakeId,
+      canonicalIntakeId,
       error: error instanceof Error ? error.message : String(error),
     });
 

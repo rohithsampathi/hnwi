@@ -174,7 +174,7 @@ export function OverviewSection({
               ) : (
                 (optimalStructure?.net_benefit_formatted || optimalStructure?.net_benefit) && (
                   <p className="text-xs text-gold mt-1">
-                    {optimalStructure?.net_benefit_formatted || optimalStructure?.net_benefit} 10-yr benefit
+                    {optimalStructure?.net_benefit_formatted || optimalStructure?.net_benefit}
                   </p>
                 )
               )}

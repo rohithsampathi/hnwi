@@ -7,6 +7,7 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ViaNegativaContext } from '@/lib/decision-memo/memo-types';
+import { resolveDecisionMemoDisplayReference } from '@/lib/decision-memo/memo-id-aliases';
 import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
 
 interface MemoCoverPageProps {
@@ -47,6 +48,7 @@ export function MemoCoverPage({
   totalSavings,
   viaNegativa
 }: MemoCoverPageProps) {
+  const memoReference = resolveDecisionMemoDisplayReference(intakeId);
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -220,7 +222,7 @@ export function MemoCoverPage({
         {/* Reference & Date — quiet mono */}
         <motion.div className="space-y-2 mb-14" {...fadeUp(0.9)}>
           <p className="text-xs text-muted-foreground/60 tracking-[0.15em]">
-            Reference: <span className="text-muted-foreground/35">{intakeId.slice(10, 22).toUpperCase()}</span>
+            Reference: <span className="text-muted-foreground/35">{memoReference}</span>
           </p>
           <p className="text-xs text-muted-foreground/60 tracking-[0.1em]">
             {formatDate(generatedAt)}

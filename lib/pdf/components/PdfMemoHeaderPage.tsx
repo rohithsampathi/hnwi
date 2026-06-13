@@ -19,7 +19,13 @@ interface PdfMemoHeaderPageProps {
   totalSavings: string;
   precedentCount: number;
   verdict: string;
-  optimalStructure?: { name?: string; type?: string; net_benefit_10yr?: number };
+  optimalStructure?: {
+    name?: string;
+    type?: string;
+    net_benefit_10yr?: number;
+    net_benefit_display?: string;
+    net_benefit_label?: string;
+  };
   valueCreation?: {
     annual?: {
       rental?: number;
@@ -199,9 +205,10 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
           <Text style={{ fontSize: 14, fontFamily: 'Inter', fontWeight: 700, color: darkTheme.textPrimary }}>
             {optimalStructure ? optimalStructure.name || '—' : exposureClass}
           </Text>
-          {optimalStructure?.net_benefit_10yr && (
+          {(optimalStructure?.net_benefit_display || optimalStructure?.net_benefit_10yr) && (
             <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textFaint, marginTop: 4 }}>
-              {(optimalStructure.net_benefit_10yr / 1_000_000).toFixed(2)}M 10-yr benefit
+              {optimalStructure.net_benefit_display ||
+                `${((optimalStructure.net_benefit_10yr || 0) / 1_000_000).toFixed(2)}M ${optimalStructure.net_benefit_label || 'decision benefit'}`}
             </Text>
           )}
         </View>

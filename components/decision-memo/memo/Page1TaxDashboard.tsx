@@ -196,6 +196,22 @@ export function Page1TaxDashboard({
   const noRelocationTaxCredit = !isRelocating || taxDifferential?.cumulative_impact === 'none_without_relocation';
   const cumulativeImpactLabel = taxDifferential?.cumulative_impact_label;
   const taxSavingsNote = taxDifferential?.tax_savings_note;
+  const allDisplayedTaxRatesZero = [
+    taxComparison.source.income_tax,
+    taxComparison.source.cgt,
+    taxComparison.source.wealth_tax,
+    taxComparison.source.estate_tax,
+    taxComparison.destination.income_tax,
+    taxComparison.destination.cgt,
+    taxComparison.destination.wealth_tax,
+    taxComparison.destination.estate_tax,
+  ].every((value) => value === 0);
+  const taxRatesEvidenceGated = noRelocationTaxCredit && allDisplayedTaxRatesZero;
+  const displayTaxRate = (value: number) => taxRatesEvidenceGated ? 'Counsel-gated' : `${value}%`;
+  const displayTaxImpact = (value: number) => {
+    if (taxRatesEvidenceGated || noRelocationTaxCredit) return 'Not captured';
+    return `${value > 0 ? '+' : ''}${value.toFixed(0)}%`;
+  };
 
   // Parse timeline string to days (e.g., "7-21 days" -> 14, "90 days" -> 90)
   const parseTimelineToDays = (timeline: string): number => {
@@ -303,7 +319,7 @@ export function Page1TaxDashboard({
                       <span className={memoNumberClass('hero', noRelocationTaxCredit || capturableDiff === 0 ? 'muted' : 'default')}>
                         {/* Show actual differential for comparison, but highlight capturable amount */}
                         {noRelocationTaxCredit ? (
-                          <>N/A</>
+                          <>Not credited</>
                         ) : (
                           <>{capturableDiff > 0 ? '+' : ''}{capturableDiff.toFixed(0)}%</>
                         )}
@@ -390,10 +406,10 @@ export function Page1TaxDashboard({
                           >
                             <span className="text-sm font-normal text-foreground">{row.label}</span>
                             <div className="text-center">
-                              <span className={`text-sm sm:text-base font-medium ${sourceColor}`}>{row.source}%</span>
+                              <span className={`text-sm sm:text-base font-medium ${sourceColor}`}>{displayTaxRate(row.source)}</span>
                             </div>
                             <div className="text-center">
-                              <span className={`text-sm sm:text-base font-medium ${destColor}`}>{row.dest}%</span>
+                              <span className={`text-sm sm:text-base font-medium ${destColor}`}>{displayTaxRate(row.dest)}</span>
                             </div>
                             <div className="text-center">
                               <span className={`inline-flex items-center gap-1 text-sm sm:text-base font-medium ${
@@ -401,7 +417,7 @@ export function Page1TaxDashboard({
                                   ? 'text-amber-500/80'
                                   : row.diff > 0 ? 'text-emerald-500/80' : row.diff < 0 ? 'text-red-500/80' : 'text-muted-foreground/60'
                               }`}>
-                                {row.diff > 0 ? '+' : ''}{row.diff.toFixed(0)}%
+                                {displayTaxImpact(row.diff)}
                                 {row.diff !== 0 && (
                                   <span className="text-xs font-medium opacity-60">
                                     {noRelocationTaxCredit ? 'not captured' : row.diff > 0 ? 'saved' : 'more'}
@@ -456,7 +472,7 @@ export function Page1TaxDashboard({
                                 ? 'text-amber-500/80'
                                 : row.diff > 0 ? 'text-emerald-500/80' : row.diff < 0 ? 'text-red-500/80' : 'text-muted-foreground/60'
                             }`}>
-                              {row.diff > 0 ? '+' : ''}{row.diff.toFixed(0)}%
+                              {displayTaxImpact(row.diff)}
                               {row.diff !== 0 && (
                                 <span className="text-xs font-medium opacity-60">
                                   {noRelocationTaxCredit ? 'not captured' : row.diff > 0 ? 'saved' : 'more'}
@@ -469,11 +485,11 @@ export function Page1TaxDashboard({
                           <div className="grid grid-cols-2 gap-3">
                             <div className="text-center px-3 py-2 rounded-lg bg-surface/50">
                               <span className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 block mb-1">Source</span>
-                              <span className={`text-lg font-medium ${sourceColor}`}>{row.source}%</span>
+                              <span className={`text-lg font-medium ${sourceColor}`}>{displayTaxRate(row.source)}</span>
                             </div>
                             <div className="text-center px-3 py-2 rounded-lg bg-surface/50">
                               <span className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 block mb-1">Destination</span>
-                              <span className={`text-lg font-medium ${destColor}`}>{row.dest}%</span>
+                              <span className={`text-lg font-medium ${destColor}`}>{displayTaxRate(row.dest)}</span>
                             </div>
                           </div>
                         </motion.div>
@@ -510,12 +526,12 @@ export function Page1TaxDashboard({
                           <motion.div
                             className="h-full bg-red-500/40 rounded-sm"
                             initial={{ width: 0 }}
-                            animate={isVisible ? { width: `${(item.value / item.max) * 100}%` } : {}}
+                            animate={isVisible ? { width: taxRatesEvidenceGated ? '0%' : `${(item.value / item.max) * 100}%` } : {}}
                             transition={{ duration: 0.8, delay: 0.6 + i * 0.1, ease: EASE_OUT_EXPO }}
                           />
                         </div>
-                        <span className="text-xs sm:text-sm font-medium text-foreground/60 w-10 sm:w-12 text-right">
-                          {item.value}%
+                        <span className={`text-xs sm:text-sm font-medium text-foreground/60 text-right ${taxRatesEvidenceGated ? 'w-28' : 'w-10 sm:w-12'}`}>
+                          {displayTaxRate(item.value)}
                         </span>
                       </motion.div>
                     ))}
@@ -547,12 +563,12 @@ export function Page1TaxDashboard({
                           <motion.div
                             className="h-full bg-gold/40 rounded-sm"
                             initial={{ width: 0 }}
-                            animate={isVisible ? { width: `${(item.value / item.max) * 100}%` } : {}}
+                            animate={isVisible ? { width: taxRatesEvidenceGated ? '0%' : `${(item.value / item.max) * 100}%` } : {}}
                             transition={{ duration: 0.8, delay: 0.6 + i * 0.1, ease: EASE_OUT_EXPO }}
                           />
                         </div>
-                        <span className="text-xs sm:text-sm font-medium text-gold/70 w-10 sm:w-12 text-right">
-                          {item.value}%
+                        <span className={`text-xs sm:text-sm font-medium text-gold/70 text-right ${taxRatesEvidenceGated ? 'w-28' : 'w-10 sm:w-12'}`}>
+                          {displayTaxRate(item.value)}
                         </span>
                       </motion.div>
                     ))}

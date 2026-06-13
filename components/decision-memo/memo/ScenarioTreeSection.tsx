@@ -81,6 +81,296 @@ function formatScenarioMetricValue(value: number): string {
   return formatCurrency(value);
 }
 
+function routeSignalLabelFromDecisionEv(value: unknown, branchName: BranchName): string | undefined {
+  const text = readString(value)?.toLowerCase() || '';
+  if (text.includes('highest')) return 'Highest route signal';
+  if (text.includes('negative')) return 'Negative until gated';
+  if (text.includes('uncertain')) return 'Unpriced until evidence clears';
+  if (text.includes('low')) return branchName === 'DO_NOT_PROCEED' ? 'Preserve optionality' : 'Low route signal';
+  return undefined;
+}
+
+function displayBranchMetric(branch: ScenarioTreeData['branches'][0], expectedValue: number): string {
+  const explicitDisplay = readString((branch as any).display_value);
+  if (explicitDisplay) return explicitDisplay;
+  if (expectedValue === 0) {
+    return readString(branch.expected_value_note) || 'Qualitative route signal';
+  }
+  return formatScenarioMetricValue(expectedValue);
+}
+
+function asRecord(value: unknown): Record<string, any> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, any>
+    : undefined;
+}
+
+function readString(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return undefined;
+}
+
+function collectStrings(...values: unknown[]): string[] {
+  const result: string[] = [];
+
+  const pushValue = (value: unknown) => {
+    if (!value) return;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) result.push(trimmed);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach(pushValue);
+      return;
+    }
+    const record = asRecord(value);
+    if (record) {
+      pushValue(record.condition ?? record.text ?? record.label ?? record.name ?? record.summary ?? record.description);
+    }
+  };
+
+  values.forEach(pushValue);
+  return Array.from(new Set(result));
+}
+
+function normalizeConditionStatus(value: unknown, fallback: ConditionStatus = 'CONDITIONAL'): ConditionStatus {
+  const status = readString(value)?.toUpperCase();
+  if (
+    status === 'MET' ||
+    status === 'PENDING' ||
+    status === 'BLOCKED' ||
+    status === 'CONDITIONAL' ||
+    status === 'CONFIRMED' ||
+    status === 'MODELED'
+  ) {
+    return status;
+  }
+  return fallback;
+}
+
+function normalizeBranchName(value: unknown, fallback: BranchName): BranchName {
+  const text = readString(value)?.toUpperCase() || '';
+  if (text.includes('MODIFIED') || text.includes('COMMAND NODE') || text.includes('PREFERRED')) {
+    return 'PROCEED_MODIFIED';
+  }
+  if (
+    text.includes('STOP') ||
+    text.includes('HOLD') ||
+    text.includes('REJECT') ||
+    text.includes('DEFER') ||
+    text.includes('DO NOT') ||
+    text.includes('ABORT')
+  ) {
+    return 'DO_NOT_PROCEED';
+  }
+  if (text.includes('PROCEED') || text.includes('FULL') || text.includes('NOW')) {
+    return 'PROCEED_NOW';
+  }
+  return fallback;
+}
+
+function hasClassicScenarioTreeShape(raw: Record<string, any>): boolean {
+  return Array.isArray(raw.branches) &&
+    raw.branches.length > 0 &&
+    raw.branches.every((branch: unknown) => {
+      const record = asRecord(branch);
+      return record &&
+        ['PROCEED_NOW', 'PROCEED_MODIFIED', 'DO_NOT_PROCEED'].includes(String(record.name)) &&
+        Array.isArray(record.conditions) &&
+        Array.isArray(record.outcomes);
+    }) &&
+    Array.isArray(raw.decision_gates) &&
+    Array.isArray(raw.decision_matrix) &&
+    Boolean(asRecord(raw.expiry));
+}
+
+function normalizeClassicScenarioTreeData(raw: Record<string, any>): ScenarioTreeData {
+  const branches = (raw.branches as Record<string, any>[]).map((branch) => ({
+    name: normalizeBranchName(branch.name, 'PROCEED_MODIFIED'),
+    recommendation_strength: toNumericValue(branch.recommendation_strength) ?? 0.5,
+    conditions: Array.isArray(branch.conditions)
+      ? branch.conditions.map((condition: unknown) => {
+          const record = asRecord(condition);
+          return {
+            condition: readString(record?.condition ?? record?.text ?? condition) || 'Condition pending confirmation.',
+            status: normalizeConditionStatus(record?.status, 'CONDITIONAL'),
+          };
+        })
+      : [],
+    outcomes: Array.isArray(branch.outcomes)
+      ? branch.outcomes.map((outcome: unknown) => {
+          const record = asRecord(outcome) || {};
+          return {
+            scenario: readString(record.scenario) || 'ROUTE_OUTCOME',
+            probability: toNumericValue(record.probability) ?? 1,
+            net_outcome: toNumericValue(record.net_outcome) ?? toNumericValue(branch.expected_value) ?? 0,
+            description: readString(record.description) || readString(branch.verdict) || 'Route outcome pending confirmation.',
+            stress_calibration: readString(record.stress_calibration),
+          };
+        })
+      : [],
+    expected_value: toNumericValue(branch.expected_value) ?? 0,
+    expected_value_note: readString(branch.expected_value_note),
+    verdict: readString(branch.verdict) || 'Decision branch pending final confirmation.',
+    verdict_conditions: collectStrings(branch.verdict_conditions),
+  }));
+
+  const recommendedBranch = normalizeBranchName(raw.recommended_branch, branches[0]?.name || 'PROCEED_MODIFIED');
+
+  return {
+    branches,
+    recommended_branch: recommendedBranch,
+    rationale: collectStrings(raw.rationale, raw.verdict, raw.summary),
+    decision_gates: Array.isArray(raw.decision_gates) ? raw.decision_gates : [],
+    expiry: {
+      days: toNumericValue(asRecord(raw.expiry)?.days) ?? 30,
+      reassess_triggers: collectStrings(asRecord(raw.expiry)?.reassess_triggers),
+    },
+    decision_matrix: Array.isArray(raw.decision_matrix) ? raw.decision_matrix : [],
+    value_basis_label: readString(raw.value_basis_label),
+    value_basis_note: readString(raw.value_basis_note),
+    decision_ev_label: readString(raw.decision_ev_label),
+    decision_ev_usd: toNumericValue(raw.decision_ev_usd),
+    decision_ev_note: readString(raw.decision_ev_note),
+    market_validation: raw.market_validation as MarketValidation | undefined,
+  };
+}
+
+function routeScoreFromDecisionEv(value: unknown): number {
+  const text = readString(value)?.toLowerCase() || '';
+  if (text.includes('highest')) return 5400000;
+  if (text.includes('negative')) return -5400000;
+  if (text.includes('uncertain')) return 0;
+  if (text.includes('low')) return 0;
+  return toNumericValue(value) ?? 0;
+}
+
+function buildDm64BranchListScenarioTreeData(
+  raw: Record<string, any>,
+  rawAnalysis?: string,
+): ScenarioTreeData | undefined {
+  const rawBranches = Array.isArray(raw.branches)
+    ? raw.branches.map(asRecord).filter(Boolean) as Record<string, any>[]
+    : [];
+  if (rawBranches.length === 0) return undefined;
+
+  const preferredRaw =
+    rawBranches.find((branch) => normalizeBranchName(branch.verdict ?? branch.name, 'PROCEED_NOW') === 'PROCEED_MODIFIED') ||
+    rawBranches[0];
+  const proceedRaw =
+    rawBranches.find((branch) => branch !== preferredRaw && normalizeBranchName(branch.verdict ?? branch.name, 'PROCEED_NOW') === 'PROCEED_NOW') ||
+    rawBranches.find((branch) => branch !== preferredRaw && !/reject|hold|defer|stop|do not/i.test(`${branch.verdict || ''} ${branch.name || ''}`));
+  const blockedRaw =
+    rawBranches.find((branch) => branch !== preferredRaw && /reject|hold|defer|stop|do not/i.test(`${branch.verdict || ''} ${branch.name || ''}`)) ||
+    rawBranches.find((branch) => branch !== preferredRaw && branch !== proceedRaw);
+
+  const sourceByName: Record<BranchName, Record<string, any> | undefined> = {
+    PROCEED_MODIFIED: preferredRaw,
+    PROCEED_NOW: proceedRaw,
+    DO_NOT_PROCEED: blockedRaw,
+  };
+
+  const statusByName: Record<BranchName, ConditionStatus> = {
+    PROCEED_MODIFIED: 'CONDITIONAL',
+    PROCEED_NOW: 'MODELED',
+    DO_NOT_PROCEED: 'BLOCKED',
+  };
+
+  const defaultVerdictByName: Record<BranchName, string> = {
+    PROCEED_MODIFIED: readString(raw.verdict) || 'Proceed modified after the release gates clear.',
+    PROCEED_NOW: 'Proceeding without the modified route keeps the live move exposed to unresolved corridor pressure.',
+    DO_NOT_PROCEED: 'Do not proceed if the blockers remain unresolved.',
+  };
+
+  const branches = (['PROCEED_MODIFIED', 'PROCEED_NOW', 'DO_NOT_PROCEED'] as BranchName[])
+    .map((name) => {
+      const source = sourceByName[name];
+      const branchSignal = routeSignalLabelFromDecisionEv(
+        source?.decision_ev ?? source?.expected_value ?? source?.value,
+        name,
+      );
+      const conditions = collectStrings(
+        source?.verdict_conditions,
+        source?.conditions,
+        source?.required_evidence,
+        source?.evidence_required,
+        source?.blockers,
+        source?.gates,
+      );
+      const expectedValue = routeScoreFromDecisionEv(source?.decision_ev ?? source?.expected_value ?? source?.value);
+      const summary = readString(source?.summary ?? source?.description ?? source?.rationale);
+
+      return {
+        name,
+        recommendation_strength: name === 'PROCEED_MODIFIED' ? 0.84 : name === 'PROCEED_NOW' ? 0.34 : 0.46,
+        conditions: (conditions.length ? conditions : collectStrings(raw.gating_status, raw.verdict)).map((condition) => ({
+          condition,
+          status: statusByName[name],
+        })),
+        outcomes: [
+          {
+            scenario: 'ROUTE_OUTCOME',
+            probability: name === 'PROCEED_MODIFIED' ? 0.55 : name === 'PROCEED_NOW' ? 0.25 : 0.2,
+            net_outcome: expectedValue,
+            description: summary || defaultVerdictByName[name],
+          },
+        ],
+        expected_value: expectedValue,
+        display_value: branchSignal,
+        expected_value_note: source?.decision_ev
+          ? `Route signal from DM64 branch read: ${branchSignal || source.decision_ev}. Financial EV is not asserted until family documents and bank evidence clear.`
+          : 'Qualitative route outcome; financial EV is not asserted until family documents and bank evidence clear.',
+        verdict: summary || defaultVerdictByName[name],
+        verdict_conditions: conditions,
+      };
+    });
+
+  const decisionWindowDays = toNumericValue(raw.decision_window_days) ?? 30;
+  const preferredConditions = branches.find((branch) => branch.name === 'PROCEED_MODIFIED')?.conditions || [];
+  const gateConditions = preferredConditions.length > 0
+    ? preferredConditions
+    : collectStrings(raw.critical_gates, raw.abort_triggers, raw.verdict).map((condition) => ({ condition, status: 'CONDITIONAL' as ConditionStatus }));
+  const gateDays = distributeGateDays(gateConditions.length, decisionWindowDays);
+
+  return {
+    branches,
+    recommended_branch: normalizeBranchName(raw.gating_status ?? raw.verdict, 'PROCEED_MODIFIED'),
+    value_basis_label: 'Route Outcome Signal',
+    value_basis_note: 'Values on this branch card are route signals, not principal wealth projections. Final financial EV must wait for family documents, bank acceptance, tax position, and counsel sign-off.',
+    decision_ev_label: 'Live Move Release Rule',
+    decision_ev_usd: undefined,
+    decision_ev_note: readString(raw.verdict),
+    rationale: [
+      readString(raw.verdict),
+      rawAnalysis?.match(/\*\*Verdict Rationale:\*\*\s*([^\n]+)/i)?.[1]?.trim(),
+      'The preferred path is the route that preserves Dubai as the operating base while requiring Singapore to clear authority, custody, tax, and family-role gates before the penthouse purchase hardens.',
+    ].filter(Boolean) as string[],
+    decision_gates: gateConditions.map((gate, index) => ({
+      gate_number: index + 1,
+      day: gateDays[index] || decisionWindowDays,
+      check: gate.condition,
+      if_pass: index === gateConditions.length - 1 ? 'Release the modified route for execution.' : 'Advance to the next release gate.',
+      if_fail: 'Hold the penthouse move and remediate before capital is committed.',
+    })),
+    expiry: {
+      days: decisionWindowDays,
+      reassess_triggers: collectStrings(raw.reassess_triggers, raw.abort_triggers, [
+        'Bank/custody acceptance changes',
+        'Singapore property or ABSD treatment changes',
+        'Family authority or signer availability changes',
+      ]),
+    },
+    decision_matrix: branches.map((branch) => ({
+      branch: getBranchDisplayName(branch.name),
+      expected_value: displayBranchMetric(branch, branch.expected_value),
+      risk_level: branch.name === 'PROCEED_MODIFIED' ? 'MEDIUM' : branch.name === 'PROCEED_NOW' ? 'HIGH' : 'LOW',
+      recommended_if: branch.verdict_conditions[0] || branch.verdict,
+    })),
+  };
+}
+
 function buildStructuredScenarioTreeData(
   input?: ScenarioTreeSectionProps['data'],
   rawAnalysis?: string,
@@ -89,7 +379,9 @@ function buildStructuredScenarioTreeData(
 
   const raw = input as Record<string, any>;
   if (Array.isArray(raw.branches) && raw.branches.length > 0) {
-    return raw as ScenarioTreeData;
+    return hasClassicScenarioTreeShape(raw)
+      ? normalizeClassicScenarioTreeData(raw)
+      : buildDm64BranchListScenarioTreeData(raw, rawAnalysis);
   }
 
   const recommendedBranch = String(raw.recommended_branch || '').toUpperCase() as BranchName;
@@ -308,6 +600,11 @@ function BranchCard({
     PROCEED_MODIFIED: <AlertTriangle className="w-4 h-4 text-amber-500/60" />,
     DO_NOT_PROCEED: <XCircle className="w-4 h-4 text-red-500/60" />
   };
+  const conditions = Array.isArray(branch.conditions) ? branch.conditions : [];
+  const expectedValue = toNumericValue(branch.expected_value) ?? 0;
+  const metricDisplay = displayBranchMetric(branch, expectedValue);
+  const strength = toNumericValue(branch.recommendation_strength) ?? 0.5;
+  const verdict = readString(branch.verdict) || 'Decision branch pending final confirmation.';
 
   return (
     <motion.div
@@ -338,12 +635,12 @@ function BranchCard({
       <div className="flex items-start justify-between mb-4 mt-1">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="flex-shrink-0">
-            {icons[branch.name]}
+            {icons[branch.name] || <GitBranch className="w-4 h-4 text-muted-foreground/60" />}
           </div>
           <div className="min-w-0 flex-1">
             <h4 className="text-sm sm:text-base font-medium text-foreground break-words leading-snug">{getBranchDisplayName(branch.name)}</h4>
             <div className="mt-1">
-              <StrengthIndicator strength={branch.recommendation_strength} animate />
+              <StrengthIndicator strength={strength} animate />
             </div>
           </div>
         </div>
@@ -353,8 +650,8 @@ function BranchCard({
       <div className="mb-4 pt-4">
         <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-4" />
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{valueBasisLabel || 'Expected Value'}</p>
-        <p className={memoNumberClass('metric', branch.expected_value >= 0 ? 'default' : 'muted')}>
-          {formatScenarioMetricValue(branch.expected_value)}
+        <p className={memoNumberClass('metric', expectedValue >= 0 ? 'default' : 'muted')}>
+          {metricDisplay}
         </p>
         {branch.expected_value_note && (
           <p className="text-sm text-muted-foreground/60 italic mt-2 leading-relaxed">
@@ -366,7 +663,7 @@ function BranchCard({
       {/* Conditions */}
       <div className="space-y-3 mb-4">
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Conditions</p>
-        {branch.conditions.slice(0, 4).map((condition, i) => (
+        {conditions.slice(0, 4).map((condition, i) => (
           <motion.div
             key={i}
             className="flex flex-col sm:flex-row sm:items-start gap-2 rounded-lg p-3 sm:p-2"
@@ -385,7 +682,7 @@ function BranchCard({
       {/* Verdict */}
       <div className="pt-3">
         <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-3" />
-        <p className="text-xs sm:text-sm text-foreground/60 font-normal leading-relaxed">{parseMarkdownBold(branch.verdict)}</p>
+        <p className="text-xs sm:text-sm text-foreground/60 font-normal leading-relaxed">{parseMarkdownBold(verdict)}</p>
       </div>
     </motion.div>
   );
@@ -1127,9 +1424,23 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
   }
 
   const typedData = normalizedStructuredData as ScenarioTreeData;
-  const recommendedBranch = typedData.branches.find(b => b.name === typedData.recommended_branch);
+  const typedBranches = Array.isArray(typedData.branches) ? typedData.branches : [];
+  if (typedBranches.length === 0) {
+    return null;
+  }
+  const recommendedBranch = typedBranches.find(b => b.name === typedData.recommended_branch);
   const branchValueBasisLabel = typedData.value_basis_label || 'Expected Value';
   const decisionEvLabel = typedData.decision_ev_label || 'Validated Route Decision EV';
+  const rationale = Array.isArray(typedData.rationale) ? typedData.rationale : [];
+  const decisionGates = Array.isArray(typedData.decision_gates) ? typedData.decision_gates : [];
+  const decisionMatrix = Array.isArray(typedData.decision_matrix) ? typedData.decision_matrix : [];
+  const expiryDays = toNumericValue(typedData.expiry?.days) ?? 30;
+  const expiryTriggers = Array.isArray(typedData.expiry?.reassess_triggers)
+    ? typedData.expiry.reassess_triggers
+    : [];
+  const recommendedBranchConditions = Array.isArray(recommendedBranch?.verdict_conditions)
+    ? recommendedBranch.verdict_conditions
+    : [];
 
   return (
     <div ref={sectionRef}>
@@ -1188,8 +1499,8 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
             {/* Branch Cards */}
             <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 sm:gap-6 w-full mt-4">
-              {typedData.branches.map((branch, index) => (
-                <div key={branch.name} className={index === 0 && typedData.branches.length >= 3 ? '2xl:col-span-2' : ''}>
+              {typedBranches.map((branch, index) => (
+                <div key={branch.name} className={index === 0 && typedBranches.length >= 3 ? '2xl:col-span-2' : ''}>
                   <BranchCard
                     branch={branch}
                     isRecommended={branch.name === typedData.recommended_branch}
@@ -1217,7 +1528,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
             </p>
 
             <div className="space-y-3 mb-5">
-              {typedData.rationale.map((reason, i) => (
+              {rationale.map((reason, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <CheckCircle className="w-3.5 h-3.5 text-primary/40 mt-0.5 flex-shrink-0" />
                   <p className="text-sm text-muted-foreground/60 font-normal leading-relaxed">{reason}</p>
@@ -1247,12 +1558,12 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
             )}
 
             {/* Verdict Conditions */}
-            {recommendedBranch.verdict_conditions.length > 0 && (
+            {recommendedBranchConditions.length > 0 && (
               <div className="pt-5">
                 <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Choose this path if:</p>
                 <div className="space-y-3">
-                  {recommendedBranch.verdict_conditions.map((condition, i) => (
+                  {recommendedBranchConditions.map((condition, i) => (
                     <div key={i} className="rounded-xl border border-border/20 bg-card/50 px-4 py-3">
                       <p className="text-sm text-muted-foreground/70 leading-relaxed break-words">{condition}</p>
                     </div>
@@ -1264,7 +1575,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
         )}
 
         {/* Decision Gates Timeline */}
-        {typedData.decision_gates.length > 0 && (
+        {decisionGates.length > 0 && (
           <motion.div
             className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
             initial={{ opacity: 0, y: 12 }}
@@ -1276,12 +1587,12 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
             </p>
 
             <div className="relative ml-1">
-              {typedData.decision_gates.map((gate, index) => (
+              {decisionGates.map((gate, index) => (
                 <GateItem
                   key={gate.gate_number}
                   gate={gate}
                   index={index}
-                  total={typedData.decision_gates.length}
+                  total={decisionGates.length}
                 />
               ))}
             </div>
@@ -1289,7 +1600,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
         )}
 
         {/* Decision Matrix Table */}
-        {typedData.decision_matrix.length > 0 && (
+        {decisionMatrix.length > 0 && (
           <motion.div
             className="relative rounded-2xl border border-border/30 overflow-hidden"
             initial={{ opacity: 0, y: 12 }}
@@ -1306,7 +1617,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
             {/* Mobile: Card layout */}
             <div className="md:hidden space-y-3 px-6 pb-6">
-              {typedData.decision_matrix.map((entry, i) => (
+              {decisionMatrix.map((entry, i) => (
                 <div key={i} className="rounded-xl border border-border/20 bg-card/50 p-5 space-y-3">
                   <div className="space-y-2">
                     <h4 className="text-base font-medium text-foreground break-words leading-snug">{entry.branch}</h4>
@@ -1336,7 +1647,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {typedData.decision_matrix.map((entry, i) => (
+                  {decisionMatrix.map((entry, i) => (
                     <tr key={i} className="hover:bg-card/30 transition-colors border-t border-border/20">
                       <td className="px-3 sm:px-10 py-4 text-sm font-normal text-foreground whitespace-nowrap">{entry.branch}</td>
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -1608,10 +1919,10 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
             <RefreshCw className="w-4 h-4 text-muted-foreground/60" />
             <div>
               <p className="text-sm font-normal text-foreground">
-                Decision Tree Valid For: <span className="">{typedData.expiry.days} days</span>
+                Decision Tree Valid For: <span className="">{expiryDays} days</span>
               </p>
               <p className="text-sm text-muted-foreground/60 leading-relaxed">
-                Reassess if: {typedData.expiry.reassess_triggers.join(' | ')}
+                Reassess if: {expiryTriggers.length > 0 ? expiryTriggers.join(' | ') : 'When corridor, bank, tax, or family-authority facts change'}
               </p>
             </div>
           </div>

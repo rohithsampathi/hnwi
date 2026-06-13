@@ -11,6 +11,7 @@ export const revalidate = 0
 
 const siteUrl = "https://app.hnwichronicles.com"
 const audelleDubaiRouteOgImage = `${siteUrl}/assets/og/audelle-dubai-principal-room-og.jpg?v=20260527b`
+const audelleLondonHeritageOgImage = `${siteUrl}/assets/og/audelle-london-heritage-property-w1.jpg?v=20260604b`
 
 function sharedConversationHasMessages(conversation: any) {
   return Array.isArray(conversation?.messages) && conversation.messages.length > 0
@@ -63,8 +64,17 @@ function isUkUsDubaiBaseConversation(text: string) {
     && /base|residen|route|family/i.test(text)
 }
 
+function isLondonHostedTrophyAuctionConversation(text: string) {
+  return /london/i.test(text)
+    && /heritage|trophy|auction|property|concierge|crown bel air/i.test(text)
+}
+
 function sharedConversationTitle(conversation: any) {
   const text = sharedConversationMetadataText(conversation)
+
+  if (isLondonHostedTrophyAuctionConversation(text)) {
+    return 'London-Hosted Trophy Auction. Before The Room Says Yes.'
+  }
 
   if (isUkUsDubaiBaseConversation(text)) {
     return 'UK Ties. US Exposure. Dubai On The Table.'
@@ -79,6 +89,10 @@ function sharedConversationTitle(conversation: any) {
 
 function sharedConversationDescription(conversation: any) {
   const text = sharedConversationMetadataText(conversation)
+
+  if (isLondonHostedTrophyAuctionConversation(text)) {
+    return 'Audelle pressure-tests a London-hosted global trophy-property auction before a family says yes: auction-house reported bids, recorded-close proof, price versus ask, failed-lot context, fallback and family purpose.'
+  }
 
   if (isUkUsDubaiBaseConversation(text)) {
     return 'A family-base move with UK ties, US exposure and Dubai on the table. The route test is proof, authority, liquidity, fallback and family explanation before yes.'
@@ -140,7 +154,12 @@ export async function generateMetadata({
 
   const title = `${sharedConversationTitle(conversation)} | HNWI Chronicles`
   const description = sharedConversationDescription(conversation)
-  const ogImage = audelleDubaiRouteOgImage
+  const metadataText = sharedConversationMetadataText(conversation)
+  const isLondonHeritage = isLondonHostedTrophyAuctionConversation(metadataText)
+  const ogImage = isLondonHeritage ? audelleLondonHeritageOgImage : audelleDubaiRouteOgImage
+  const ogAlt = isLondonHeritage
+    ? "Sketch for an HNWI Chronicles Audelle conversation on a London-hosted trophy-property auction"
+    : "HNWI Chronicles family wealth decision conversation"
 
   return {
     title: {
@@ -160,7 +179,7 @@ export async function generateMetadata({
           type: "image/jpeg",
           width: 1200,
           height: 630,
-          alt: "HNWI Chronicles family wealth decision conversation",
+          alt: ogAlt,
         },
       ]
     },
@@ -175,7 +194,7 @@ export async function generateMetadata({
           type: "image/jpeg",
           width: 1200,
           height: 630,
-          alt: "HNWI Chronicles family wealth decision conversation",
+          alt: ogAlt,
         },
       ]
     }

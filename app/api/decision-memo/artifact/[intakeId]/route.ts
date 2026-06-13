@@ -6,6 +6,10 @@ import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 import { safeError } from '@/lib/security/api-response';
 import { clearReportAuthCookie, getReportAuthTokenFromRequest } from '@/lib/security/report-auth';
+import {
+  encodeDecisionMemoIdForPath,
+  resolveCanonicalDecisionMemoId,
+} from '@/lib/decision-memo/memo-id-aliases';
 
 export const maxDuration = 300; // 5 minutes
 
@@ -20,6 +24,8 @@ export async function GET(
   context: RouteParams
 ) {
   const { intakeId } = await context.params;
+  const canonicalIntakeId = resolveCanonicalDecisionMemoId(intakeId);
+  const canonicalPathId = encodeDecisionMemoIdForPath(canonicalIntakeId);
 
   try {
     logger.info('Fetching full artifact', { intakeId });
@@ -28,13 +34,15 @@ export async function GET(
     // 1. /sfo-audit/{intake_id}/full - Full artifact endpoint (requires payment)
     // 2. /preview/{intake_id} - Preview endpoint (returns full if unlocked/paid)
     const endpoints = [
-      `${API_BASE_URL}/api/decision-memo/sfo-audit/${intakeId}/full`,
-      `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`,
+      `${API_BASE_URL}/api/decision-memo/sfo-audit/${canonicalPathId}/full`,
+      `${API_BASE_URL}/api/decision-memo/preview/${canonicalPathId}`,
     ];
 
     // Forward report-access tokens and platform session cookies so artifact fetches
     // stay aligned with the main audit session path.
-    const authHeader = getReportAuthTokenFromRequest(request, intakeId);
+    const authHeader =
+      getReportAuthTokenFromRequest(request, intakeId) ??
+      getReportAuthTokenFromRequest(request, canonicalIntakeId);
     const cookieHeader = request.headers.get('cookie');
     const backendHeaders: Record<string, string> = { 'Accept': 'application/json' };
     if (authHeader) {
@@ -70,6 +78,7 @@ export async function GET(
             }
           );
           clearReportAuthCookie(unauthorizedResponse, intakeId);
+          clearReportAuthCookie(unauthorizedResponse, canonicalIntakeId);
           return unauthorizedResponse;
         }
 

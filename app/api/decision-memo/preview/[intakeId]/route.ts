@@ -7,6 +7,10 @@ import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 import { safeError } from '@/lib/security/api-response';
 import { clearReportAuthCookie, getReportAuthTokenFromRequest } from '@/lib/security/report-auth';
+import {
+  encodeDecisionMemoIdForPath,
+  resolveCanonicalDecisionMemoId,
+} from '@/lib/decision-memo/memo-id-aliases';
 
 interface RouteParams {
   params: Promise<{
@@ -19,6 +23,8 @@ export async function GET(
   context: RouteParams
 ) {
   const { intakeId } = await context.params;
+  const canonicalIntakeId = resolveCanonicalDecisionMemoId(intakeId);
+  const canonicalPathId = encodeDecisionMemoIdForPath(canonicalIntakeId);
 
   try {
     logger.info('Fetching preview', { intakeId });
@@ -34,9 +40,11 @@ export async function GET(
     if (intakeId.startsWith('sfo_')) {
       logger.info('SFO Pattern Audit preview requested', { intakeId });
 
-      const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`;
+      const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${canonicalPathId}`;
       const previewHeaders: Record<string, string> = { 'Accept': 'application/json' };
-      const authHeader = getReportAuthTokenFromRequest(request, intakeId);
+      const authHeader =
+        getReportAuthTokenFromRequest(request, intakeId) ??
+        getReportAuthTokenFromRequest(request, canonicalIntakeId);
       if (authHeader) {
         previewHeaders['Authorization'] = authHeader;
       }
@@ -58,6 +66,7 @@ export async function GET(
           { status: 401, headers: { 'Cache-Control': 'no-store' } }
         );
         clearReportAuthCookie(unauthorizedResponse, intakeId);
+        clearReportAuthCookie(unauthorizedResponse, canonicalIntakeId);
         return unauthorizedResponse;
       }
 
@@ -172,9 +181,11 @@ export async function GET(
     // LEGACY DECISION MEMO PREVIEW
     // ==========================================================================
 
-    const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`;
+    const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${canonicalPathId}`;
     const legacyHeaders: Record<string, string> = { 'Accept': 'application/json' };
-    const legacyAuth = getReportAuthTokenFromRequest(request, intakeId);
+    const legacyAuth =
+      getReportAuthTokenFromRequest(request, intakeId) ??
+      getReportAuthTokenFromRequest(request, canonicalIntakeId);
     if (legacyAuth) {
       legacyHeaders['Authorization'] = legacyAuth;
     }
@@ -196,6 +207,7 @@ export async function GET(
         { status: 401, headers: { 'Cache-Control': 'no-store' } }
       );
       clearReportAuthCookie(unauthorizedResponse, intakeId);
+      clearReportAuthCookie(unauthorizedResponse, canonicalIntakeId);
       return unauthorizedResponse;
     }
 

@@ -269,7 +269,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
                     letterSpacing: 1.5,
                   }}
                 >
-                  CAPITAL DESTROYED
+                  DUTY DRAG
                 </Text>
                 <Text
                   style={{

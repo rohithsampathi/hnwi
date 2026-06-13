@@ -22,11 +22,11 @@ import {
   Check,
   Loader2,
   AlertTriangle,
+  FileText,
   LayoutGrid
 } from 'lucide-react';
 import { CrownLoader } from '@/components/ui/crown-loader';
 import { PreviewArtifactDisplay } from '@/components/decision-memo/pattern-audit/PreviewArtifactDisplay';
-import { ArtifactDisplay } from '@/components/decision-memo/pattern-audit/ArtifactDisplay';
 import { PatternAuditWaitingInteractive } from '@/components/decision-memo/PatternAuditWaitingInteractive';
 import { usePatternAudit, ReportAuthRequiredError } from '@/lib/hooks/usePatternAudit';
 import { useDecisionMemoSSE } from '@/lib/hooks/useDecisionMemoSSE';
@@ -40,17 +40,19 @@ import {
 } from '@/lib/decision-memo/pattern-audit-types';
 import Link from 'next/link';
 
-import DecisionMemoLinearReport from '@/components/decision-memo/memo/DecisionMemoLinearReport';
+import HouseDecisionMemoLinearReport from '@/components/decision-memo/memo/DecisionMemoLinearReport';
+import CanonicalDecisionMemoLinearReport from '@/components/decision-memo/memo/legacy/DecisionMemoLinearReport.classic-legacy';
 import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import type { Citation } from '@/lib/parse-dev-citations';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import { AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/contexts/theme-context';
+import type { ResolvedDecisionMemoSurfaceData } from '@/lib/decision-memo/resolve-decision-memo-surface-data';
 import {
-  resolveDecisionMemoSurfaceData,
-  type ResolvedDecisionMemoSurfaceData,
-} from '@/lib/decision-memo/resolve-decision-memo-surface-data';
+  resolveDecisionMemoDisplayReference,
+  resolvePublicDecisionMemoId,
+} from '@/lib/decision-memo/memo-id-aliases';
 // Personal mode - UHNWI-standard navigation interface
 import { PersonalShell } from '@/components/decision-memo/personal';
 import { useSearchParams } from 'next/navigation';
@@ -143,6 +145,19 @@ export default function PatternAuditPreviewPage() {
 
   // Check if user wants Personal mode (UHNWI navigation interface)
   const usePersonalMode = searchParams.get('personal') === 'true';
+  const memoViewMode = searchParams.get('view') === 'house' ? 'house' : 'linear';
+  const canonicalMemoReference = resolveDecisionMemoDisplayReference(intakeId);
+
+  useEffect(() => {
+    const publicId = resolvePublicDecisionMemoId(intakeId);
+    if (publicId === intakeId) return;
+
+    const query = searchParams.toString();
+    router.replace(
+      `/decision-memo/audit/${encodeURIComponent(publicId)}${query ? `?${query}` : ''}`,
+      { scroll: false }
+    );
+  }, [intakeId, router, searchParams]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +184,7 @@ export default function PatternAuditPreviewPage() {
     return undefined;
   }, []);
 
-  const buildAuditViewHref = useCallback((personalMode: boolean) => {
+  const buildAuditViewHref = useCallback((personalMode: boolean, viewMode: 'linear' | 'house' = 'linear') => {
     const params = new URLSearchParams(searchParams.toString());
 
     if (personalMode) {
@@ -177,6 +192,12 @@ export default function PatternAuditPreviewPage() {
     } else {
       params.delete('personal');
       params.delete('section');
+    }
+
+    if (viewMode === 'house') {
+      params.set('view', 'house');
+    } else {
+      params.delete('view');
     }
 
     const query = params.toString();
@@ -204,11 +225,8 @@ export default function PatternAuditPreviewPage() {
   ], [developmentCountLabel]);
 
   const {
-    getSession,
     getPreviewArtifact,
     initiatePayment,
-    checkPaymentStatus,
-    shareArtifact
   } = usePatternAudit();
 
   // Audit routes are output viewers. They must not trigger the legacy SSE
@@ -321,45 +339,22 @@ export default function PatternAuditPreviewPage() {
       setResolvedSurfaceData(null);
 
       const applyResolvedSurfaceData = (data: ResolvedDecisionMemoSurfaceData) => {
-        setResolvedSurfaceData(data);
-        setBackendData(data.backendData as BackendAuditResponse);
-        setFullArtifact((data.fullArtifact ?? null) as Record<string, unknown> | ICArtifact | null);
-      };
-
-      const buildFallbackSurfaceData = (sessionData: any) => {
-        const rawFullArtifact =
-          sessionData.rawFullArtifact ??
-          sessionData.full_artifact ??
-          sessionData.fullArtifact ??
+        const resolvedFullArtifact =
+          data.fullArtifact ??
+          (data.memoData as any)?.full_artifact ??
+          (data.memoData as any)?.artifact ??
+          data.backendData?.full_artifact ??
+          data.backendData?.fullArtifact ??
+          data.backendData?.artifact ??
           null;
-        const fallbackBackendData = sessionData.preview_data
-          ? ({
-              preview_data: sessionData.preview_data,
-              memo_data: sessionData.memo_data,
-              generated_at: sessionData.generated_at || sessionData.submittedAt,
-              mitigationTimeline:
-                sessionData.mitigationTimeline ||
-                sessionData.preview_data?.risk_assessment?.mitigation_timeline,
-              risk_assessment:
-                sessionData.risk_assessment || sessionData.preview_data?.risk_assessment,
-              all_mistakes:
-                sessionData.all_mistakes || sessionData.preview_data?.all_mistakes,
-              full_artifact: rawFullArtifact,
-              fullArtifact: rawFullArtifact,
-            } as BackendAuditResponse)
-          : null;
+        const normalizedData = {
+          ...data,
+          fullArtifact: resolvedFullArtifact,
+        };
 
-        const fallbackSurfaceData = resolveDecisionMemoSurfaceData({
-          intakeId,
-          backendData: fallbackBackendData,
-          fullArtifact: rawFullArtifact as Record<string, unknown> | ICArtifact | null,
-        });
-
-        if (fallbackSurfaceData) {
-          applyResolvedSurfaceData(fallbackSurfaceData);
-        }
-
-        return fallbackSurfaceData;
+        setResolvedSurfaceData(normalizedData);
+        setBackendData(normalizedData.backendData as BackendAuditResponse);
+        setFullArtifact((resolvedFullArtifact ?? null) as Record<string, unknown> | ICArtifact | null);
       };
 
       const fetchResolvedMemoSurface = async () => {
@@ -369,7 +364,11 @@ export default function PatternAuditPreviewPage() {
         });
         if (response.status === 401) throw new ReportAuthRequiredError();
         if (!response.ok) {
-          throw new Error('Memo surface fetch failed');
+          const errorPayload = await response.json().catch(() => null);
+          if (response.status >= 500) {
+            throw new Error(errorPayload?.message || 'Decision memo service temporarily unavailable.');
+          }
+          throw new Error(errorPayload?.message || 'Decision memo output is not available.');
         }
 
         const data = await response.json() as ResolvedDecisionMemoSurfaceData;
@@ -401,65 +400,6 @@ export default function PatternAuditPreviewPage() {
         return;
       }
 
-      // Get session status (now returns full_artifact when unlocked)
-      const sessionData = await getSession(intakeId) as any;
-
-      // Check if session includes full artifact (unlocked state)
-      if (sessionData.fullArtifact) {
-        setSession({ ...sessionData, status: 'PAID' });
-
-        try {
-          await fetchResolvedMemoSurface();
-        } catch (artifactErr) {
-          if (artifactErr instanceof ReportAuthRequiredError) throw artifactErr;
-          console.error('Failed to fetch canonical memo surface:', artifactErr);
-          const fallbackSurfaceData = buildFallbackSurfaceData(sessionData);
-          if (!fallbackSurfaceData) {
-            setFullArtifact(sessionData.rawFullArtifact || sessionData.fullArtifact);
-          }
-        }
-
-        setIsWaitingForPreview(false);
-        return;
-      }
-
-      // Check if paid/unlocked
-      const isPaid = sessionData.status === 'PAID' || sessionData.status === 'FULL_READY' || sessionData.isUnlocked;
-
-      if (isPaid) {
-        setSession({ ...sessionData, status: 'PAID' });
-
-        try {
-          await fetchResolvedMemoSurface();
-        } catch (artifactErr) {
-          if (artifactErr instanceof ReportAuthRequiredError) throw artifactErr;
-          console.error('Failed to fetch memo surface:', artifactErr);
-          const fallbackSurfaceData = buildFallbackSurfaceData(sessionData);
-          if (!fallbackSurfaceData) {
-            setError('Payment confirmed but artifact not available. Please contact support.');
-          }
-        }
-        setIsWaitingForPreview(false);
-      } else if (sessionData.status === 'PREVIEW_READY') {
-        // Preview is ready - fetch it
-        setSession(sessionData);
-        try {
-          const preview = await getPreviewArtifact(intakeId);
-          setPreviewArtifact(preview);
-          setIsWaitingForPreview(false);
-        } catch (previewErr) {
-          if (previewErr instanceof ReportAuthRequiredError) throw previewErr;
-          // Preview fetch failed despite status being PREVIEW_READY
-          console.error('Preview fetch failed:', previewErr);
-          setError('Failed to load preview. Please refresh the page.');
-          setIsWaitingForPreview(false);
-        }
-      } else {
-        // Audit routes should not display the old generation/process state.
-        setSession(sessionData);
-        setIsWaitingForPreview(false);
-        setError('Decision memo output is not available.');
-      }
     } catch (err) {
       if (err instanceof ReportAuthRequiredError) {
         // If user is already logged into the platform (this page is under /authenticated),
@@ -486,7 +426,7 @@ export default function PatternAuditPreviewPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [intakeId, getSession, getPreviewArtifact, isMfaBypassed]);
+  }, [intakeId, isMfaBypassed]);
 
   // Initial fetch
   useEffect(() => {
@@ -853,7 +793,9 @@ export default function PatternAuditPreviewPage() {
           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold mb-4 text-foreground">Audit Not Found</h1>
+          <h1 className="text-2xl font-bold mb-4 text-foreground">
+            {error.toLowerCase().includes('temporarily unavailable') ? 'Decision Memo Temporarily Unavailable' : 'Decision Memo Not Available'}
+          </h1>
           <p className="text-muted-foreground mb-6">{error}</p>
           <Link
             href="/decision-memo"
@@ -1216,6 +1158,10 @@ export default function PatternAuditPreviewPage() {
     const handleCitationClick = (citationId: string) => {
       openCitation(citationId);
     };
+    const ReportRenderer =
+      memoViewMode === 'house'
+        ? HouseDecisionMemoLinearReport
+        : CanonicalDecisionMemoLinearReport;
 
     // Personal Mode - UHNWI-standard navigation interface
     if (usePersonalMode) {
@@ -1297,11 +1243,39 @@ export default function PatternAuditPreviewPage() {
                 <div>
                   <p className="text-foreground font-semibold">Decision Memo</p>
                   <p className="text-muted-foreground text-xs">
-                    Ref: {intakeId.slice(7, 19).toUpperCase()}
+                    Ref: {canonicalMemoReference}
                   </p>
                 </div>
               </button>
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    router.push(buildAuditViewHref(false, 'linear'));
+                  }}
+                  type="button"
+                  className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
+                    memoViewMode === 'linear'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:bg-muted text-muted-foreground'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="hidden sm:inline font-medium">Linear View</span>
+                </button>
+                <button
+                  onClick={() => {
+                    router.push(buildAuditViewHref(false, 'house'));
+                  }}
+                  type="button"
+                  className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
+                    memoViewMode === 'house'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:bg-muted text-muted-foreground'
+                  }`}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                  <span className="hidden sm:inline font-medium">House View</span>
+                </button>
                 <button
                   onClick={() => {
                     router.push(buildAuditViewHref(true));
@@ -1338,7 +1312,7 @@ export default function PatternAuditPreviewPage() {
         </div>
 
         <div id="artifact-content" className="max-w-6xl mx-auto px-3 sm:px-6 pt-6 pb-8 sm:pb-12 print:max-w-[210mm] print:px-0 print:py-0">
-          <DecisionMemoLinearReport
+          <ReportRenderer
             memoData={memoData as any}
             intakeId={intakeId}
             backendData={resolvedBackendData}

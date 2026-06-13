@@ -3,22 +3,6 @@
 
 'use client';
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-
 interface DataRow {
   label: string;
   value: number;
@@ -62,6 +46,14 @@ const axisColor = 'hsl(var(--muted-foreground))';
 const gridColor = 'hsl(var(--border))';
 const barColor = 'hsl(var(--primary))';
 const mutedBarColor = 'hsl(var(--muted-foreground))';
+const chartPalette = [
+  'hsl(var(--primary))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--secondary))',
+  'hsl(var(--destructive))',
+];
 
 function formatValue(value: number, unit?: string) {
   const numeric = Number(value || 0);
@@ -166,6 +158,21 @@ function displaySignalValue(row: DataRow, section: DataSection) {
   return formatValue(row.value, unit);
 }
 
+function chartExtent(rows: DataRow[]) {
+  const values = rows
+    .map((row) => Number(row.value || 0))
+    .filter((value) => Number.isFinite(value));
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  return { min, max };
+}
+
+function compactAxisLabel(label: string, maxLength = 14) {
+  const text = String(label || '').trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1).trim()}...`;
+}
+
 function SignalSection({ section }: { section: DataSection }) {
   const rows = sectionRows(section);
   if (!rows.length) return null;
@@ -257,6 +264,17 @@ function BarSection({ section }: { section: DataSection }) {
   if (!rows.length) return null;
   if (hasMixedUnits(rows, section)) return <SignalSection section={section} />;
 
+  const width = 560;
+  const height = 236;
+  const margin = { top: 24, right: 18, bottom: 62, left: 48 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+  const { max } = chartExtent(rows);
+  const yScale = (value: number) => chartHeight - (Math.max(0, value) / max) * chartHeight;
+  const slot = chartWidth / rows.length;
+  const barWidth = Math.max(26, Math.min(52, slot * 0.56));
+  const ticks = [0, max / 2, max];
+
   return (
     <section className="py-3 first:pt-0 last:pb-0">
       <div className="mb-2">
@@ -265,40 +283,44 @@ function BarSection({ section }: { section: DataSection }) {
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.insight}</p>
         )}
       </div>
-      <div className="h-44 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
-            <CartesianGrid stroke={gridColor} strokeOpacity={0.45} horizontal={false} />
-            <XAxis type="number" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis
-              dataKey="label"
-              type="category"
-              width={112}
-              tick={{ fill: axisColor, fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              cursor={{ fill: 'hsl(var(--muted) / 0.28)' }}
-              contentStyle={{
-                background: 'hsl(var(--background))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: 8,
-                color: 'hsl(var(--foreground))',
-              }}
-              formatter={(value: any, _name: any, item: any) => [
-                formatValue(Number(value), item?.payload?.unit || section.unit),
-                'Value',
-              ]}
-            />
-            <Bar dataKey="value" radius={[0, 3, 3, 0]} fill={barColor} barSize={18}>
-              {rows.map((_, index) => (
-                <Cell key={index} fill={index === 0 ? barColor : mutedBarColor} fillOpacity={index === 0 ? 0.92 : 0.48} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-60 w-full overflow-visible" role="img" aria-label={section.title}>
+        {ticks.map((tick, index) => {
+          const y = margin.top + yScale(tick);
+          return (
+            <g key={index}>
+              <line x1={margin.left} x2={width - margin.right} y1={y} y2={y} stroke={gridColor} strokeOpacity={0.42} />
+              <text x={margin.left - 8} y={y + 4} textAnchor="end" fill={axisColor} fontSize="10">
+                {formatValue(tick, section.unit)}
+              </text>
+            </g>
+          );
+        })}
+        {rows.map((row, index) => {
+          const value = Math.max(0, Number(row.value || 0));
+          const x = margin.left + slot * index + (slot - barWidth) / 2;
+          const y = margin.top + yScale(value);
+          const barHeight = chartHeight - yScale(value);
+          return (
+            <g key={`${row.label}-${index}`}>
+              <rect
+                x={x}
+                y={y}
+                width={barWidth}
+                height={Math.max(2, barHeight)}
+                rx="4"
+                fill={index === 0 ? barColor : mutedBarColor}
+                fillOpacity={index === 0 ? 0.92 : 0.5}
+              />
+              <text x={x + barWidth / 2} y={Math.max(12, y - 7)} textAnchor="middle" fill="hsl(var(--foreground))" fontSize="10" fontWeight="600">
+                {displaySignalValue(row, section)}
+              </text>
+              <text x={x + barWidth / 2} y={height - 38} textAnchor="middle" fill={axisColor} fontSize="10">
+                {compactAxisLabel(row.label)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
     </section>
   );
 }
@@ -308,6 +330,18 @@ function LineSection({ section }: { section: DataSection }) {
   if (!rows.length) return null;
   if (rows.length < 3) return <SignalSection section={section} />;
 
+  const width = 560;
+  const height = 224;
+  const margin = { top: 22, right: 24, bottom: 50, left: 44 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+  const { min, max } = chartExtent(rows);
+  const span = Math.max(1, max - min);
+  const xFor = (index: number) => margin.left + (rows.length === 1 ? chartWidth / 2 : (chartWidth / (rows.length - 1)) * index);
+  const yFor = (value: number) => margin.top + chartHeight - ((value - min) / span) * chartHeight;
+  const points = rows.map((row, index) => `${xFor(index)},${yFor(Number(row.value || 0))}`).join(' ');
+  const ticks = [min, min + span / 2, max];
+
   return (
     <section className="py-3 first:pt-0 last:pb-0">
       <div className="mb-2">
@@ -316,50 +350,35 @@ function LineSection({ section }: { section: DataSection }) {
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.insight}</p>
         )}
       </div>
-      <div className="h-40 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 12, right: 16, left: 20, bottom: 30 }}>
-            <CartesianGrid stroke={gridColor} strokeOpacity={0.45} />
-            <XAxis
-              dataKey="label"
-              tick={{ fill: axisColor, fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              interval={0}
-              angle={-8}
-              textAnchor="end"
-              tickMargin={10}
-            />
-            <YAxis
-              domain={['auto', 'auto']}
-              width={40}
-              tick={{ fill: axisColor, fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              contentStyle={{
-                background: 'hsl(var(--background))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: 8,
-                color: 'hsl(var(--foreground))',
-              }}
-              formatter={(value: any, _name: any, item: any) => [
-                formatValue(Number(value), item?.payload?.unit || section.unit),
-                section.title,
-              ]}
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke={barColor}
-              strokeWidth={2}
-              dot={{ r: 4, fill: 'hsl(var(--background))', stroke: barColor, strokeWidth: 2 }}
-              activeDot={{ r: 5 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full overflow-visible" role="img" aria-label={section.title}>
+        {ticks.map((tick, index) => {
+          const y = yFor(tick);
+          return (
+            <g key={index}>
+              <line x1={margin.left} x2={width - margin.right} y1={y} y2={y} stroke={gridColor} strokeOpacity={0.42} />
+              <text x={margin.left - 8} y={y + 4} textAnchor="end" fill={axisColor} fontSize="10">
+                {formatValue(tick, section.unit)}
+              </text>
+            </g>
+          );
+        })}
+        <polyline points={points} fill="none" stroke={barColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {rows.map((row, index) => {
+          const x = xFor(index);
+          const y = yFor(Number(row.value || 0));
+          return (
+            <g key={`${row.label}-${index}`}>
+              <circle cx={x} cy={y} r="4.5" fill="hsl(var(--background))" stroke={barColor} strokeWidth="2" />
+              <text x={x} y={Math.max(12, y - 10)} textAnchor="middle" fill="hsl(var(--foreground))" fontSize="10" fontWeight="600">
+                {displaySignalValue(row, section)}
+              </text>
+              <text x={x} y={height - 30} textAnchor="middle" fill={axisColor} fontSize="10">
+                {compactAxisLabel(row.label, 12)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
     </section>
   );
 }
@@ -446,8 +465,9 @@ function PieSection({ section }: { section: DataSection }) {
   const data = rows.map((row) => ({ ...row, value: Number(row.value || 0) }));
   const total = data.reduce((acc, item) => acc + (Number.isFinite(item.value) ? Math.max(0, item.value) : 0), 0);
   if (total <= 0) return <SignalSection section={section} />;
-  const showRows = data;
-  const palette = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--destructive))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
+  const radius = 58;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
 
   return (
     <section className="py-3 first:pt-0 last:pb-0">
@@ -457,33 +477,50 @@ function PieSection({ section }: { section: DataSection }) {
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.insight}</p>
         )}
       </div>
-      <div className="h-48 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Tooltip
-              contentStyle={{
-                background: 'hsl(var(--background))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: 8,
-                color: 'hsl(var(--foreground))',
-              }}
-              formatter={(value: any) => [formatValue(Number(value), section.unit), 'Share']}
+      <svg viewBox="0 0 560 220" className="h-56 w-full overflow-visible" role="img" aria-label={section.title}>
+        <circle cx="122" cy="110" r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="28" />
+        {data.map((row, index) => {
+          const value = Math.max(0, row.value);
+          const dash = (value / total) * circumference;
+          const segment = (
+            <circle
+              key={`${row.label}-${index}`}
+              cx="122"
+              cy="110"
+              r={radius}
+              fill="none"
+              stroke={chartPalette[index % chartPalette.length]}
+              strokeWidth="28"
+              strokeDasharray={`${dash} ${circumference - dash}`}
+              strokeDashoffset={-offset}
+              strokeLinecap="butt"
+              transform="rotate(-90 122 110)"
             />
-            <Pie
-              data={showRows}
-              nameKey="label"
-              dataKey="value"
-              innerRadius={28}
-              outerRadius={72}
-              paddingAngle={3}
-            >
-              {showRows.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={palette[index % palette.length]} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
+          );
+          offset += dash;
+          return segment;
+        })}
+        <text x="122" y="106" textAnchor="middle" fill="hsl(var(--foreground))" fontSize="20" fontWeight="700">
+          {formatValue(total, section.unit)}
+        </text>
+        <text x="122" y="126" textAnchor="middle" fill={axisColor} fontSize="10">
+          total
+        </text>
+        {data.map((row, index) => {
+          const y = 54 + index * 31;
+          return (
+            <g key={`${row.label}-legend-${index}`}>
+              <rect x="240" y={y - 9} width="10" height="10" rx="2" fill={chartPalette[index % chartPalette.length]} />
+              <text x="258" y={y} fill="hsl(var(--foreground))" fontSize="12" fontWeight="600">
+                {row.label}
+              </text>
+              <text x="500" y={y} textAnchor="end" fill={axisColor} fontSize="12">
+                {formatValue(row.value, row.unit || section.unit)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
     </section>
   );
 }
@@ -492,68 +529,7 @@ function DeviationSection({ section }: { section: DataSection }) {
   const rows = sectionRows(section);
   if (!rows.length) return null;
   if (rows.length <= 3) return <DivergenceSection section={section} />;
-  const values = rows.map((row) => Number(row.value || 0));
-  const min = Math.min(...values, 0);
-  const max = Math.max(...values, 0);
-  const padding = Math.max(4, (max - min) * 0.15);
-
-  return (
-    <section className="border-t border-border/25 py-3 first:border-t-0 first:pt-0 last:pb-0">
-      <div className="mb-2">
-        <h4 className="text-[13px] font-semibold text-foreground">{section.title}</h4>
-        {section.insight && (
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.insight}</p>
-        )}
-      </div>
-      <div className="h-40 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 12, right: 28, left: 22, bottom: 34 }}>
-            <CartesianGrid stroke={gridColor} strokeOpacity={0.45} vertical={false} />
-            <XAxis
-              dataKey="label"
-              tick={{ fill: axisColor, fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              height={42}
-              interval={0}
-              angle={-8}
-              textAnchor="end"
-              tickMargin={10}
-            />
-            <YAxis
-              width={38}
-              domain={[min - padding, max + padding]}
-              tick={{ fill: axisColor, fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              tickMargin={4}
-            />
-            <ReferenceLine y={0} stroke={axisColor} strokeOpacity={0.55} />
-            <Tooltip
-              contentStyle={{
-                background: 'hsl(var(--background))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: 8,
-                color: 'hsl(var(--foreground))',
-              }}
-              formatter={(value: any, _name: any, item: any) => [
-                formatValue(Number(value), item?.payload?.unit || section.unit),
-                'Change',
-              ]}
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke={barColor}
-              strokeWidth={2}
-              dot={{ r: 4, fill: 'hsl(var(--background))', stroke: barColor, strokeWidth: 2 }}
-              activeDot={{ r: 5 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </section>
-  );
+  return <LineSection section={section} />;
 }
 
 function TableSection({ section }: { section: DataSection }) {

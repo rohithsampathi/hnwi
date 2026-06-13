@@ -16,6 +16,7 @@
 # codex/local generated artifacts
 /.codex_tmp/
 /.codex_write_test
+/legacy/accidental-duplicates/
 
 # production
 /build
