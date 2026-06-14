@@ -245,6 +245,10 @@ export default function DecisionMemoAuditClientPage({
   const isFetchingPreviewRef = useRef(false); // Track if we're already fetching to prevent duplicates
   const shouldSkipInitialClientFetchRef = useRef(Boolean(initialResolvedSurfaceData || initialSurfaceError));
 
+  useEffect(() => {
+    document.documentElement.dataset.decisionMemoHydrated = 'true';
+  }, []);
+
   // Client bundles must never carry report bypass tokens. Any local bypass must
   // live behind a server route that still enforces environment and audit rules.
   const isMfaBypassed = false;
