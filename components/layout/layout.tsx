@@ -17,7 +17,7 @@ import Image from "next/image"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft } from "lucide-react"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { PageHeader } from "@/components/ui/page-header"
 import { getPageHeader } from "@/lib/page-headers"
 
@@ -39,10 +39,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
   const { isCenterOpen, setCenterOpen } = useNotificationContext()
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-
-  // Check if in PERSONAL mode — reactive to both path and search param changes
-  const isPersonalMode = searchParams.get('personal') === 'true'
+  const [isPersonalMode, setIsPersonalMode] = useState(false)
 
   // Decision-memo pages need header/sidebar hidden in print for PDF export
   const isDecisionMemoRoute = pathname?.includes('/decision-memo')
@@ -59,6 +56,38 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
   const [isDesktop, setIsDesktop] = useState(false) // Track if desktop
   const [isTablet, setIsTablet] = useState(false) // Track if tablet
   const headerRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const updatePersonalMode = () => {
+      setIsPersonalMode(new URLSearchParams(window.location.search).get('personal') === 'true')
+    }
+
+    updatePersonalMode()
+    window.addEventListener('popstate', updatePersonalMode)
+    window.addEventListener('hnwi:locationchange', updatePersonalMode)
+
+    const originalPushState = window.history.pushState
+    const originalReplaceState = window.history.replaceState
+
+    window.history.pushState = function patchedPushState(...args) {
+      const result = originalPushState.apply(this, args)
+      window.dispatchEvent(new Event('hnwi:locationchange'))
+      return result
+    }
+
+    window.history.replaceState = function patchedReplaceState(...args) {
+      const result = originalReplaceState.apply(this, args)
+      window.dispatchEvent(new Event('hnwi:locationchange'))
+      return result
+    }
+
+    return () => {
+      window.removeEventListener('popstate', updatePersonalMode)
+      window.removeEventListener('hnwi:locationchange', updatePersonalMode)
+      window.history.pushState = originalPushState
+      window.history.replaceState = originalReplaceState
+    }
+  }, [])
 
   // Check screen sizes - desktop/tablet logic
   useEffect(() => {

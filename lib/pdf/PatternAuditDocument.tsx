@@ -146,7 +146,15 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       {v.crossBorderAudit?.acquisition_audit && (
         <Page size="A4" style={s.page}>
           <PageHeader />
-          <PdfLiquidityTrapPage capitalIn={v.crossBorderAudit.acquisition_audit.total_acquisition_cost || v.crossBorderAudit.acquisition_audit.property_value || 0} capitalOut={v.crossBorderAudit.acquisition_audit.property_value || 0} primaryBarrier="ABSD (Foreign Buyer)" primaryBarrierCost={v.crossBorderAudit.acquisition_audit.absd_additional_stamp_duty || 0} secondaryBarrier="BSD Stamp Duty" secondaryBarrierCost={v.crossBorderAudit.acquisition_audit.bsd_stamp_duty || 0} dayOneLossPct={v.crossBorderAudit.acquisition_audit.day_one_loss_pct || 0} />
+          <PdfLiquidityTrapPage
+            capitalIn={v.crossBorderAudit.acquisition_audit.total_acquisition_cost || v.crossBorderAudit.acquisition_audit.property_value || 0}
+            capitalOut={v.crossBorderAudit.acquisition_audit.property_value || 0}
+            primaryBarrier={(v.crossBorderAudit.acquisition_audit as typeof v.crossBorderAudit.acquisition_audit & { secondary_fee_label?: string }).secondary_fee_label || 'Additional buyer surcharge'}
+            primaryBarrierCost={v.crossBorderAudit.acquisition_audit.absd_additional_stamp_duty || 0}
+            secondaryBarrier={(v.crossBorderAudit.acquisition_audit as typeof v.crossBorderAudit.acquisition_audit & { primary_fee_label?: string }).primary_fee_label || 'Base acquisition duty'}
+            secondaryBarrierCost={v.crossBorderAudit.acquisition_audit.bsd_stamp_duty || 0}
+            dayOneLossPct={v.crossBorderAudit.acquisition_audit.day_one_loss_pct || 0}
+          />
           <PageFooter intakeId={v.intakeId} />
           <ConfidentialWatermark />
         </Page>

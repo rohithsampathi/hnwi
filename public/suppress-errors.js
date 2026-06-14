@@ -4,6 +4,110 @@
 (function suppressAllKnownErrors() {
   'use strict';
 
+  const NEXT_CHUNK_RECOVERY_KEY = 'hnwi:next-webpack-runtime-recovery:v1';
+
+  function isNextChunkRuntimeMismatch(message, source) {
+    const normalizedMessage = String(message || '').toLowerCase();
+    const normalizedSource = String(source || '').toLowerCase();
+
+    return (
+      normalizedMessage.includes("cannot read properties of undefined (reading 'call')") &&
+      (
+        normalizedSource.includes('/_next/static/chunks/') ||
+        normalizedMessage.includes('webpack') ||
+        normalizedMessage.includes('app-pages-browser')
+      )
+    );
+  }
+
+  function getSessionFlag(key) {
+    try {
+      return window.sessionStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  function setSessionFlag(key, value) {
+    try {
+      window.sessionStorage.setItem(key, value);
+    } catch {
+      // Ignore storage failures; the fallback still tries a reload.
+    }
+  }
+
+  function removeSessionFlag(key) {
+    try {
+      window.sessionStorage.removeItem(key);
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
+  async function clearClientRuntimeCaches() {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+      }
+    } catch {
+      // Continue with cache cleanup and reload.
+    }
+
+    try {
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+      }
+    } catch {
+      // Reload is still useful even if cache deletion is blocked.
+    }
+  }
+
+  function recoverFromNextChunkRuntimeMismatch(event) {
+    const source = event && (event.filename || event.source || event.target?.src || event.target?.href);
+    const message = event && (event.message || event.reason?.message || event.reason || '');
+
+    if (!isNextChunkRuntimeMismatch(message, source)) {
+      return false;
+    }
+
+    if (getSessionFlag(NEXT_CHUNK_RECOVERY_KEY) === 'attempted') {
+      return false;
+    }
+
+    setSessionFlag(NEXT_CHUNK_RECOVERY_KEY, 'attempted');
+
+    if (event?.preventDefault) event.preventDefault();
+    if (event?.stopPropagation) event.stopPropagation();
+
+    const recoveryNotice = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif;background:#fff;color:#111"><div style="max-width:420px;padding:24px;text-align:center"><p style="font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:#8a6d1d;margin:0 0 12px">Refreshing Memo Runtime</p><h1 style="font-size:24px;line-height:1.25;margin:0 0 12px">Updating the report viewer</h1><p style="font-size:14px;line-height:1.6;color:#555;margin:0">The page is clearing an older browser cache and reloading the current memo surface.</p></div></div>';
+
+    try {
+      if (document.body) {
+        document.body.innerHTML = recoveryNotice;
+      } else {
+        document.addEventListener('DOMContentLoaded', function renderRecoveryNotice() {
+          document.body.innerHTML = recoveryNotice;
+        }, { once: true });
+      }
+    } catch {
+      // Continue with reload.
+    }
+
+    clearClientRuntimeCaches().finally(function reloadAfterRuntimeRecovery() {
+      window.location.reload();
+    });
+
+    return true;
+  }
+
+  window.addEventListener('load', function clearSuccessfulRuntimeRecoveryFlag() {
+    window.setTimeout(function clearFlagAfterStableLoad() {
+      removeSessionFlag(NEXT_CHUNK_RECOVERY_KEY);
+    }, 5000);
+  });
+
   // List of error patterns to suppress
   const SUPPRESS_PATTERNS = [
     'EMPTY_WORDMARK',
@@ -36,6 +140,10 @@
 
   // Suppress network errors (404s, etc.)
   window.addEventListener('error', function(e) {
+    if (recoverFromNextChunkRuntimeMismatch(e)) {
+      return false;
+    }
+
     // Check if it's a resource loading error
     if (e.target && (e.target.src || e.target.href)) {
       const url = (e.target.src || e.target.href).toLowerCase();
@@ -99,6 +207,10 @@
 
   // Suppress unhandled promise rejections related to these patterns
   window.addEventListener('unhandledrejection', function(e) {
+    if (recoverFromNextChunkRuntimeMismatch(e)) {
+      return false;
+    }
+
     if (e.reason && typeof e.reason === 'string') {
       const message = e.reason.toLowerCase();
       if (SUPPRESS_PATTERNS.some(pattern => message.includes(pattern.toLowerCase()))) {

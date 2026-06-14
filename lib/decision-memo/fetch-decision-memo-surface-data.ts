@@ -1,4 +1,6 @@
 import { API_BASE_URL } from '@/config/api';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { resolveCastleBriefCount } from '@/lib/castle-briefs/resolve-castle-brief-count';
 import { logger } from '@/lib/secure-logger';
 import { resolveDecisionMemoSurfaceData } from '@/lib/decision-memo/resolve-decision-memo-surface-data';
@@ -10,6 +12,7 @@ import {
 
 type HeadersLike = Pick<Headers, 'get'>;
 type BackendHeaders = Record<string, string>;
+type RecordLike = Record<string, any>;
 
 export class DecisionMemoBackendUnavailableError extends Error {
   status = 503;
@@ -50,6 +53,74 @@ async function fetchCastleBriefsCount(
   }
 }
 
+function localDecisionMemoStoreDirs(): string[] {
+  const configured = (
+    process.env.KINGDOM_DECISION_MEMO_STORE_DIRS ||
+    process.env.KINGDOM_DECISION_MEMO_STORE_DIR ||
+    ''
+  )
+    .split(path.delimiter)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set([
+    ...configured,
+    path.resolve(process.cwd(), '../mu/.local_runtime/decision_memo_store'),
+  ]));
+}
+
+function safeMemoFilename(value: string): string | null {
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+    return null;
+  }
+  return `${value}.json`;
+}
+
+async function readLocalDecisionMemoSurfaceData(
+  candidateIds: string[],
+): Promise<ReturnType<typeof resolveDecisionMemoSurfaceData> | null> {
+  const storeDirs = localDecisionMemoStoreDirs();
+  for (const candidateId of candidateIds) {
+    const filename = safeMemoFilename(candidateId);
+    if (!filename) continue;
+
+    for (const storeDir of storeDirs) {
+      const filePath = path.join(storeDir, filename);
+      try {
+        const payload = JSON.parse(await fs.readFile(filePath, 'utf8')) as RecordLike;
+        const resolvedSurfaceData = resolveDecisionMemoSurfaceData({
+          intakeId: candidateId,
+          backendData: payload,
+          fullArtifact:
+            payload?.full_artifact ??
+            payload?.fullArtifact ??
+            payload?.memoData?.full_artifact ??
+            payload?.memoData?.artifact ??
+            payload?.artifact ??
+            null,
+        });
+
+        if (resolvedSurfaceData) {
+          return resolvedSurfaceData;
+        }
+      } catch (error) {
+        const code = typeof error === 'object' && error !== null && 'code' in error
+          ? (error as { code?: string }).code
+          : undefined;
+        if (code !== 'ENOENT') {
+          logger.warn('Decision memo local surface read failed', {
+            candidateId,
+            filePath,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 export async function fetchDecisionMemoSurfaceData(
   intakeId: string,
   requestHeaders: HeadersLike,
@@ -81,6 +152,26 @@ export async function fetchDecisionMemoSurfaceData(
   let lastError: string | null = null;
   let sawBackendOutage = false;
   let sawMissingMemo = false;
+
+  const localSurfaceData = await readLocalDecisionMemoSurfaceData([
+    publicIntakeId,
+    canonicalIntakeId,
+  ]);
+  if (localSurfaceData) {
+    return {
+      ...localSurfaceData,
+      memoData: {
+        ...localSurfaceData.memoData,
+        intake_id: publicIntakeId,
+      },
+      backendData: {
+        ...localSurfaceData.backendData,
+        canonicalIntakeId,
+        publicIntakeId,
+        localDecisionMemoStore: true,
+      },
+    };
+  }
 
   for (const endpoint of endpoints) {
     try {

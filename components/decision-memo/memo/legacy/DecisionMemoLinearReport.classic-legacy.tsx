@@ -15,6 +15,7 @@ import { MemoHeader } from '../MemoHeader';
 import { PrintPaginationOptimizer } from '../PrintPaginationOptimizer';
 import { RiskRadarChart } from '../RiskRadarChart';
 import { Page2AuditVerdict } from '../Page2AuditVerdict';
+import { ZeroTrustMoveIntakeSection } from '../ZeroTrustMoveIntakeSection';
 import { LiquidityTrapFlowchart } from '../LiquidityTrapFlowchart';
 import { CrossBorderTaxAudit } from '../CrossBorderTaxAudit';
 import { PeerBenchmarkTicker } from '../PeerBenchmarkTicker';
@@ -152,6 +153,10 @@ export default function DecisionMemoLinearReport({
     memoData.preview_data.data_quality ||
     memoData.preview_data.peer_cohort_stats?.data_quality ||
     resolvedArtifact.data_quality;
+  const zeroTrustMoveIntake = (memoData.preview_data as Record<string, unknown>).zero_trust_move_intake as
+    | Record<string, unknown>
+    | undefined;
+  const hasZeroTrustMoveIntake = Boolean(zeroTrustMoveIntake && Object.keys(zeroTrustMoveIntake).length > 0);
   const resolvedDataQualityNote =
     memoData.preview_data.data_quality_note ||
     memoData.preview_data.peer_cohort_stats?.data_quality_note ||
@@ -186,15 +191,22 @@ export default function DecisionMemoLinearReport({
         const bsd = acqAudit.bsd_stamp_duty || 0;
         const otherCosts = totalCost - propertyValue - absd - bsd;
         const hasMajorABSD = absd > 0;
+        const feeLabels = acqAudit as typeof acqAudit & { primary_fee_label?: string; secondary_fee_label?: string };
+        const primaryFeeLabel = typeof feeLabels.primary_fee_label === 'string' && feeLabels.primary_fee_label.trim()
+          ? feeLabels.primary_fee_label.trim()
+          : 'Base acquisition duty';
+        const secondaryFeeLabel = typeof feeLabels.secondary_fee_label === 'string' && feeLabels.secondary_fee_label.trim()
+          ? feeLabels.secondary_fee_label.trim()
+          : 'Additional buyer surcharge';
 
         return {
           capitalIn: totalCost,
           capitalOut: propertyValue,
-          primaryBarrier: hasMajorABSD ? `ABSD (${((absd / propertyValue) * 100).toFixed(0)}%)` : 'Stamp Duties',
+          primaryBarrier: hasMajorABSD ? `${secondaryFeeLabel} (${propertyValue ? ((absd / propertyValue) * 100).toFixed(0) : '0'}%)` : 'Acquisition duties',
           primaryBarrierCost: hasMajorABSD ? absd : absd + bsd,
           secondaryBarrier: hasMajorABSD
             ? bsd > 0
-              ? 'BSD + Transfer Taxes'
+              ? primaryFeeLabel
               : hasUSWorldwideTax
                 ? 'US Worldwide Tax Drag'
                 : undefined
@@ -401,6 +413,12 @@ export default function DecisionMemoLinearReport({
           viaNegativa={isViaNegativa ? viaNegativaContext : undefined}
         />
       </ReportSection>
+
+      {hasZeroTrustMoveIntake && (
+        <ReportSection mode={mode} motionEnabled={motionEnabled}>
+          <ZeroTrustMoveIntakeSection data={zeroTrustMoveIntake} />
+        </ReportSection>
+      )}
 
       {liquidityTrapProps && (
         <ReportSection mode={mode} reveal={{ direction: 'left' }} motionEnabled={motionEnabled}>

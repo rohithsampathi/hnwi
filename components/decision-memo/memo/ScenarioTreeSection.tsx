@@ -345,20 +345,20 @@ function buildDm64BranchListScenarioTreeData(
     rationale: [
       readString(raw.verdict),
       rawAnalysis?.match(/\*\*Verdict Rationale:\*\*\s*([^\n]+)/i)?.[1]?.trim(),
-      'The preferred path is the route that preserves Dubai as the operating base while requiring Singapore to clear authority, custody, tax, and family-role gates before the penthouse purchase hardens.',
+      'The preferred path is the route that preserves the family operating base while requiring the destination asset, bank rail, tax posture, authority, and family-role gates to clear before the purchase hardens.',
     ].filter(Boolean) as string[],
     decision_gates: gateConditions.map((gate, index) => ({
       gate_number: index + 1,
       day: gateDays[index] || decisionWindowDays,
       check: gate.condition,
       if_pass: index === gateConditions.length - 1 ? 'Release the modified route for execution.' : 'Advance to the next release gate.',
-      if_fail: 'Hold the penthouse move and remediate before capital is committed.',
+      if_fail: 'Hold the property move and remediate before capital is committed.',
     })),
     expiry: {
       days: decisionWindowDays,
       reassess_triggers: collectStrings(raw.reassess_triggers, raw.abort_triggers, [
         'Bank/custody acceptance changes',
-        'Singapore property or ABSD treatment changes',
+        'Destination property or acquisition-duty treatment changes',
         'Family authority or signer availability changes',
       ]),
     },

@@ -421,12 +421,12 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
             <div className="flex items-center gap-2 mb-6 sm:mb-8">
               <div className="w-2 h-2 rounded-full bg-primary/40" />
               <span className="text-xs uppercase tracking-[0.25em] text-muted-foreground/60 font-medium">
-                Singapore Property Gate
+                Destination Property Gate
               </span>
             </div>
 
             <p className="text-sm text-muted-foreground/70 leading-loose sm:leading-relaxed mb-8">
-              {compactAssetGateSummary.destinationLabel} property exposure is not being treated as a tax-loophole search. The pressure test is whether ABSD cost, title route, banking rail, authority, and succession proof clear before the penthouse purchase is released.
+              {compactAssetGateSummary.destinationLabel} property exposure is not being treated as a tax-loophole search. The pressure test is whether acquisition-duty cost, title route, banking rail, authority, and succession proof clear before the property purchase is released.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">

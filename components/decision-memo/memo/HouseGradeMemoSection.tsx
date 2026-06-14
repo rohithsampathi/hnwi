@@ -23,6 +23,7 @@ import { CrisisResilienceSection, normalizeCrisisData } from './CrisisResilience
 import ScenarioTreeSection from './ScenarioTreeSection';
 import HeirManagementSection from './HeirManagementSection';
 import ReferencesSection from './ReferencesSection';
+import { ZeroTrustMoveIntakeSection } from './ZeroTrustMoveIntakeSection';
 import { memoNumberClass } from '@/lib/decision-memo/memo-design-tokens';
 
 interface HouseGradeMemoSectionProps {
@@ -1923,6 +1924,13 @@ export default function HouseGradeMemoSection({
   const unknowns = memo.what_this_memo_does_not_yet_know || {};
   const disclosure = memo.next_disclosure_needed_for_deeper_precision || {};
   const evidence = memo.evidence_status || fallbackEvidenceStatus(preview, routeEvidenceBasisNote);
+  const zeroTrustMoveIntake = preview.zero_trust_move_intake;
+  const hasZeroTrustMoveIntake = Boolean(
+    zeroTrustMoveIntake &&
+      typeof zeroTrustMoveIntake === 'object' &&
+      !Array.isArray(zeroTrustMoveIntake) &&
+      Object.keys(zeroTrustMoveIntake).length > 0,
+  );
 
   const scenarioTree = preview.scenario_tree_data || {};
   const crisis = preview.crisis_data || {};
@@ -2487,6 +2495,12 @@ export default function HouseGradeMemoSection({
             ) : null}
           </div>
         ) : null}
+      </section>
+      ) : null}
+
+      {showHero && hasZeroTrustMoveIntake ? (
+      <section>
+        <ZeroTrustMoveIntakeSection data={zeroTrustMoveIntake as Record<string, unknown>} />
       </section>
       ) : null}
 

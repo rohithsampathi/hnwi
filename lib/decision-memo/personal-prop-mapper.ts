@@ -660,15 +660,21 @@ export function getComponentProps(
       const absd = acqAudit.absd_additional_stamp_duty || 0;
       const bsd = acqAudit.bsd_stamp_duty || 0;
       const otherCosts = totalCost - propertyValue - absd - bsd;
+      const primaryFeeLabel = typeof acqAudit.primary_fee_label === 'string' && acqAudit.primary_fee_label.trim()
+        ? acqAudit.primary_fee_label.trim()
+        : 'Base acquisition duty';
+      const secondaryFeeLabel = typeof acqAudit.secondary_fee_label === 'string' && acqAudit.secondary_fee_label.trim()
+        ? acqAudit.secondary_fee_label.trim()
+        : 'Additional buyer surcharge';
 
       const hasMajorABSD = absd > 0;
       const primaryBarrierLabel = hasMajorABSD
-        ? `ABSD (${((absd / propertyValue) * 100).toFixed(0)}%)`
-        : `Stamp Duties`;
+        ? `${secondaryFeeLabel} (${propertyValue ? ((absd / propertyValue) * 100).toFixed(0) : '0'}%)`
+        : `Acquisition duties`;
       const primaryBarrierCost = hasMajorABSD ? absd : (absd + bsd);
 
       const secondaryLabel = hasMajorABSD
-        ? (bsd > 0 ? `BSD + Transfer Taxes` : (computedProps.hasUSWorldwideTax ? 'US Worldwide Tax Drag' : undefined))
+        ? (bsd > 0 ? primaryFeeLabel : (computedProps.hasUSWorldwideTax ? 'US Worldwide Tax Drag' : undefined))
         : (computedProps.hasUSWorldwideTax ? 'US Worldwide Tax Drag' : undefined);
       const secondaryCost = hasMajorABSD
         ? (bsd > 0 ? bsd + Math.max(0, otherCosts) : 0)

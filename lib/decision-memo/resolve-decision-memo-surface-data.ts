@@ -132,6 +132,35 @@ function projectValueAtYear(startValue: number, finalValue: number, year: number
   return startValue + ((finalValue - startValue) * year) / 10;
 }
 
+function projectScenarioPathValue(startValue: number, finalValue: number, year: number, scenarioKey: string): number {
+  const ratePaths: Record<string, number[]> = {
+    base: [0.012, 0.021, 0.028, 0.018, 0.042, 0.031, 0.036, 0.027, 0.034, 0.031],
+    stress: [-0.045, -0.065, -0.02, 0.018, 0.031, 0.014, 0.034, 0.025, 0.03, 0.026],
+    opportunity: [0.025, 0.041, 0.063, 0.047, 0.072, 0.058, 0.066, 0.052, 0.061, 0.055],
+  };
+  const rates = ratePaths[scenarioKey] ?? ratePaths.base;
+  const raw = [startValue];
+  let value = startValue;
+  rates.forEach((rate) => {
+    value *= 1 + rate;
+    raw.push(value);
+  });
+
+  const rawDelta = raw[10] - startValue;
+  const targetDelta = finalValue - startValue;
+  if (Math.abs(rawDelta) > 1 && rawDelta * targetDelta >= 0) {
+    return startValue + ((raw[year] - startValue) * targetDelta) / rawDelta;
+  }
+
+  const fallbackShape: Record<string, number[]> = {
+    base: [0, -0.006, -0.003, 0.004, 0.001, 0.011, 0.008, 0.015, 0.012, 0.017, 0],
+    stress: [0, -0.035, -0.082, -0.076, -0.052, -0.04, -0.025, -0.018, -0.012, -0.006, 0],
+    opportunity: [0, 0.006, 0.014, 0.03, 0.036, 0.052, 0.062, 0.078, 0.087, 0.096, 0],
+  };
+  const shape = fallbackShape[scenarioKey] ?? fallbackShape.base;
+  return projectValueAtYear(startValue, finalValue, year) + startValue * shape[year];
+}
+
 function normalizeCompactWealthProjection(projection?: RecordLike | null): RecordLike | null {
   if (!hasKeys(projection)) {
     return projection ?? null;
@@ -251,6 +280,47 @@ function normalizeCompactWealthProjection(projection?: RecordLike | null): Recor
       const netValueCreation = finalValue - capitalDeployed;
       const percentageGain = startingValue > 0 ? (totalValueCreation / startingValue) * 100 : 0;
       const trueRoiPct = capitalDeployed > 0 ? (netValueCreation / capitalDeployed) * 100 : percentageGain;
+      const compactYearByYear = Array.isArray(compact.year_by_year) ? compact.year_by_year : [];
+      const yearByYear = compactYearByYear.length > 0
+        ? compactYearByYear
+            .map((point: RecordLike) => {
+              const year = numberOrNull(point.year);
+              if (year === null || year < 0 || year > 10) return null;
+              const propertyValue =
+                numberOrNull(point.property_value) ??
+                numberOrNull(point.asset_value) ??
+                numberOrNull(point.total_value) ??
+                numberOrNull(point.net_worth) ??
+                projectScenarioPathValue(startingValue, finalValue, year, key);
+              const totalValue =
+                numberOrNull(point.total_value) ??
+                numberOrNull(point.net_worth) ??
+                propertyValue;
+              return {
+                year,
+                property_value: propertyValue,
+                liquid_assets: numberOrNull(point.liquid_assets) ?? 0,
+                income: numberOrNull(point.income) ?? numberOrNull(point.rental_income) ?? 0,
+                tax_saved: numberOrNull(point.tax_saved) ?? 0,
+                net_worth: numberOrNull(point.net_worth) ?? totalValue,
+                total_value: totalValue,
+                rental_income: numberOrNull(point.rental_income) ?? numberOrNull(point.income) ?? 0,
+              };
+            })
+            .filter(Boolean)
+        : Array.from({ length: 11 }, (_, year) => {
+            const value = projectScenarioPathValue(startingValue, finalValue, year, key);
+            return {
+              year,
+              property_value: value,
+              liquid_assets: 0,
+              income: 0,
+              tax_saved: 0,
+              net_worth: value,
+              total_value: value,
+              rental_income: 0,
+            };
+          });
 
       return {
         name,
@@ -260,19 +330,7 @@ function normalizeCompactWealthProjection(projection?: RecordLike | null): Recor
           compact.name ? `Route condition: ${String(compact.name)}` : null,
           compact.verdict ? `Release read: ${String(compact.verdict)}` : null,
         ].filter(Boolean),
-        year_by_year: [0, 1, 5, 10].map((year) => {
-          const value = projectValueAtYear(startingValue, finalValue, year);
-          return {
-            year,
-            property_value: value,
-            liquid_assets: 0,
-            income: 0,
-            tax_saved: 0,
-            net_worth: value,
-            total_value: value,
-            rental_income: 0,
-          };
-        }),
+        year_by_year: yearByYear,
         ten_year_outcome: {
           property_appreciation: totalValueCreation,
           investment_growth: 0,

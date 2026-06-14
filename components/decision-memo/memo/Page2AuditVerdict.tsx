@@ -335,6 +335,7 @@ export function Page2AuditVerdict({
       'PROCEED': { verdict: 'APPROVED', color: 'emerald' },
       'PROCEED_NOW': { verdict: 'APPROVED', color: 'emerald' },
       'PROCEED_MODIFIED': { verdict: 'CONDITIONAL', color: 'amber' },
+      'HOLD': { verdict: 'HOLD', color: 'amber' },
       'DO_NOT_PROCEED': { verdict: 'REVIEW REQUIRED', color: 'red' }
     };
 

@@ -163,6 +163,12 @@ function VerdictBadge({ verdict, compact = false }: { verdict: string; compact?:
       icon: <AlertTriangle className="w-3 h-3" />,
       label: 'MODIFIED'
     },
+    'HOLD': {
+      border: 'border-amber-500/20',
+      text: 'text-amber-500/80',
+      icon: <AlertTriangle className="w-3 h-3" />,
+      label: 'HOLD'
+    },
     'PROCEED_DIVERSIFICATION_ONLY': {
       border: 'border-gold/20',
       text: 'text-gold/80',

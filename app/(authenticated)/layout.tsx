@@ -63,8 +63,9 @@ async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}
 export default function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const isPublicPath = isPublicRoute(pathname || '')
   // CRITICAL: Start with null to match SSR, check localStorage in useEffect
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(() => isPublicPath ? true : null)
   const [user, setUser] = useState<any>(null)
   const refreshUnavailableRef = useRef(false)
 
@@ -253,6 +254,14 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   }, [])
 
   useEffect(() => {
+    if (!isPublicPath) return
+
+    setUser(getCurrentUser())
+    setIsAuthenticated(true)
+    setMounted(true)
+  }, [isPublicPath, pathname])
+
+  useEffect(() => {
     if (process.env.NODE_ENV !== "development") {
       return
     }
@@ -297,7 +306,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     if (isAuthenticated !== null) return // Already checked
 
     // PUBLIC ROUTES: /simulation and /decision-memo - allow access without login
-    if (isPublicRoute(pathname)) {
+    if (isPublicPath) {
       const authUser = getCurrentUser()
       setUser(authUser) // Will be null for non-authenticated users
       setIsAuthenticated(true) // Allow access regardless
@@ -323,7 +332,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     // This prevents showing stale data from a previous session.
     // isAuthenticated stays null → EliteLoadingState shows briefly while backend validates.
     setMounted(true) // Ensure SINGLE AUTH CHECK useEffect can run immediately
-  }, [pathname, isAuthenticated])
+  }, [pathname, isAuthenticated, isPublicPath])
 
   // PWA SESSION VALIDATION: Verify cookies are still valid after localStorage-based auth
   // This runs AFTER the page renders to avoid blocking, but catches stale sessions
@@ -331,7 +340,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     // Skip if not authenticated from localStorage or already validated
     if (!isAuthenticated || sessionValidated) return
     // Skip for public routes
-    if (isPublicRoute(pathname)) return
+    if (isPublicPath) return
 
     const validateSession = async () => {
       try {
@@ -400,7 +409,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     const validationDelay = isRecentLogin ? 2000 : (hasSameTabSession ? 500 : 100)
     const validationTimeout = setTimeout(validateSession, validationDelay)
     return () => clearTimeout(validationTimeout)
-  }, [applyValidatedUser, clearStaleSessionAndRedirect, isAuthenticated, pathname, resolveSessionUser, sessionValidated])
+  }, [applyValidatedUser, clearStaleSessionAndRedirect, isAuthenticated, isPublicPath, pathname, resolveSessionUser, sessionValidated])
 
   // SINGLE AUTH CHECK - Only runs if useLayoutEffect didn't find cached user
   useEffect(() => {
@@ -413,7 +422,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     const checkAuthStatus = async () => {
       try {
         // PUBLIC ROUTES: /simulation, /decision-memo, /war-room - allow access without login
-        if (isPublicRoute(pathname)) {
+        if (isPublicPath) {
           const authUser = getCurrentUser()
           setUser(authUser)
           setIsAuthenticated(true)
@@ -470,13 +479,13 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     }
 
     checkAuthStatus()
-  }, [applyValidatedUser, clearStaleSessionAndRedirect, isAuthenticated, mounted, pathname, resolveSessionUser])
+  }, [applyValidatedUser, clearStaleSessionAndRedirect, isAuthenticated, isPublicPath, mounted, pathname, resolveSessionUser])
 
   // Listen for logout events (but ignore on public routes)
   useEffect(() => {
     const handleLogout = () => {
       // Ignore logout events on public routes
-      if (isPublicRoute(pathname || '')) {
+      if (isPublicPath) {
         return
       }
 
@@ -493,7 +502,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
     window.addEventListener('auth:logout', handleLogout)
     return () => window.removeEventListener('auth:logout', handleLogout)
-  }, [pathname, redirectToPublicHome])
+  }, [isPublicPath, pathname, redirectToPublicHome])
 
   // Listen for auth updates to refresh user data
   // CRITICAL: Listen for BOTH auth:login AND auth:userUpdated
@@ -518,11 +527,11 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
 
   // Only show elite loading for initial page load, not internal navigation
-  if (isAuthenticated === null) {
+  if (isAuthenticated === null && !isPublicPath) {
     return <EliteLoadingState message="Reconnecting to secure networks" />
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isPublicPath) {
     return null // Will redirect
   }
 
