@@ -217,6 +217,26 @@ const transformOpportunityToCity = (
   // Extract citations from both analysis fields
   const devIdsFromAnalysis = extractDevIds(opp.analysis || '');
   const devIdsFromElitePulse = extractDevIds(opp.elite_pulse_analysis || '');
+  const katherineAnalysisText =
+    (opp.katherine_analysis && opp.katherine_analysis.trim()) ||
+    (opp.elite_pulse_impact?.katherine_analysis && opp.elite_pulse_impact.katherine_analysis.trim()) ||
+    (opp.elite_pulse_impact?.katherine_ai_analysis?.strategic_assessment &&
+     opp.elite_pulse_impact.katherine_ai_analysis.strategic_assessment.trim()) ||
+    '';
+  const devIdsFromSourceText = extractDevIds([
+    opp.summary,
+    opp.description,
+    opp.hbyte_summary,
+    opp.card_summary,
+    opp.short_summary,
+    opp.full_analysis,
+    opp.full_castle_brief,
+    opp.castle_brief,
+    opp.castle_brief_enriched,
+    opp.brief_source_text,
+    opp.public_mirror_excerpt,
+    katherineAnalysisText,
+  ].filter(Boolean).join('\n'));
   const structuredCitationId =
     opp.castle_brief_id ||
     opp.mongo_article_id ||
@@ -225,6 +245,7 @@ const transformOpportunityToCity = (
   const devIds = Array.from(new Set([
     ...devIdsFromAnalysis,
     ...devIdsFromElitePulse,
+    ...devIdsFromSourceText,
     ...(structuredCitationId ? [structuredCitationId] : []),
   ]));
 
@@ -317,11 +338,7 @@ const transformOpportunityToCity = (
     appreciation: opp.appreciation,
     price_history: opp.price_history,
     last_price_update: opp.last_price_update,
-    katherine_analysis: (opp.katherine_analysis && opp.katherine_analysis.trim()) ||
-      (opp.elite_pulse_impact?.katherine_analysis && opp.elite_pulse_impact.katherine_analysis.trim()) ||
-      (opp.elite_pulse_impact?.katherine_ai_analysis?.strategic_assessment &&
-       opp.elite_pulse_impact.katherine_ai_analysis.strategic_assessment.trim()) ||
-      null
+    katherine_analysis: katherineAnalysisText || null
   } as City;
 };
 
