@@ -33,6 +33,8 @@ export interface CitationSourceDevelopment {
   product?: string
   date?: string
   summary: string
+  summaryLabel?: string
+  summarySourceField?: string
   url?: string
   numerical_data?: Array<{
     number: string
@@ -126,7 +128,23 @@ function mergeFullHByteSummary(
   return `${replacement}\n\n${analysisText.slice(firstSectionMatch.index).trimStart()}`
 }
 
-export function pickCitationAnalysisText(payload: DevelopmentPayload): string {
+function citationSummaryLabel(sourceField: string): string {
+  if (sourceField === "hbyte_summary" || sourceField === "executive_summary") {
+    return "HByte"
+  }
+
+  if (sourceField === "description") {
+    return "Source Summary"
+  }
+
+  return "Full Source Brief"
+}
+
+function pickCitationAnalysis(payload: DevelopmentPayload): {
+  text: string
+  sourceField: string
+  label: string
+} {
   const fullHByteSummary = pickHByteSummary(payload)
   const descriptionText = cleanText(payload.description)
 
@@ -134,11 +152,39 @@ export function pickCitationAnalysisText(payload: DevelopmentPayload): string {
     const text = cleanText(payload[field])
     if (text) {
       const withHByteSummary = mergeFullHByteSummary(text, fullHByteSummary)
-      return mergeFullHByteSummary(withHByteSummary, descriptionText, false)
+      return {
+        text: mergeFullHByteSummary(withHByteSummary, descriptionText, false),
+        sourceField: field,
+        label: citationSummaryLabel(field),
+      }
     }
   }
 
-  return fullHByteSummary || descriptionText
+  if (fullHByteSummary) {
+    return {
+      text: fullHByteSummary,
+      sourceField: "hbyte_summary",
+      label: citationSummaryLabel("hbyte_summary"),
+    }
+  }
+
+  if (descriptionText) {
+    return {
+      text: descriptionText,
+      sourceField: "description",
+      label: citationSummaryLabel("description"),
+    }
+  }
+
+  return {
+    text: "",
+    sourceField: "",
+    label: "Source Brief",
+  }
+}
+
+export function pickCitationAnalysisText(payload: DevelopmentPayload): string {
+  return pickCitationAnalysis(payload).text
 }
 
 export function pickCitationDescription(payload: DevelopmentPayload, analysisText: string): string {
@@ -173,7 +219,8 @@ export function buildCitationSourceDevelopment(
     source
   ) as DevelopmentPayload
 
-  const summary = pickCitationAnalysisText(nestedPayload)
+  const analysis = pickCitationAnalysis(nestedPayload)
+  const summary = analysis.text
   const title = pickFirstText(nestedPayload, [
     "title",
     "brief_title",
@@ -213,13 +260,18 @@ export function buildCitationSourceDevelopment(
     product: pickFirstText(nestedPayload, ["product"]) || undefined,
     date:
       pickFirstText(nestedPayload, [
-        "date",
         "source_article_date",
+        "source_published_at",
+        "published_at",
+        "article_date",
+        "date",
         "start_date",
         "created_at",
         "generated_at",
       ]) || undefined,
     summary,
+    summaryLabel: analysis.label,
+    summarySourceField: analysis.sourceField || undefined,
     url:
       pickFirstText(nestedPayload, ["url", "source_url"]) ||
       undefined,

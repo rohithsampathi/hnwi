@@ -797,6 +797,13 @@ export function buildRouteScopedDecisionMemoSurface({
     ...asRecord(preview.scenario_tree_data),
     ...routeScenarioTree,
   };
+  preview.crisis_data =
+    asRecord(preview.crisis_data).scenarios || asRecord(preview.crisis_data).overall_resilience
+      ? preview.crisis_data
+      : asRecord(asRecord(scopedFullArtifact.preview_data).crisis_data);
+  preview.crisis_resilience_stress_test =
+    preview.crisis_resilience_stress_test ??
+    asRecord(scopedFullArtifact.preview_data).crisis_resilience_stress_test;
   preview.all_mistakes = route.evidenceGates.map((gate, index) => ({
     id: `${route.id}-gate-${index + 1}`,
     title: gate.gate,
@@ -811,8 +818,16 @@ export function buildRouteScopedDecisionMemoSurface({
   scopedBackendData.mitigationTimeline = route.metrics.mitigationTimeline;
   scopedBackendData.mitigation_timeline = route.metrics.mitigationTimeline;
   scopedBackendData.all_mistakes = preview.all_mistakes;
+  scopedBackendData.preview_data = preview;
   scopedBackendData.fullArtifact = {
     ...asRecord(scopedBackendData.fullArtifact),
+    preview_data: preview,
+    thesis: preview.thesis,
+    thesisSummary: preview.thesis_summary,
+  };
+  scopedBackendData.full_artifact = {
+    ...asRecord(scopedBackendData.full_artifact),
+    preview_data: preview,
     thesis: preview.thesis,
     thesisSummary: preview.thesis_summary,
   };
@@ -822,6 +837,7 @@ export function buildRouteScopedDecisionMemoSurface({
   scopedFullArtifact.thesis = preview.thesis;
   scopedFullArtifact.thesisSummary = preview.thesis_summary;
   scopedFullArtifact.selected_route_v2 = route;
+  scopedFullArtifact.preview_data = preview;
 
   return {
     memoData: scopedMemoData,

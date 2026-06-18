@@ -54,6 +54,9 @@ interface Opportunity {
   start_date?: string;
   end_date?: string;
   source_article_date?: string;
+  source_published_at?: string;
+  published_at?: string;
+  article_date?: string;
   activity_at?: string;
   last_activity_at?: string;
   updated_at?: string;
@@ -324,6 +327,15 @@ const transformOpportunityToCity = (
     industry: opp.industry,
     product: opp.product,
     start_date: opp.start_date,
+    source_article_date: opp.source_article_date,
+    source_published_at: opp.source_published_at,
+    published_at: opp.published_at,
+    article_date: opp.article_date,
+    activity_at: opp.activity_at,
+    last_activity_at: opp.last_activity_at,
+    updated_at: opp.updated_at,
+    created_at: opp.created_at,
+    generated_at: opp.generated_at,
     projection_status: opp.projection_status,
     is_stale_projection: opp.is_stale_projection || opp.map_visibility === 'stale_historical',
     map_visibility: opp.map_visibility,

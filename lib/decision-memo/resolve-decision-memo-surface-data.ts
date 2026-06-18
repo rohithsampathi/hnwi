@@ -582,21 +582,32 @@ function mergePreviewData(basePreviewData: RecordLike, backendData: RecordLike, 
   const previewData = { ...basePreviewData };
   const memoData = backendData.memo_data ?? {};
   const artifact = fullArtifact ?? {};
+  const memoPreview = memoData.preview_data ?? {};
+  const artifactPreview = artifact.preview_data ?? {};
+  const backendPreview = backendData.preview_data ?? {};
 
   previewData.transparency_regime_impact ??=
+    memoPreview.transparency_regime_impact ??
+    artifactPreview.transparency_regime_impact ??
     memoData.transparency_regime_impact ??
     artifact.transparency_regime_impact ??
     backendData.transparency_regime_impact;
   previewData.transparency_data ??=
+    memoPreview.transparency_data ??
+    artifactPreview.transparency_data ??
     memoData.transparency_data ??
     artifact.transparency_data ??
     backendData.transparency_data;
 
   previewData.crisis_resilience_stress_test ??=
+    memoPreview.crisis_resilience_stress_test ??
+    artifactPreview.crisis_resilience_stress_test ??
     memoData.crisis_resilience_stress_test ??
     artifact.crisis_resilience_stress_test ??
     backendData.crisis_resilience_stress_test;
   previewData.crisis_data ??=
+    memoPreview.crisis_data ??
+    artifactPreview.crisis_data ??
     memoData.crisis_data ??
     artifact.crisis_data ??
     backendData.crisis_data;
@@ -636,10 +647,14 @@ function mergePreviewData(basePreviewData: RecordLike, backendData: RecordLike, 
 
   if (!hasKeys(previewData.heir_management_data)) {
     previewData.heir_management_data =
+      memoPreview.heir_management_data ??
+      artifactPreview.heir_management_data ??
       memoData.heir_management_data ??
       artifact.heir_management_data ??
       backendData.heir_management_data;
     previewData.heir_management_analysis =
+      memoPreview.heir_management_analysis ??
+      artifactPreview.heir_management_analysis ??
       memoData.heir_management_analysis ??
       artifact.heir_management_analysis ??
       backendData.heir_management_analysis;
@@ -647,10 +662,14 @@ function mergePreviewData(basePreviewData: RecordLike, backendData: RecordLike, 
 
   if (!hasKeys(previewData.wealth_projection_data)) {
     previewData.wealth_projection_data =
+      memoPreview.wealth_projection_data ??
+      artifactPreview.wealth_projection_data ??
       memoData.wealth_projection_data ??
       artifact.wealth_projection_data ??
       backendData.wealth_projection_data;
     previewData.wealth_projection_analysis =
+      memoPreview.wealth_projection_analysis ??
+      artifactPreview.wealth_projection_analysis ??
       memoData.wealth_projection_analysis ??
       artifact.wealth_projection_analysis ??
       backendData.wealth_projection_analysis;
@@ -658,10 +677,14 @@ function mergePreviewData(basePreviewData: RecordLike, backendData: RecordLike, 
 
   if (!hasKeys(previewData.scenario_tree_data)) {
     previewData.scenario_tree_data =
+      memoPreview.scenario_tree_data ??
+      artifactPreview.scenario_tree_data ??
       memoData.scenario_tree_data ??
       artifact.scenario_tree_data ??
       backendData.scenario_tree_data;
     previewData.scenario_tree_analysis =
+      memoPreview.scenario_tree_analysis ??
+      artifactPreview.scenario_tree_analysis ??
       memoData.scenario_tree_analysis ??
       artifact.scenario_tree_analysis ??
       backendData.scenario_tree_analysis;
@@ -669,9 +692,12 @@ function mergePreviewData(basePreviewData: RecordLike, backendData: RecordLike, 
 
   if (!hasKeys(previewData.destination_drivers) || !Array.isArray(previewData.destination_drivers?.visa_programs)) {
     previewData.destination_drivers =
+      memoPreview.destination_drivers ??
+      artifactPreview.destination_drivers ??
       memoData.destination_drivers ??
       artifact.destination_drivers ??
-      backendData.destination_drivers;
+      backendData.destination_drivers ??
+      backendPreview.destination_drivers;
   }
 
   return previewData;

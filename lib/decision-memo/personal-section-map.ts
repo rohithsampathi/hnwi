@@ -138,7 +138,7 @@ export const SECTIONS: SectionDefinition[] = [
     title: 'Live Market And Crisis Read',
     category: 'peer-intelligence',
     component: HouseGradeMemoSection,
-    componentProps: { chapterId: 'live-market-crisis', embedDetailedSchedules: false },
+    componentProps: { chapterId: 'live-market-crisis', embedDetailedSchedules: true },
     shouldRender: (data) => !!data.preview_data.house_grade_memo,
     estimatedReadTime: 6,
     aidaNext: ['house-continuity-office-carry'],

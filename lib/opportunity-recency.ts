@@ -4,6 +4,13 @@ const RECENT_OPPORTUNITY_WINDOW_DAYS = 30
 const RECENT_OPPORTUNITY_WINDOW_MS = RECENT_OPPORTUNITY_WINDOW_DAYS * 24 * 60 * 60 * 1000
 
 type RecentOpportunityCandidate = {
+  // Map blink authority must come from the source article, not from the
+  // command-centre row lifecycle or backend generation timestamp.
+  source_article_date?: string
+  source_published_at?: string
+  article_date?: string
+  date?: string
+  published_at?: string
   is_new?: boolean
   isNew?: boolean
   start_date?: string
@@ -11,16 +18,14 @@ type RecentOpportunityCandidate = {
   createdAt?: string | Date
   dateAdded?: string
   added_at?: string
-  published_at?: string
 }
 
 function getMostRelevantTimestamp(candidate: RecentOpportunityCandidate): number | null {
   const values = [
-    candidate.start_date,
-    candidate.created_at,
-    candidate.createdAt instanceof Date ? candidate.createdAt.toISOString() : candidate.createdAt,
-    candidate.dateAdded,
-    candidate.added_at,
+    candidate.source_article_date,
+    candidate.source_published_at,
+    candidate.article_date,
+    candidate.date,
     candidate.published_at,
   ]
 
@@ -40,10 +45,6 @@ export function isRecentlyAddedOpportunity(
   candidate: RecentOpportunityCandidate,
   now: number = Date.now()
 ): boolean {
-  if (candidate.is_new === true || candidate.isNew === true) {
-    return true
-  }
-
   const timestamp = getMostRelevantTimestamp(candidate)
   if (timestamp === null || timestamp > now) {
     return false
