@@ -16,7 +16,10 @@ export interface CitationMapEntry {
 }
 export type CitationMap = Record<string, CitationMapEntry>
 
-const CITATION_LABEL = '(?:Dev\\s*ID|DEVID|Article\\s*ID)'
+export const CITATION_LABEL_PATTERN =
+  'Dev\\s*ID|DEVID|Article\\s*ID|Source\\s*ID|Evidence\\s*ID|Route\\s*Witness|Witness\\s*ID|Pattern\\s*ID'
+const CITATION_LABEL = `(?:${CITATION_LABEL_PATTERN})`
+export const CITATION_REFERENCE_PATTERN = `\\[${CITATION_LABEL}\\s*[:\\-–—]\\s*[^\\]\\r\\n]+\\]`
 const BRACKETED_CITATION_PATTERN = `\\[${CITATION_LABEL}\\s*[:\\-–—]\\s*([^\\]\\r\\n]+)\\]`
 
 // Match bracketed reference forms like [Dev ID: 164], [DEVID - abc], [Article ID: xyz]

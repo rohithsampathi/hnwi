@@ -18,6 +18,14 @@ export interface SharedDevelopment extends HNWIWorldDevelopment {
   score?: number
 }
 
+const SHARED_DEVELOPMENT_ID_ALIASES: Record<string, string> = {
+  "delhi-trophy-homes-usd-131m-sale-print": "dev_8b294c5f2d7d3e99f85600f8",
+}
+
+export function resolveSharedDevelopmentId(developmentId: string): string {
+  return SHARED_DEVELOPMENT_ID_ALIASES[developmentId] || developmentId
+}
+
 export async function getRequestBaseUrl(): Promise<string> {
   const headerStore = await headers()
   const host = headerStore.get("x-forwarded-host") || headerStore.get("host")
@@ -33,8 +41,9 @@ export async function getRequestBaseUrl(): Promise<string> {
 export async function getSharedDevelopment(developmentId: string): Promise<SharedDevelopment | null> {
   try {
     const apiBaseUrl = await getRequestBaseUrl()
+    const resolvedDevelopmentId = resolveSharedDevelopmentId(developmentId)
 
-    const response = await fetch(`${apiBaseUrl}/api/developments/public/${encodeURIComponent(developmentId)}`, {
+    const response = await fetch(`${apiBaseUrl}/api/developments/public/${encodeURIComponent(resolvedDevelopmentId)}`, {
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
@@ -62,15 +71,17 @@ export async function getSharedDevelopment(developmentId: string): Promise<Share
             ? normalized.dev_id
             : typeof normalized.source_development_id === "string"
               ? normalized.source_development_id
-              : developmentId
+              : resolvedDevelopmentId
 
     if (!id || typeof normalized.title !== "string" || !normalized.title) {
       return null
     }
 
+    const outwardId = developmentId === resolvedDevelopmentId ? id : developmentId
+
     return {
-      _id: id,
-      id,
+      _id: outwardId,
+      id: outwardId,
       title: typeof normalized.title === "string" ? normalized.title : "",
       description: typeof normalized.description === "string" ? normalized.description : "",
       summary:
