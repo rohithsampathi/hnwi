@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Check, ExternalLink, FileText, Share2 } from "lucide-react"
+import { Check, ExternalLink, FileText, Share2, X } from "lucide-react"
 
 import { CitationDevelopmentCard } from "@/components/ask-rohith/citation-development-card"
 import { CitationText } from "@/components/elite/citation-text"
@@ -77,6 +77,8 @@ interface SharedCitationRailProps {
   selectedSource: CitationSourceDevelopment | null | undefined
   loadingCitationId: string | null
   onCitationSelect: (citationId: string) => void
+  onClose: () => void
+  mode?: "desktop" | "mobile"
 }
 
 function SharedCitationRail({
@@ -86,12 +88,21 @@ function SharedCitationRail({
   selectedSource,
   loadingCitationId,
   onCitationSelect,
+  onClose,
+  mode = "desktop",
 }: SharedCitationRailProps) {
   const activeCitationNumber = selectedCitationId ? citationMap.get(selectedCitationId) : undefined
+  const isMobile = mode === "mobile"
 
   return (
-    <aside className="w-full lg:w-[32%]">
-      <div className="sticky top-24 rounded-2xl border border-border bg-background p-4 shadow-sm">
+    <aside className={isMobile ? "h-full w-full" : "hidden w-full lg:block lg:w-[32%]"}>
+      <div
+        className={
+          isMobile
+            ? "flex h-full flex-col bg-background p-4"
+            : "sticky top-24 rounded-2xl border border-border bg-background p-4 shadow-sm"
+        }
+      >
         <div className="mb-4 flex items-center justify-between gap-3 border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" />
@@ -99,9 +110,21 @@ function SharedCitationRail({
               Source Evidence
             </h2>
           </div>
-          <span className="rounded-full border border-border px-2 py-1 text-xs font-semibold text-muted-foreground">
-            {citations.length} cited
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-border px-2 py-1 text-xs font-semibold text-muted-foreground">
+              {citations.length} cited
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8"
+              aria-label="Close source evidence"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="mb-4 flex max-h-28 flex-wrap gap-2 overflow-y-auto">
@@ -120,7 +143,7 @@ function SharedCitationRail({
           ))}
         </div>
 
-        <div className="max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
+        <div className={isMobile ? "min-h-0 flex-1 overflow-y-auto pr-1" : "max-h-[calc(100vh-14rem)] overflow-y-auto pr-1"}>
           {loadingCitationId && loadingCitationId === selectedCitationId ? (
             <div className="flex items-center justify-center py-8">
               <CrownLoader size="sm" text="Loading source..." />
@@ -154,6 +177,8 @@ export default function SharedDevelopmentClient({
   const initialCitations = useMemo(() => parseDevCitations(normalizeBriefBody(fullBrief)).citations, [fullBrief])
   const [sourceDevelopments, setSourceDevelopments] = useState<Map<string, CitationSourceDevelopment | null>>(new Map())
   const [loadingCitationId, setLoadingCitationId] = useState<string | null>(null)
+  const [isCitationRailOpen, setIsCitationRailOpen] = useState(true)
+  const [isMobileCitationPanelOpen, setIsMobileCitationPanelOpen] = useState(false)
 
   const {
     citations,
@@ -187,23 +212,48 @@ export default function SharedDevelopmentClient({
     }
   }, [sourceDevelopments])
 
-  const handleCitationClick = useCallback((citationId: string) => {
+  const selectCitation = useCallback((
+    citationId: string,
+    options: { openDesktopRail?: boolean; openMobilePanel?: boolean } = {}
+  ) => {
     const normalizedCitationId = citationId.trim()
     setSelectedCitationId(normalizedCitationId)
     openCitation(normalizedCitationId)
+    if (options.openDesktopRail) {
+      setIsCitationRailOpen(true)
+    }
+    if (options.openMobilePanel) {
+      setIsMobileCitationPanelOpen(true)
+    }
     void loadCitationSource(normalizedCitationId)
   }, [loadCitationSource, openCitation, setSelectedCitationId])
 
+  const handleInlineCitationClick = useCallback((citationId: string) => {
+    const shouldOpenMobilePanel =
+      typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches
+
+    selectCitation(citationId, {
+      openDesktopRail: true,
+      openMobilePanel: shouldOpenMobilePanel,
+    })
+  }, [selectCitation])
+
+  const handlePanelCitationSelect = useCallback((citationId: string) => {
+    selectCitation(citationId, {
+      openDesktopRail: true,
+    })
+  }, [selectCitation])
+
   useEffect(() => {
     if (!selectedCitationId && citations[0]?.id) {
-      handleCitationClick(citations[0].id)
+      selectCitation(citations[0].id)
       return
     }
 
     if (selectedCitationId) {
       void loadCitationSource(selectedCitationId)
     }
-  }, [citations, handleCitationClick, loadCitationSource, selectedCitationId])
+  }, [citations, loadCitationSource, selectCitation, selectedCitationId])
 
   const handleShare = async () => {
     const url = window.location.href
@@ -270,7 +320,7 @@ export default function SharedDevelopmentClient({
 
       <main className="flex-1 w-full px-4 py-5 md:py-8">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 lg:flex-row">
-          <article className={`w-full ${citations.length > 0 ? "lg:w-[68%]" : "lg:w-full"} transition-all duration-300`}>
+          <article className={`w-full ${citations.length > 0 && isCitationRailOpen ? "lg:w-[68%]" : "lg:w-full"} transition-all duration-300`}>
             <div className="rounded-2xl border border-border bg-background px-4 py-5 shadow-sm md:px-8 md:py-8">
               <div className="mb-6 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 <span>HNWI World</span>
@@ -342,7 +392,7 @@ export default function SharedDevelopmentClient({
                         {subheadingMatch[2] && (
                           <CitationText
                             text={subheadingMatch[2]}
-                            onCitationClick={handleCitationClick}
+                            onCitationClick={handleInlineCitationClick}
                             citationMap={citationMap}
                             className="text-base font-medium leading-8 text-foreground/90"
                             options={{ convertMarkdownBold: true, preserveLineBreaks: true }}
@@ -356,7 +406,7 @@ export default function SharedDevelopmentClient({
                     <div key={`brief-block-${index}`} className="text-base font-medium leading-8 text-foreground/90">
                       <CitationText
                         text={block}
-                        onCitationClick={handleCitationClick}
+                        onCitationClick={handleInlineCitationClick}
                         citationMap={citationMap}
                         options={{ convertMarkdownBold: true, preserveLineBreaks: true }}
                       />
@@ -371,18 +421,39 @@ export default function SharedDevelopmentClient({
             </div>
           </article>
 
-          {citations.length > 0 && (
+          {citations.length > 0 && isCitationRailOpen && (
             <SharedCitationRail
               citations={citations}
               citationMap={citationMap}
               selectedCitationId={selectedCitationId}
               selectedSource={selectedSource}
               loadingCitationId={loadingCitationId}
-              onCitationSelect={handleCitationClick}
+              onCitationSelect={handlePanelCitationSelect}
+              onClose={() => setIsCitationRailOpen(false)}
             />
           )}
         </div>
       </main>
+
+      {citations.length > 0 && isMobileCitationPanelOpen && (
+        <div
+          className="fixed inset-0 z-[80] bg-background lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Source evidence"
+        >
+          <SharedCitationRail
+            citations={citations}
+            citationMap={citationMap}
+            selectedCitationId={selectedCitationId}
+            selectedSource={selectedSource}
+            loadingCitationId={loadingCitationId}
+            onCitationSelect={handlePanelCitationSelect}
+            onClose={() => setIsMobileCitationPanelOpen(false)}
+            mode="mobile"
+          />
+        </div>
+      )}
 
       <footer className="border-t border-border/30 px-4 py-4 md:py-5 flex-shrink-0 bg-background">
         <div className="mx-auto max-w-7xl text-center space-y-1">
