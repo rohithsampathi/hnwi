@@ -24,6 +24,7 @@ const INTERNAL_OBJECT_KEYS = new Set([
   'dm64_manual_repair',
   'native_contradiction_register',
   'native_moat_packet',
+  'pattern_learning_overlay',
   'runtime_packet',
   'writeback_packet',
 ]);
@@ -53,6 +54,7 @@ function sanitizePrincipalSurfaceText(value: string): string {
     .replace(/\bNative Route Drivers\b/g, 'Route Drivers From Source Review')
     .replace(/\bHNWI Chronicles pattern-library ledger\b/gi, 'HNWI Chronicles source-review register')
     .replace(/\bpattern-library\b/gi, 'source-review')
+    .replace(/\bpattern library\b/gi, 'source-review register')
     .replace(/\bsource rows\b/gi, 'source records')
     .replace(/\broute-pattern rows\b/gi, 'route-pattern source records')
     .replace(/\bcastle briefs?\b/gi, 'source briefs')
@@ -84,6 +86,23 @@ function shouldDropPrincipalSurfaceField(key: string, value: unknown): boolean {
   return false;
 }
 
+function publicPrincipalSurfaceKey(key: string): string {
+  const normalizedKey = key.trim().toLowerCase();
+  if (normalizedKey === 'dm64_release_rule') {
+    return 'release_rule';
+  }
+
+  if (normalizedKey.startsWith('dm64_')) {
+    return key.replace(/^dm64_/i, 'release_readiness_');
+  }
+
+  if (normalizedKey.startsWith('dm64')) {
+    return key.replace(/^dm64/i, 'releaseReadiness');
+  }
+
+  return key;
+}
+
 function sanitizePrincipalSurfacePayload<T>(value: T, key = ''): T {
   if (typeof value === 'string') {
     return sanitizePrincipalSurfaceText(value) as T;
@@ -107,7 +126,7 @@ function sanitizePrincipalSurfacePayload<T>(value: T, key = ''): T {
 
     const sanitized = sanitizePrincipalSurfacePayload(entryValue, entryKey);
     if (sanitized !== undefined) {
-      output[entryKey] = sanitized;
+      output[publicPrincipalSurfaceKey(entryKey)] = sanitized;
     }
   });
 
