@@ -1,7 +1,8 @@
 const FULL_ANALYSIS_FIELDS = [
+  "full_castle_brief",
+  "full_text",
   "castle_brief_enriched",
   "castle_brief",
-  "full_castle_brief",
   "full_analysis",
   "analysis",
   "content",

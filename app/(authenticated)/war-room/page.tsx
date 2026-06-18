@@ -339,6 +339,144 @@ function normalizeMemoId(value: unknown): string {
   return String(value || '').trim().toUpperCase();
 }
 
+function normalizedRouteText(value: unknown): string {
+  return String(value || '').trim().replace(/\s+/g, ' ');
+}
+
+function isInternalRouteResidue(value: string): boolean {
+  if (!value) return true;
+
+  const lower = value.toLowerCase();
+  return [
+    'dm64_principal_surface_publisher',
+    'principal_surface_publisher',
+    'worldclass_repaired_artifact_backfill',
+    'repaired_artifact',
+    'artifact_backfill',
+    'surface_publisher',
+    'native_builder',
+    'runtime',
+  ].some(token => lower.includes(token));
+}
+
+function cleanRouteNode(value: unknown): string {
+  const text = normalizedRouteText(value);
+  if (!text || isInternalRouteResidue(text)) return '';
+
+  return text
+    .replace(/\bUAE\b/g, 'United Arab Emirates')
+    .replace(/\bUK\b/g, 'United Kingdom')
+    .replace(/\bUSA\b/g, 'United States')
+    .replace(/\bUS\b/g, 'United States')
+    .replace(/\s*\/\s*/g, ' / ')
+    .trim();
+}
+
+function inferRouteFromAudit(audit: Audit): {
+  source?: string;
+  sourceCountry?: string;
+  destination?: string;
+  destinationCountry?: string;
+} {
+  const text = [
+    audit.intake_id,
+    audit.summary,
+    audit.type,
+    audit.source_jurisdiction,
+    audit.destination_jurisdiction,
+  ].map(value => String(value || '').toLowerCase()).join(' ');
+
+  const has = (pattern: RegExp) => pattern.test(text);
+
+  if (has(/\b(dxb|dubai|gcc|uae|united arab emirates)\b/) && has(/\b(sg|singapore)\b/)) {
+    return {
+      source: 'Dubai',
+      sourceCountry: 'United Arab Emirates',
+      destination: 'Singapore',
+      destinationCountry: 'Singapore',
+    };
+  }
+
+  if (has(/\b(dxb|dubai|gcc|uae|united arab emirates)\b/) && has(/\b(london|mayfair|uk|united kingdom)\b/)) {
+    return {
+      source: 'Dubai',
+      sourceCountry: 'United Arab Emirates',
+      destination: 'London',
+      destinationCountry: 'United Kingdom',
+    };
+  }
+
+  if (has(/\b(uk|united kingdom|london)\b/) && has(/\b(dxb|dubai|uae|united arab emirates)\b/)) {
+    return {
+      source: 'United Kingdom',
+      sourceCountry: 'United Kingdom',
+      destination: 'Dubai',
+      destinationCountry: 'United Arab Emirates',
+    };
+  }
+
+  if (has(/\b(nyc|new york|united states|usa|us)\b/) && has(/\b(sg|singapore)\b/)) {
+    return {
+      source: 'New York',
+      sourceCountry: 'United States',
+      destination: 'Singapore',
+      destinationCountry: 'Singapore',
+    };
+  }
+
+  if (has(/\b(india|mumbai|delhi|hyderabad|juhu|worli|sunder nagar)\b/) && has(/\b(dxb|dubai|uae|united arab emirates)\b/)) {
+    return {
+      source: 'India',
+      sourceCountry: 'India',
+      destination: 'Dubai',
+      destinationCountry: 'United Arab Emirates',
+    };
+  }
+
+  return {};
+}
+
+function cleanMemoType(value: unknown): string {
+  const text = normalizedRouteText(value);
+  if (!text || isInternalRouteResidue(text)) return 'Decision Memo';
+
+  return text
+    .replace(/_/g, ' ')
+    .replace(/\bpressure test\b/gi, 'release-readiness review')
+    .replace(/\bfamily office command node\b/gi, 'Family Office Command Node')
+    .replace(/\breal estate\b/gi, 'Real Estate')
+    .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function sanitizeWarRoomAudit(audit: Audit): Audit {
+  const inferred = inferRouteFromAudit(audit);
+  const sourceJurisdiction =
+    cleanRouteNode(audit.source_jurisdiction) ||
+    inferred.source ||
+    cleanRouteNode(audit.source_country);
+  const destinationJurisdiction =
+    cleanRouteNode(audit.destination_jurisdiction) ||
+    inferred.destination ||
+    cleanRouteNode(audit.destination_country);
+  const sourceCountry =
+    cleanRouteNode(audit.source_country) ||
+    inferred.sourceCountry ||
+    sourceJurisdiction;
+  const destinationCountry =
+    cleanRouteNode(audit.destination_country) ||
+    inferred.destinationCountry ||
+    destinationJurisdiction;
+
+  return {
+    ...audit,
+    source_jurisdiction: sourceJurisdiction,
+    destination_jurisdiction: destinationJurisdiction,
+    source_country: sourceCountry,
+    destination_country: destinationCountry,
+    type: cleanMemoType(audit.type),
+  };
+}
+
 function getPreferredCorridorIndex(corridorAudits: Audit[], focusedMemoId?: string): number {
   const normalizedFocus = normalizeMemoId(focusedMemoId);
   if (normalizedFocus) {
@@ -541,21 +679,24 @@ export default function WarRoomPage() {
     checkAssessment();
   }, [userId]);
 
-  // Fetch audits from existing endpoint
+  // Fetch memo corridors from the backend/Granthika surface. Public focused
+  // memo pages still need the surrounding corridor context, even when there is
+  // no logged-in user.
   useEffect(() => {
-    if (!userId) return;
+    if (!userId && !focusedMemoId) return;
 
     const fetchAudits = async () => {
       try {
-        const nextAudits = await fetchUserAuditsCached(userId);
-        setAudits(nextAudits);
+        const cacheKey = userId || `public-focus:${normalizeMemoId(focusedMemoId)}`;
+        const nextAudits = await fetchUserAuditsCached(cacheKey);
+        setAudits(nextAudits.map(sanitizeWarRoomAudit));
       } catch {
         // Silent fail
       }
     };
 
     fetchAudits();
-  }, [userId]);
+  }, [userId, focusedMemoId]);
 
   useEffect(() => {
     if (!focusedMemoId) {
@@ -598,7 +739,7 @@ export default function WarRoomPage() {
       focusedMemoAudit &&
       !merged.some(audit => normalizeMemoId(audit.intake_id) === normalizeMemoId(focusedMemoAudit.intake_id))
     ) {
-      return [focusedMemoAudit, ...merged];
+      return [sanitizeWarRoomAudit(focusedMemoAudit), ...merged];
     }
 
     return merged;

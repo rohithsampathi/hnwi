@@ -35,6 +35,12 @@ interface MapPopupSingleProps {
   onScrollPositionChange?: (clusterId: string, position: number) => void // Optional
 }
 
+function getFirstParagraph(text: string | undefined): string {
+  if (!text) return ""
+  const paragraphs = text.split(/\n\n+/)
+  return paragraphs[0]?.trim() || text
+}
+
 export function MapPopupSingle({
   city,
   theme,
@@ -54,14 +60,8 @@ export function MapPopupSingle({
     city.map_visibility === 'stale_historical' ||
     city.projection_status?.toLowerCase().includes('stale')
   )
-
-  // Extract first paragraph from analysis text
-  const getFirstParagraph = (text: string | undefined): string => {
-    if (!text) return ""
-    // Split by double newlines
-    const paragraphs = text.split(/\n\n+/)
-    return paragraphs[0]?.trim() || text
-  }
+  const analysisText = cleanAnalysisText(city.analysis)
+  const analysisPreview = getFirstParagraph(analysisText)
 
   // OverlayScrollbars handles scroll isolation natively via CSS containment
   // No need for manual event listeners - advanced-scroll-area handles this
@@ -86,13 +86,13 @@ export function MapPopupSingle({
 
         {/* Title */}
         {city.title && (
-          <h3 className="font-bold text-sm mb-2 text-primary flex items-center gap-2">
+          <h3 className="font-bold text-sm mb-2 text-primary flex items-start gap-2 min-w-0">
             {city.source?.toLowerCase().includes('crown vault') && (
-              <Crown className="h-4 w-4 text-amber-500" />
+              <Crown className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
             )}
-            {cleanTitle(city.title, city.source)}
+            <span className="min-w-0 break-words leading-snug">{cleanTitle(city.title, city.source)}</span>
             {shouldShowNewBadge && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-primary/10 text-primary rounded border border-primary/30">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-primary/10 text-primary rounded border border-primary/30 flex-shrink-0 mt-0.5">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
@@ -101,7 +101,7 @@ export function MapPopupSingle({
               </span>
             )}
             {isStaleProjection && (
-              <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold bg-muted text-muted-foreground rounded border border-border">
+              <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold bg-muted text-muted-foreground rounded border border-border flex-shrink-0 mt-0.5">
                 STALE
               </span>
             )}
@@ -185,6 +185,22 @@ export function MapPopupSingle({
             </div>
           )}
         </div>
+
+        {analysisPreview && !isExpanded && (
+          <div className="mt-3 rounded-md border border-border bg-muted/25 p-2">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Opportunity Read
+            </p>
+            <div className="text-xs leading-relaxed text-foreground/85 line-clamp-4 break-words">
+              <CitationText
+                text={analysisPreview}
+                onCitationClick={onCitationClick}
+                citationMap={citationMap}
+                options={{ convertMarkdownBold: true }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Expand/Collapse Button */}
         <button
@@ -274,14 +290,20 @@ export function MapPopupSingle({
             )}
 
             {/* Regular Analysis */}
-            {city.analysis && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <div className="text-xs leading-relaxed">
+            {analysisText && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-md border border-border bg-muted/20 p-3"
+              >
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Command Centre Opportunity Analysis
+                </p>
+                <div className="max-h-56 overflow-y-auto pr-1 text-xs leading-relaxed break-words">
                   <FormattedAnalysis
-                    text={city.analysis}
+                    text={analysisText}
                     onCitationClick={onCitationClick}
                     citationMap={citationMap}
-                    className="text-xs"
+                    className="text-xs [&_*]:break-words"
                   />
                 </div>
               </div>

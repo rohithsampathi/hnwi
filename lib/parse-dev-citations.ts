@@ -5,6 +5,7 @@ export interface Citation {
   id: string
   number: number
   originalText: string
+  originalId?: string
 }
 
 // CitationMap type - used by audit pages to store citation metadata
@@ -55,6 +56,14 @@ function getFromMapOrObject(
   return typeof objectValue === 'number' ? objectValue : undefined
 }
 
+function normalizeDevelopmentCitationId(value: string): string {
+  const raw = String(value || '').trim()
+  if (raw.startsWith('castle_')) {
+    return `dev_${raw.slice('castle_'.length)}`
+  }
+  return raw
+}
+
 export function parseDevCitations(
   text: string,
   globalCitationMap?: Map<string, number> | Record<string, any>,
@@ -81,7 +90,8 @@ export function parseDevCitations(
   const matches = [...devIdMatches, ...simpleMatches]
 
   matches.forEach(match => {
-    const devId = match[1]?.trim()
+    const originalId = match[1]?.trim()
+    const devId = originalId ? normalizeDevelopmentCitationId(originalId) : ''
     if (devId && !seenIds.has(devId)) {
       seenIds.add(devId)
       // Use global map number if available, otherwise use local counter
@@ -90,7 +100,8 @@ export function parseDevCitations(
       citations.push({
         id: devId,
         number: displayNumber,
-        originalText: match[0]
+        originalText: match[0],
+        originalId
       })
     }
   })
@@ -98,11 +109,17 @@ export function parseDevCitations(
   let formattedText = normalizedText
 
   citations.forEach(citation => {
-    const escapedId = citation.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const idsToReplace = Array.from(new Set([
+      citation.id,
+      citation.originalId,
+    ].filter((value): value is string => Boolean(value))))
+    const escapedIdPattern = idsToReplace
+      .map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|')
 
     // Match both labeled formats ([Dev ID: 164], [DEVID: abc], [Article ID: xyz]) and [164]
-    const fullPattern = new RegExp(`\\[${CITATION_LABEL}\\s*[:\\-–—]\\s*${escapedId}\\]`, 'gi')
-    const simplePattern = new RegExp(`\\[${escapedId}\\]`, 'g')
+    const fullPattern = new RegExp(`\\[${CITATION_LABEL}\\s*[:\\-–—]\\s*(?:${escapedIdPattern})\\]`, 'gi')
+    const simplePattern = new RegExp(`\\[(?:${escapedIdPattern})\\]`, 'g')
 
     // Replace full format first
     formattedText = formattedText.replace(
@@ -140,7 +157,8 @@ export function extractDevIds(text: string): string[] {
   const allMatches = [...devIdMatches, ...simpleMatches]
 
   allMatches.forEach(match => {
-    const devId = match[1]?.trim()
+    const originalId = match[1]?.trim()
+    const devId = originalId ? normalizeDevelopmentCitationId(originalId) : ''
     if (devId && !seenIds.has(devId)) {
       seenIds.add(devId)
       ids.push(devId)

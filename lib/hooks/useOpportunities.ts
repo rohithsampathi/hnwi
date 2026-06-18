@@ -193,6 +193,33 @@ const isStaleProjection = (opp: Opportunity): boolean => {
     quarantineStatus.length > 0;
 };
 
+const normalizeDevelopmentCitationId = (value: string | undefined): string | null => {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+
+  // Public source packets resolve on the outward development id. Some
+  // Command Centre rows carry the internal source-brief id with the same hash.
+  if (raw.startsWith('castle_')) {
+    return `dev_${raw.slice('castle_'.length)}`;
+  }
+
+  return raw;
+};
+
+const normalizeDevelopmentCitationIds = (values: Array<string | undefined>): string[] => {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  values.forEach(value => {
+    const id = normalizeDevelopmentCitationId(value);
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    normalized.push(id);
+  });
+
+  return normalized;
+};
+
 // Transform opportunity to City format (shared logic)
 const transformOpportunityToCity = (
   opp: Opportunity,
@@ -240,17 +267,19 @@ const transformOpportunityToCity = (
     opp.public_mirror_excerpt,
     katherineAnalysisText,
   ].filter(Boolean).join('\n'));
-  const structuredCitationId =
-    opp.castle_brief_id ||
-    opp.mongo_article_id ||
-    opp.devid ||
-    opp.source_development_id;
-  const devIds = Array.from(new Set([
+  const structuredCitationIds = normalizeDevelopmentCitationIds([
+    opp.source_development_id,
+    opp.dev_id,
+    opp.devid,
+    opp.mongo_article_id,
+    opp.castle_brief_id,
+  ]);
+  const devIds = normalizeDevelopmentCitationIds([
     ...devIdsFromAnalysis,
     ...devIdsFromElitePulse,
     ...devIdsFromSourceText,
-    ...(structuredCitationId ? [structuredCitationId] : []),
-  ]));
+    ...structuredCitationIds,
+  ]);
 
   // Smart category correction (for misclassified opportunities)
   let correctedCategory = opp.category ?
