@@ -93,7 +93,7 @@ export interface RouteIntelligenceOptionV2 {
   jurisdictionValues: Array<{
     jurisdiction: string;
     value: string;
-    pressureRead: string;
+    releaseRead: string;
   }>;
   evidenceGates: RouteEvidenceGate[];
   responsibilityTransfer: Array<{
@@ -120,6 +120,10 @@ export interface RouteIntelligenceV2 {
   surfaceContract: typeof ROUTE_INTELLIGENCE_V2_CONTRACT;
   surfaceEyebrow?: string;
   surfaceTitle?: string;
+  nativeRouteDrivers?: string[];
+  nativeRouteDriverTitle?: string;
+  nativeRouteDriverSubtitle?: string;
+  nativeRouteDriverNote?: string;
   selectorLabel?: string;
   selectorCopy?: string;
   comparisonLabel?: string;
@@ -153,6 +157,13 @@ function asArray(value: unknown): RecordLike[] {
 
 function text(value: unknown, fallback = ''): string {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
+function textList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => text(item))
+    .filter(Boolean);
 }
 
 function numberOr(value: unknown, fallback = 0): number {
@@ -272,7 +283,7 @@ function routeRecordsFromStructures(structures: RecordLike[]): RecordLike[] {
 
 function defaultBuyerProfileMatrix(): BuyerProfileRemissionMatrix {
   return {
-    title: 'Singapore buyer-profile and ABSD remission test',
+    title: 'Singapore buyer-profile and ABSD remission review',
     sourceRead: 'IRAS ABSD buyer-profile table and IRAS FTA remission rules.',
     dubaiRead:
       'Dubai / UAE residence or UAE nationality is not listed as an ABSD remission category. Treat the buyer as a foreign individual unless Singapore citizenship, Singapore PR, qualifying treaty status, spouse remission, or trust remission is proven before the purchase trigger.',
@@ -453,7 +464,10 @@ function buildAcquisitionAudit(
   },
 ): RecordLike {
   const taxAudit = cloneRecord(baseTaxAudit);
-  taxAudit.executive_summary = `${routeName}: ${values.buyerCategory}. The route read is in USD; SGD source-basis values remain in the evidence file.`;
+  const sourceCurrency = text(asRecord(asRecord(baseTaxAudit).acquisition_audit).source_currency, '');
+  const sourceBasisPhrase = sourceCurrency ? `${sourceCurrency} source-basis values` : 'source-value basis';
+  const sourceBasisVerb = sourceCurrency ? 'remain' : 'remains';
+  taxAudit.executive_summary = `${routeName}: ${values.buyerCategory}. The route read is in USD; ${sourceBasisPhrase} ${sourceBasisVerb} in the evidence file.`;
   taxAudit.total_tax_savings_pct = numberOr(taxAudit.total_tax_savings_pct, 0);
   taxAudit.ongoing_tax_savings_pct = numberOr(taxAudit.ongoing_tax_savings_pct, 0);
   taxAudit.ongoing_tax_savings_note =
@@ -759,7 +773,7 @@ export function buildRouteScopedDecisionMemoSurface({
   preview.executive_summary = {
     ...asRecord(preview.executive_summary),
     headline_metric: {
-      label: route.releaseRule === 'Release Differently' ? 'Route all-in outlay' : 'Route exposure under pressure',
+      label: route.releaseRule === 'Release Differently' ? 'Route all-in outlay' : 'Route exposure under review',
       value: formatUsdCompact(route.metrics.totalAcquisitionCostUsd || Math.abs(route.metrics.incrementalDutyVsRecommendedUsd)),
       description: route.economicRead,
     },
@@ -876,7 +890,7 @@ function adjustedScenarios(
     {
       scenario: 'Stress case' as const,
       year10ValueUsd: numberOr(stress.year_10_value, capitalDeployedUsd),
-      read: text(stress.verdict, 'Early-exit pressure exposes whether the route was purpose-led or price-led.'),
+      read: text(stress.verdict, 'Early-exit review shows whether the route was purpose-led or price-led.'),
     },
     {
       scenario: 'Opportunity case' as const,
@@ -975,7 +989,7 @@ function evidenceGates(kind: ReturnType<typeof routeKind>): RouteEvidenceGate[] 
         owner: 'Founder + family office operator / CFO',
         evidenceRequired: 'Written hold/stop instruction, deposit boundary, and next review trigger.',
         releaseStatus: kind === 'stop' ? 'Stop route' : 'Hold route',
-        consequenceIfMissing: 'The room can drift back into commitment pressure without resolving the blocker.',
+        consequenceIfMissing: 'The room can drift back into seller timing without resolving the blocker.',
       },
       ...common,
     ];
@@ -991,7 +1005,7 @@ function responsibilityTransfer(kind: ReturnType<typeof routeKind>) {
     { action: 'See the full record', primaryOwner: 'Family office operator / CFO', fallbackOwner: 'G2 son', releaseCondition },
     { action: 'Stop the move', primaryOwner: 'Founder', fallbackOwner: 'Daughter/fairness owner + counsel', releaseCondition: 'Stop authority is written before seller timing starts.' },
     { action: 'Sign and release funds', primaryOwner: 'Founder or appointed signer', fallbackOwner: 'Bank-approved alternate signer', releaseCondition: kind === 'hold' || kind === 'stop' ? 'Not released under this route.' : 'Bank mandates, FX authority, and signer limits match the route.' },
-    { action: 'Move funds across rails', primaryOwner: 'UAE source bank lead', fallbackOwner: 'Fallback bank rail owner', releaseCondition: kind === 'hold' || kind === 'stop' ? 'Rail test only; no settlement transfer.' : 'Primary and fallback rails have accepted SoW/SoF.' },
+    { action: 'Move funds across rails', primaryOwner: 'UAE source bank lead', fallbackOwner: 'Fallback bank rail owner', releaseCondition: kind === 'hold' || kind === 'stop' ? 'Rail review only; no settlement transfer.' : 'Primary and fallback rails have accepted SoW/SoF.' },
     { action: 'Retrieve and explain the decision', primaryOwner: 'Family office operator / CFO', fallbackOwner: 'Succession counsel', releaseCondition: 'Decision memory packet is retrievable within 72 hours.' },
   ];
 }
@@ -1007,7 +1021,7 @@ function recordMismatchMap(kind: ReturnType<typeof routeKind>) {
   return [
     { record: 'Cash and FX path', currentRead: 'Dubai-origin funds must be corroborated and transferable.', targetRead: `${routeRead}; bank rails accept source file and FX authority.`, releaseStatus: 'Release-gated' },
     { record: 'Title and beneficial ownership', currentRead: 'Buyer and use purpose must not be assumed from family intent.', targetRead: `${routeRead}; title record and beneficial-owner record say the same thing.`, releaseStatus: 'Release-gated' },
-    { record: 'Tax and duty position', currentRead: 'Duty drag changes by route and buyer category.', targetRead: `${routeRead}; written BSD/ABSD/SSD computation is attached.`, releaseStatus: 'Release-gated' },
+    { record: 'Tax and duty position', currentRead: 'Duty drag changes by route and buyer category.', targetRead: `${routeRead}; written acquisition-duty computation is attached.`, releaseStatus: 'Release-gated' },
     { record: 'Family authority', currentRead: 'Founder, son, daughter/fairness owner, and operator roles are not interchangeable.', targetRead: `${routeRead}; approval, veto, signer, and fallback roles are signed.`, releaseStatus: 'Release-gated' },
     { record: 'Succession memory', currentRead: 'Decision cannot live only in one adviser thread.', targetRead: `${routeRead}; decision memory is indexed for G2/G3 retrieval.`, releaseStatus: 'Release-gated' },
   ];
@@ -1017,7 +1031,7 @@ function counselQuestions(kind: ReturnType<typeof routeKind>) {
   const base = [
     { desk: 'Singapore property counsel', question: 'Does this exact title class allow the proposed buyer, use, completion timing, and future family-control purpose without additional approval?' },
     { desk: 'Singapore tax counsel', question: 'Confirm BSD, ABSD, SSD, owner-occupation, property-tax, and filing/payment timing for this buyer profile in writing.' },
-    { desk: 'Singapore receiving bank', question: 'What SoW/SoF documents, signer mandates, FX notes, and fallback transfer path must be accepted before seller pressure begins?' },
+    { desk: 'Singapore receiving bank', question: 'What SoW/SoF documents, signer mandates, FX notes, and fallback transfer path must be accepted before seller timing begins?' },
     { desk: 'UAE source bank', question: 'Can the source account, transfer purpose, FX authority, and documentary trail be corroborated in the format the receiving bank will accept?' },
     { desk: 'Succession counsel', question: 'If the founder is unavailable for 72 hours, who can retrieve, explain, stop, or carry this decision without family conflict?' },
   ];
@@ -1047,18 +1061,18 @@ function routeJurisdictionValues(kind: ReturnType<typeof routeKind>, routeName: 
     {
       jurisdiction: 'Dubai / UAE',
       value: 'Source-of-funds and transfer authority',
-      pressureRead: 'The Dubai side must prove origin, signer power, FX authority, and availability of records before Singapore can rely on the incoming capital.',
+      releaseRead: 'The Dubai side must prove origin, signer power, FX authority, and availability of records before Singapore can rely on the incoming capital.',
     },
     {
       jurisdiction: 'Singapore',
       value: 'Title, duty, bank acceptance, and property-use consequence',
-      pressureRead: `${routeName} releases only if title eligibility, BSD/ABSD/SSD, receiving-bank acceptance, and family-use evidence align before commitment.`,
+      releaseRead: `${routeName} releases only if title eligibility, BSD/ABSD/SSD, receiving-bank acceptance, and family-use evidence align before commitment.`,
     },
     {
       jurisdiction: 'Family system',
       value: 'G1/G2/G3 authority and decision memory',
-      pressureRead: kind === 'hold' || kind === 'stop'
-        ? 'The family keeps optionality until authority, veto, succession, and record retrieval can survive pressure.'
+      releaseRead: kind === 'hold' || kind === 'stop'
+        ? 'The family keeps optionality until authority, veto, succession, and record retrieval can survive release conditions.'
         : 'The family must make the purchase explainable to son, daughter/fairness owner, and future grandson memory, not only to the founder.',
     },
   ];
@@ -1080,7 +1094,7 @@ function routeStressSignals(
   if (kind === 'hold' || kind === 'stop') {
     return [
       { label: 'Immediate duty preserved', value: formatUsdCompact(directDutiesUsd), read: 'Capital is not converted into non-recoverable duty while evidence is incomplete.' },
-      { label: 'Seller pressure', value: kind === 'hold' ? 'Managed' : 'Rejected', read: 'The room must treat timing pressure as a test, not as decision authority.' },
+      { label: 'Seller timing', value: kind === 'hold' ? 'Managed' : 'Rejected', read: 'The room must treat seller timing as a constraint, not as decision authority.' },
       { label: 'Reopen trigger', value: 'Evidence-led', read: 'Only signed bank, title, authority, and succession evidence reopens the route.' },
     ];
   }
@@ -1094,7 +1108,7 @@ function routeStressSignals(
   return [
     { label: 'Duty drag', value: formatUsdCompact(directDutiesUsd), read: 'Accepted only if control, family-use, and continuity value are consciously signed.' },
     { label: 'Annual carry', value: formatUsdCompact(annualCarryingCostUsd), read: 'Carrying cost must be owned as control cost, not hidden inside property optimism.' },
-    { label: 'Bank pressure', value: 'Release-gated', read: 'Primary and fallback rails must clear before seller commitment hardens.' },
+    { label: 'Bank readiness', value: 'Release-gated', read: 'Primary and fallback rails must clear before seller commitment hardens.' },
   ];
 }
 
@@ -1194,7 +1208,7 @@ function deriveRouteOption(
           : kind === 'status' ? 'Eligibility-dependent route'
             : kind === 'hold' ? 'Optionality-preservation route'
               : kind === 'stop' ? 'Capital-protection route'
-                : 'Route under pressure test',
+                : 'Route under release-readiness review',
     verdict:
       kind === 'direct'
         ? 'Proceed Modified: Release Differently'
@@ -1239,7 +1253,13 @@ export function buildRouteIntelligenceV2(
 ): RouteIntelligenceV2 {
   const memoData = resolvedSurfaceData.memoData;
   const preview = asRecord(memoData.preview_data);
+  const peerStats = asRecord(preview.peer_cohort_stats);
   const nativeRouteIntelligence = asRecord(preview.route_intelligence_v2);
+  const nativeRouteDrivers = textList(
+    nativeRouteIntelligence.nativeRouteDrivers ??
+      nativeRouteIntelligence.native_route_drivers ??
+      peerStats.native_driver_bullets,
+  );
   const nativePressureVariants = Array.isArray(nativeRouteIntelligence.pressureVariants)
     ? nativeRouteIntelligence.pressureVariants
     : Array.isArray(nativeRouteIntelligence.pressure_variants)
@@ -1267,23 +1287,41 @@ export function buildRouteIntelligenceV2(
     );
     return {
       surfaceContract: ROUTE_INTELLIGENCE_V2_CONTRACT,
-      surfaceEyebrow: text(nativeRouteIntelligence.surfaceEyebrow ?? nativeRouteIntelligence.surface_eyebrow, 'Proposed Move Release Test'),
-      surfaceTitle: text(nativeRouteIntelligence.surfaceTitle ?? nativeRouteIntelligence.surface_title, 'Proposed Move Pressure Test'),
+      surfaceEyebrow: text(nativeRouteIntelligence.surfaceEyebrow ?? nativeRouteIntelligence.surface_eyebrow, 'Proposed Move Release Readiness'),
+      surfaceTitle: text(nativeRouteIntelligence.surfaceTitle ?? nativeRouteIntelligence.surface_title, 'Proposed Move Release Readiness Memo'),
+      nativeRouteDrivers,
+      nativeRouteDriverTitle: text(
+        nativeRouteIntelligence.nativeRouteDriverTitle ??
+          nativeRouteIntelligence.native_route_driver_title,
+        'Native Route Drivers',
+      ),
+      nativeRouteDriverSubtitle: text(
+        nativeRouteIntelligence.nativeRouteDriverSubtitle ??
+          nativeRouteIntelligence.native_route_driver_subtitle ??
+          peerStats.driver_analysis_subtitle,
+        'What the route-pattern witnesses actually change in this move.',
+      ),
+      nativeRouteDriverNote: text(
+        nativeRouteIntelligence.nativeRouteDriverNote ??
+          nativeRouteIntelligence.native_route_driver_note ??
+          peerStats.driver_analysis_note,
+        'Pattern intelligence informs the release-readiness need; public market sources bound market context; private family documents govern final release.',
+      ),
       selectorLabel: text(nativeRouteIntelligence.selectorLabel ?? nativeRouteIntelligence.selector_label, 'Route Being Released'),
       selectorCopy: text(
         nativeRouteIntelligence.selectorCopy ?? nativeRouteIntelligence.selector_copy,
-        'Review pressure variants tested against the proposed move. The downstream tax audit, jurisdiction pressure, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.',
+        'Review release-readiness routes against the proposed move. The downstream tax audit, jurisdiction readiness, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.',
       ),
-      comparisonLabel: text(nativeRouteIntelligence.comparisonLabel ?? nativeRouteIntelligence.comparison_label, 'Pressure Variants'),
-      comparisonTitle: text(nativeRouteIntelligence.comparisonTitle ?? nativeRouteIntelligence.comparison_title, 'Variants tested against the proposed route, not new advisory options.'),
+      comparisonLabel: text(nativeRouteIntelligence.comparisonLabel ?? nativeRouteIntelligence.comparison_label, 'Release Readiness Routes'),
+      comparisonTitle: text(nativeRouteIntelligence.comparisonTitle ?? nativeRouteIntelligence.comparison_title, 'Routes reviewed against the proposed route, not new advisory options.'),
       selectedRouteLabel: text(nativeRouteIntelligence.selectedRouteLabel ?? nativeRouteIntelligence.selected_route_label, 'Variant Under Review'),
       memoReference: text(
         nativeRouteIntelligence.memoReference ?? nativeRouteIntelligence.memo_reference,
-        text(memoData.intake_id, 'Decision Memo'),
+        text(memoData.intake_id, 'Release Readiness Memo'),
       ),
       generatedAt: typeof memoData.generated_at === 'string' ? memoData.generated_at : undefined,
       corridor: text(nativeRouteIntelligence.corridor, 'Source -> Destination'),
-      move: text(nativeRouteIntelligence.move, 'Selected private-wealth move under pressure test'),
+      move: text(nativeRouteIntelligence.move, 'Selected private-wealth move under release-readiness review'),
       recommendedRouteId,
       selectedLiveOption: Object.keys(selectedLiveOptionRecord).length > 0
         ? selectedLiveOptionRecord as RouteIntelligenceOptionV2
@@ -1301,7 +1339,7 @@ export function buildRouteIntelligenceV2(
       ) ?? principalValueGateFromResolved(resolvedSurfaceData),
       sourceRead: text(
         nativeRouteIntelligence.sourceRead ?? nativeRouteIntelligence.source_read,
-        'This surface reads the stored decision memo and pressure-tests the proposed move through release variants; it is not a client-side intake or advisory option picker.',
+        'This surface reads the stored decision memo and reviews the proposed move through release variants; it is not a client-side intake or advisory option picker.',
       ),
     };
   }
@@ -1390,14 +1428,21 @@ export function buildRouteIntelligenceV2(
 
   return {
     surfaceContract: ROUTE_INTELLIGENCE_V2_CONTRACT,
-    surfaceEyebrow: 'Proposed Move Release Test',
-    surfaceTitle: 'Proposed Move Pressure Test',
+    surfaceEyebrow: 'Proposed Move Release Readiness',
+    surfaceTitle: 'Proposed Move Release Readiness Memo',
+    nativeRouteDrivers,
+    nativeRouteDriverTitle: 'Native Route Drivers',
+    nativeRouteDriverSubtitle: text(peerStats.driver_analysis_subtitle, 'What the route-pattern witnesses actually change in this move.'),
+    nativeRouteDriverNote: text(
+      peerStats.driver_analysis_note,
+      'Pattern intelligence informs the release-readiness need; public market sources bound market context; private family documents govern final release.',
+    ),
     selectorLabel: 'Route Being Released',
-    selectorCopy: 'Review pressure variants tested against the proposed move. The downstream tax audit, jurisdiction pressure, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.',
-    comparisonLabel: 'Pressure Variants',
-    comparisonTitle: 'Variants tested against the proposed route, not new advisory options.',
+    selectorCopy: 'Review release-readiness routes against the proposed move. The downstream tax audit, jurisdiction readiness, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.',
+    comparisonLabel: 'Release Readiness Routes',
+    comparisonTitle: 'Routes reviewed against the proposed route, not new advisory options.',
     selectedRouteLabel: 'Variant Under Review',
-    memoReference: text(memoData.intake_id, text(resolvedSurfaceData.backendData?.intake_id, 'Decision Memo')),
+    memoReference: text(memoData.intake_id, text(resolvedSurfaceData.backendData?.intake_id, 'Release Readiness Memo')),
     generatedAt: typeof memoData.generated_at === 'string' ? memoData.generated_at : undefined,
     corridor: text(preview.corridor, 'Dubai -> Singapore'),
     move: text(preview.live_decision, 'Dubai family purchasing a Singapore penthouse'),

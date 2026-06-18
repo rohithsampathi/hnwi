@@ -22,6 +22,16 @@ import { motion } from "framer-motion"
 import { useRouter, usePathname } from "next/navigation"
 import { fetchAssessmentHistory, hasRecentAssessmentResult } from "@/lib/client-assessment-history"
 
+function extractDecisionMemoIdFromPath(pathname: string | null): string {
+  if (!pathname) return ""
+
+  const match = pathname.match(
+    /^\/(?:release-readiness\/review|decision-memo\/audit|decision-memo\/audit-v2|decision-memo\/memo|decision-memo\/preview)\/([^/?#]+)/
+  )
+
+  return match?.[1] ? decodeURIComponent(match[1]) : ""
+}
+
 export function SidebarNavigation({
   onNavigate,
   headerHeight = 0,
@@ -47,8 +57,13 @@ export function SidebarNavigation({
   const { isBusinessMode } = useBusinessMode()
   const [showRequestAccess, setShowRequestAccess] = useState(false)
 
-  // On decision memo audit pages, all nav items should show Request Access popup
-  const isAuditPage = pathname?.startsWith("/decision-memo/audit/") ?? false
+  const currentDecisionMemoId = extractDecisionMemoIdFromPath(pathname)
+  const focusedWarRoomPath = currentDecisionMemoId
+    ? `/war-room?memo=${encodeURIComponent(currentDecisionMemoId)}`
+    : "/war-room"
+
+  // On release-readiness / decision memo pages, gated nav items should show Request Access popup.
+  const isAuditPage = Boolean(currentDecisionMemoId)
 
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [showHeartbeat, setShowHeartbeat] = useState(false)
@@ -313,7 +328,7 @@ export function SidebarNavigation({
     } else if (route === "ask-audelle" || route === "ask-rohith") {
       router.push("/ask-audelle")
     } else if (route === "war-room") {
-      router.push("/war-room")
+      router.push(focusedWarRoomPath)
     } else if (route === "assessment") {
       // If user has completed assessment, redirect to results instead of landing page
       if (hasCompletedAssessment && completedSessionId) {

@@ -120,6 +120,7 @@ export interface MigrationFlow {
     details?: Record<string, string> // Key-value pairs for popup
     exploreUrl?: string   // Navigation URL for Explore button
     hasAccess?: boolean   // Whether user has access to view full audit
+    isFocused?: boolean   // Whether this corridor is the active/current memo corridor
     // Corridor navigation (for multiple audits on same route)
     corridorKey?: string  // Unique corridor identifier
     currentIndex?: number // Current audit index being shown
@@ -240,6 +241,7 @@ interface InteractiveWorldMapProps {
   onNavigate?: (route: string) => void
   onCorridorNavigate?: (corridorKey: string, direction: 'prev' | 'next') => void // Navigate between audits in same corridor
   onPopupClose?: (corridorKey: string) => void // Called when popup closes (for resetting audit index)
+  focusCorridorKey?: string | null // When set, only this corridor is interactive; all others render as shadow routes
   // Filter controls
   showCrownAssets?: boolean
   showPriveOpportunities?: boolean
@@ -266,6 +268,7 @@ export function InteractiveWorldMap({
   onNavigate,
   onCorridorNavigate,
   onPopupClose,
+  focusCorridorKey = null,
   showCrownAssets = true,
   showPriveOpportunities = true,
   showHNWIPatterns = true,
@@ -698,21 +701,31 @@ export function InteractiveWorldMap({
           )
 
           const baseColor = flow.color || (flow.type === 'inflow' ? '#22C55E' : '#EF4444')
-          const hasAccess = flow.midpoint?.hasAccess ?? true
+          const rawHasAccess = flow.midpoint?.hasAccess ?? true
+          const isFocusMode = Boolean(focusCorridorKey)
 
-          // Make inaccessible corridors more subtle - desaturated gray with lower opacity
-          const color = hasAccess ? baseColor : '#666666'
+          const corridorKey = flow.midpoint?.corridorKey || `${flow.source.name}→${flow.destination.name}`
+          const isFocusedCorridor = !isFocusMode || focusCorridorKey === corridorKey
+          const hasAccess = rawHasAccess && isFocusedCorridor
+
+          // Focus mode makes non-current memo corridors visible but non-dominant.
+          const color = isFocusedCorridor
+            ? (rawHasAccess ? baseColor : '#666666')
+            : '#4B5563'
           const auditCount = flow.midpoint?.totalAudits || 1
           const arcWeight = Math.min(1.5 + auditCount * 1, 6)
 
-          // Corridor key for hover dimming
-          const corridorKey = flow.midpoint?.corridorKey || `${flow.source.name}→${flow.destination.name}`
-          const isHovered = hoveredCorridorKey === corridorKey || selectedCorridorKey === corridorKey || (hoveredDestination !== null && flow.destination.name === hoveredDestination)
-          // CRITICAL: Purchased corridors (hasAccess) never get dimmed - they always stay at full visibility
-          const isDimmed = !hasAccess && (hoveredCorridorKey !== null || selectedCorridorKey !== null || hoveredDestination !== null) && !isHovered
+          const isHovered = isFocusedCorridor && (
+            hoveredCorridorKey === corridorKey ||
+            selectedCorridorKey === corridorKey ||
+            (hoveredDestination !== null && flow.destination.name === hoveredDestination)
+          )
+          const isDimmed =
+            !isFocusedCorridor ||
+            (!rawHasAccess && (hoveredCorridorKey !== null || selectedCorridorKey !== null || hoveredDestination !== null) && !isHovered)
 
-          // Additional opacity reduction for inaccessible corridors
-          const accessOpacityMultiplier = hasAccess ? 1 : 0.4
+          const accessOpacityMultiplier = !isFocusedCorridor ? 0.18 : (rawHasAccess ? 1 : 0.4)
+          const canInteractWithFlow = !cityFocusActive && isFocusedCorridor
 
           // Destination marker — black dot with neon arc-color border/glow
           const destinationIcon = flow.midpoint ? L.divIcon({
@@ -732,8 +745,8 @@ export function InteractiveWorldMap({
           const badgeTextColor = hasAccess ? '#0A0A0A' : '#F2F2F2' // Match label color for inaccessible corridors
           const countBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:50%;background:${color};color:${badgeTextColor};font-size:11px;font-weight:900;flex-shrink:0;line-height:1;">${auditCount}</span>`
           const labelOpacity = isDimmed ? 0.2 : 1.0 // Dim labels when corridor is not hovered
-          // Blur only inaccessible corridor labels when not hovered; never blur purchased corridors
-          const labelBlur = (!hasAccess && !isHovered) ? 'blur(3px)' : 'none'
+          // Blur only non-current/inaccessible corridor labels when not hovered; never blur the focused corridor
+          const labelBlur = (!isFocusedCorridor || (!rawHasAccess && !isHovered)) ? 'blur(3px)' : 'none'
           const routeLabel = L.divIcon({
             className: '',
             iconSize: [0, 0],
@@ -745,7 +758,8 @@ export function InteractiveWorldMap({
               border:1px solid ${color}44;
               font-size:11px;font-weight:700;letter-spacing:0.5px;
               font-family:Inter,system-ui,sans-serif;
-              color:${labelTextColor};white-space:nowrap;pointer-events:none;
+              color:${labelTextColor};white-space:nowrap;pointer-events:${canInteractWithFlow ? 'auto' : 'none'};
+              cursor:${canInteractWithFlow ? 'pointer' : 'default'};
               text-transform:uppercase;
               box-shadow:0 0 6px ${color}33;
               opacity:${labelOpacity};
@@ -767,17 +781,17 @@ export function InteractiveWorldMap({
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
-                interactive={!cityFocusActive}
+                interactive={canInteractWithFlow}
                 eventHandlers={{
                   mouseover: () => {
-                    if (cityFocusActive) return
+                    if (!canInteractWithFlow) return
                     setHoveredCorridorKey(corridorKey)
                   },
                   mouseout: () => {
                     setHoveredCorridorKey(null)
                   },
                   popupopen: () => {
-                    if (cityFocusActive) return
+                    if (!canInteractWithFlow) return
                     setSelectedCorridorKey(corridorKey)
                   },
                   popupclose: () => {
@@ -982,7 +996,7 @@ export function InteractiveWorldMap({
                 pathOptions={{
                   color: color,
                   weight: arcWeight + 5,
-                  opacity: (isDimmed ? 0.03 : (isHovered ? 0.2 : (hasAccess ? 0.15 : 0.12))) * accessOpacityMultiplier,
+                  opacity: (isDimmed ? 0.08 : (isHovered ? 0.2 : (rawHasAccess ? 0.15 : 0.12))) * accessOpacityMultiplier,
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
@@ -994,7 +1008,7 @@ export function InteractiveWorldMap({
                 pathOptions={{
                   color: color,
                   weight: arcWeight,
-                  opacity: (isDimmed ? 0.08 : (isHovered ? 0.5 : (hasAccess ? 0.4 : 0.3))) * accessOpacityMultiplier,
+                  opacity: (isDimmed ? 0.18 : (isHovered ? 0.5 : (rawHasAccess ? 0.4 : 0.3))) * accessOpacityMultiplier,
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
@@ -1006,7 +1020,7 @@ export function InteractiveWorldMap({
                 pathOptions={{
                   color: color,
                   weight: arcWeight + 0.5,
-                  opacity: (isDimmed ? 0.15 : (isHovered ? 1 : (hasAccess ? 1 : 0.7))) * accessOpacityMultiplier,
+                  opacity: (isDimmed ? 0.25 : (isHovered ? 1 : (rawHasAccess ? 1 : 0.7))) * accessOpacityMultiplier,
                   dashArray: '8, 16',
                   lineCap: 'round',
                   lineJoin: 'round'
@@ -1018,18 +1032,18 @@ export function InteractiveWorldMap({
                 <Marker
                   position={[flow.destination.latitude, flow.destination.longitude]}
                   icon={destinationIcon}
-                  interactive={!cityFocusActive}
+                  interactive={canInteractWithFlow}
                   zIndexOffset={20000}
                   eventHandlers={{
                     mouseover: () => {
-                      if (cityFocusActive) return
+                      if (!canInteractWithFlow) return
                       setHoveredDestination(flow.destination.name)
                     },
                     mouseout: () => {
                       setHoveredDestination(null)
                     },
                     popupopen: () => {
-                      if (cityFocusActive) return
+                      if (!canInteractWithFlow) return
                       setSelectedCorridorKey(corridorKey)
                     },
                     popupclose: () => {
@@ -1165,14 +1179,27 @@ export function InteractiveWorldMap({
               )}
               {/* Airline-style route label at arc midpoint — always show for purchased, or when destination hovered */}
               {(
-                hasAccess || // Always show for purchased corridors (any zoom level)
+                (isFocusMode ? isFocusedCorridor : hasAccess) || // In focus mode, only current memo corridor gets the persistent label
                 (hoveredDestination !== null && flow.destination.name === hoveredDestination) // Show when destination hovered (any zoom)
               ) && hoveredCorridorKey !== corridorKey && (
                 <Marker
                   position={arcMid}
                   icon={routeLabel}
-                  interactive={false}
+                  interactive={canInteractWithFlow}
                   zIndexOffset={30000}
+                  eventHandlers={{
+                    mouseover: () => {
+                      if (!canInteractWithFlow) return
+                      setHoveredCorridorKey(corridorKey)
+                    },
+                    mouseout: () => {
+                      setHoveredCorridorKey(null)
+                    },
+                    click: () => {
+                      if (!canInteractWithFlow || !flow.midpoint?.exploreUrl) return
+                      navigateToRoute(flow.midpoint.exploreUrl)
+                    }
+                  }}
                 />
               )}
             </React.Fragment>

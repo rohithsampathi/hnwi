@@ -259,12 +259,21 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
           <h3 className="text-base font-semibold text-foreground">Adviser Input Gates</h3>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {adviserInputs.map((input, index) => (
-              <div key={`${text(input.desk, 'adviser')}-${index}`} className="border border-border p-4">
+              <div key={`${text(input.desk || input.label || input.detail || input.owner, 'adviser')}-${index}`} className="border border-border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-foreground">{text(input.desk, `Adviser ${index + 1}`)}</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {text(input.desk || input.label || input.detail || input.owner, `Adviser ${index + 1}`)}
+                  </p>
                   <EvidenceBadge state={input.state} />
                 </div>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{text(input.required_answer)}</p>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  {text(input.required_answer || input.release_effect || input.detail || input.source_ref)}
+                </p>
+                {input.owner ? (
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Owner: {text(input.owner)}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>

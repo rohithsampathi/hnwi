@@ -151,7 +151,7 @@ function canonicalSourceFamily(value: unknown): string {
   if (lowered === "crisis_bundle" || lowered === "crisis_event") return "Crisis World-State Rail";
   if (lowered === "market_regime") return "Gulf Energy Market Rail";
   if (lowered.includes("crisis world-state") || lowered.includes("crisis rail")) return "Crisis World-State Rail";
-  if (lowered.includes("castle")) return "Castle Transaction Cases";
+  if (lowered.includes("castle")) return "Route Pattern Cases";
   if (lowered.includes("pattern")) return "Pattern Intelligence";
   if (lowered.includes("kgv2.1") || lowered.includes("analytical surface")) return "KGv2.1 Analytical Surface";
   if (lowered.includes("kgv3") || lowered.includes("validated market")) return "KGv3 Validated Market Surface";

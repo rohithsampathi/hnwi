@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, type CSSProperties, type ReactNode } from 'react';
-import { ArrowRight, Check, Share2 } from 'lucide-react';
+import { Check, Share2 } from 'lucide-react';
 import { SectionReveal } from '@/components/ui/section-reveal';
 import { computeMemoProps } from '@/lib/decision-memo/compute-memo-props';
 import { computeRiskRadarScores } from '@/lib/decision-memo/compute-risk-radar-scores';
@@ -35,6 +35,7 @@ import HeirManagementSection from '../HeirManagementSection';
 import ReferencesSection from '../ReferencesSection';
 import { RegulatorySourcesSection } from '../RegulatorySourcesSection';
 import { MemoLastPage } from '../MemoLastPage';
+import { ReleaseReadinessInquiryForm } from '../ReleaseReadinessInquiryForm';
 
 type RenderMode = 'screen' | 'print';
 
@@ -140,6 +141,7 @@ export default function DecisionMemoLinearReport({
     isViaNegativa,
     viaNegativaContext,
     valueCreation,
+    coverHeadlineMetric,
   } = computeMemoProps(memoData);
 
   const doctrineMetadata = memoData.preview_data.scenario_tree_data?.doctrine_metadata;
@@ -170,7 +172,8 @@ export default function DecisionMemoLinearReport({
   const regulatoryCitations =
     memoData.preview_data?.regulatory_citations || legalReferences?.regulatory_sources || [];
   const canonicalReference = resolveDecisionMemoDisplayReference(intakeId);
-  const headlineMetric = memoData.preview_data.executive_summary?.headline_metric?.value ?? memoData.preview_data.total_savings ?? '';
+  const headlineMetric = coverHeadlineMetric?.value ?? memoData.preview_data.executive_summary?.headline_metric?.value ?? '';
+  const headlineMetricLabel = coverHeadlineMetric?.label ?? memoData.preview_data.executive_summary?.headline_metric?.label ?? '';
   const verdictLabel =
     memoData.preview_data.risk_assessment?.structure_verdict ??
     memoData.preview_data.structure_optimization?.verdict ??
@@ -250,6 +253,62 @@ export default function DecisionMemoLinearReport({
     return hasStructuredData || hasContent;
   })();
 
+  const peerStats = memoData.preview_data.peer_cohort_stats as Record<string, any> | undefined;
+  const capitalFlow = memoData.preview_data.capital_flow_data as Record<string, any> | undefined;
+  const sourceTaxRates = memoData.preview_data.source_tax_rates as Record<string, any> | undefined;
+  const destinationTaxRates = memoData.preview_data.destination_tax_rates as Record<string, any> | undefined;
+  const hasNumericTaxRate = (rates?: Record<string, any>) =>
+    Boolean(
+      rates &&
+        ['income_tax', 'capital_gains', 'cgt', 'wealth_tax', 'estate_tax'].some(
+          (key) => typeof rates[key] === 'number' && Number.isFinite(rates[key]),
+        ),
+    );
+  const hasTaxJurisdictionDashboard = Boolean(
+    memoData.preview_data.tax_differential?.source ||
+      memoData.preview_data.tax_differential?.destination ||
+      hasNumericTaxRate(sourceTaxRates) ||
+      hasNumericTaxRate(destinationTaxRates),
+  );
+  const hasPeerIntelligenceData = Boolean(
+    peerStats?.total_peers ||
+      peerStats?.last_6_months ||
+      peerStats?.avg_deal_value_m ||
+      (Array.isArray(peerStats?.metric_cards) && peerStats.metric_cards.length > 0) ||
+      capitalFlow?.flow_intensity ||
+      capitalFlow?.flow_intensity_index ||
+      capitalFlow?.movement_velocity_pct ||
+      capitalFlow?.peers_in_corridor,
+  );
+  const realAssetAudit = memoData.preview_data.real_asset_audit as Record<string, any> | undefined;
+  const hasRenderableRealAssetAudit = Boolean(
+    realAssetAudit &&
+      Object.entries(realAssetAudit).some(([key, value]) =>
+        !key.startsWith('_') &&
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        (
+          'stamp_duty' in value ||
+          'dynasty_trusts' in value ||
+          'loophole_strategies' in value ||
+          'property_gate' in value
+        ),
+      ),
+  );
+  const heirManagementData = memoData.preview_data.heir_management_data as Record<string, any> | undefined;
+  const hasRenderableHeirManagement = Boolean(
+    heirManagementData &&
+      (
+        Array.isArray(heirManagementData.heirs) ||
+        Array.isArray(heirManagementData.heir_specific_read) ||
+        Array.isArray(heirManagementData.heir_allocations) ||
+        heirManagementData.third_generation_risk ||
+        heirManagementData.third_generation_problem ||
+        heirManagementData.estate_tax_by_heir_type ||
+        heirManagementData.heir_education_plan
+      ),
+  );
   const showImplementation =
     Array.isArray(memoData.preview_data.execution_sequence) &&
     memoData.preview_data.execution_sequence.length > 0;
@@ -291,7 +350,8 @@ export default function DecisionMemoLinearReport({
             destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
             generatedAt={memoData.generated_at}
             exposureClass={memoData.preview_data.exposure_class}
-            totalSavings={memoData.preview_data.total_savings}
+            totalSavings={coverHeadlineMetric?.value}
+            headlineMetricLabel={coverHeadlineMetric?.label}
             viaNegativa={viaNegativaContext}
           />
         </ReportSection>
@@ -326,7 +386,16 @@ export default function DecisionMemoLinearReport({
                 </p>
                 <p className="text-sm font-mono text-foreground">Reference: {canonicalReference}</p>
                 <p className="text-sm text-muted-foreground">45-page report structure</p>
-                <p className="text-sm font-semibold text-foreground">{headlineMetric}</p>
+                {headlineMetric && (
+                  <div>
+                    {headlineMetricLabel && (
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        {headlineMetricLabel}
+                      </p>
+                    )}
+                    <p className="text-sm font-semibold text-foreground">{headlineMetric}</p>
+                  </div>
+                )}
                 <p className="text-sm font-semibold text-gold">{normalizedVerdict}</p>
               </div>
             </div>
@@ -459,22 +528,24 @@ export default function DecisionMemoLinearReport({
         </ReportSection>
       )}
 
-      <ReportSection mode={mode} motionEnabled={motionEnabled} pageBreakBefore>
-        <Page1TaxDashboard
-          totalSavings={memoData.preview_data.total_savings ?? ''}
-          exposureClass={memoData.preview_data.exposure_class ?? ''}
-          sourceJurisdiction={memoData.preview_data.source_jurisdiction ?? ''}
-          destinationJurisdiction={memoData.preview_data.destination_jurisdiction ?? ''}
-          sourceCity={memoData.preview_data.source_city}
-          destinationCity={memoData.preview_data.destination_city}
-          executionSequence={memoData.preview_data.execution_sequence}
-          sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
-          destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
-          taxDifferential={memoData.preview_data.tax_differential}
-          sections={['tax']}
-          showTaxSavings={showTheoreticalTaxSavings}
-        />
-      </ReportSection>
+      {hasTaxJurisdictionDashboard && (
+        <ReportSection mode={mode} motionEnabled={motionEnabled} pageBreakBefore>
+          <Page1TaxDashboard
+            totalSavings={memoData.preview_data.total_savings ?? ''}
+            exposureClass={memoData.preview_data.exposure_class ?? ''}
+            sourceJurisdiction={memoData.preview_data.source_jurisdiction ?? ''}
+            destinationJurisdiction={memoData.preview_data.destination_jurisdiction ?? ''}
+            sourceCity={memoData.preview_data.source_city}
+            destinationCity={memoData.preview_data.destination_city}
+            executionSequence={memoData.preview_data.execution_sequence}
+            sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
+            destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
+            taxDifferential={memoData.preview_data.tax_differential}
+            sections={['tax']}
+            showTaxSavings={showTheoreticalTaxSavings}
+          />
+        </ReportSection>
+      )}
 
       {memoData.preview_data.regime_intelligence?.has_special_regime && (
         <ReportSection mode={mode} reveal={{ direction: 'left' }} motionEnabled={motionEnabled}>
@@ -500,25 +571,27 @@ export default function DecisionMemoLinearReport({
         </ReportSection>
       )}
 
-      <ReportSection mode={mode} motionEnabled={motionEnabled}>
-        <Page3PeerIntelligence
-          opportunities={memoData.preview_data.all_opportunities || []}
-          peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
-          onCitationClick={handleCitationClick}
-          citationMap={resolvedCitationMap}
-          sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-          destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-          sourceCountry={memoData.preview_data.source_country}
-          destinationCountry={memoData.preview_data.destination_country}
-          sourceCity={memoData.preview_data.source_city}
-          destinationCity={memoData.preview_data.destination_city}
-          peerCohortStats={memoData.preview_data.peer_cohort_stats}
-          capitalFlowData={memoData.preview_data.capital_flow_data}
-          sections={['drivers', 'peer', 'corridor']}
-          renderMode={mode}
-          isRelocating={memoData.preview_data.peer_cohort_stats?.is_relocating ?? memoData.preview_data.is_relocating ?? false}
-        />
-      </ReportSection>
+      {hasPeerIntelligenceData && (
+        <ReportSection mode={mode} motionEnabled={motionEnabled}>
+          <Page3PeerIntelligence
+            opportunities={memoData.preview_data.all_opportunities || []}
+            peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
+            onCitationClick={handleCitationClick}
+            citationMap={resolvedCitationMap}
+            sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+            destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+            sourceCountry={memoData.preview_data.source_country}
+            destinationCountry={memoData.preview_data.destination_country}
+            sourceCity={memoData.preview_data.source_city}
+            destinationCity={memoData.preview_data.destination_city}
+            peerCohortStats={memoData.preview_data.peer_cohort_stats}
+            capitalFlowData={memoData.preview_data.capital_flow_data}
+            sections={['drivers', 'peer', 'corridor']}
+            renderMode={mode}
+            isRelocating={memoData.preview_data.peer_cohort_stats?.is_relocating ?? memoData.preview_data.is_relocating ?? false}
+          />
+        </ReportSection>
+      )}
 
       {memoData.preview_data.hnwi_trends && memoData.preview_data.hnwi_trends.length > 0 && (
         <ReportSection mode={mode} reveal={{ direction: 'right' }} motionEnabled={motionEnabled} pageBreakBefore>
@@ -535,25 +608,27 @@ export default function DecisionMemoLinearReport({
         </ReportSection>
       )}
 
-      <ReportSection mode={mode} motionEnabled={motionEnabled}>
-        <Page3PeerIntelligence
-          opportunities={memoData.preview_data.all_opportunities || []}
-          peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
-          onCitationClick={handleCitationClick}
-          citationMap={resolvedCitationMap}
-          sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-          destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-          sourceCountry={memoData.preview_data.source_country}
-          destinationCountry={memoData.preview_data.destination_country}
-          sourceCity={memoData.preview_data.source_city}
-          destinationCity={memoData.preview_data.destination_city}
-          peerCohortStats={memoData.preview_data.peer_cohort_stats}
-          capitalFlowData={memoData.preview_data.capital_flow_data}
-          sections={['geographic']}
-          renderMode={mode}
-          isRelocating={memoData.preview_data.peer_cohort_stats?.is_relocating ?? memoData.preview_data.is_relocating ?? false}
-        />
-      </ReportSection>
+      {hasPeerIntelligenceData && (
+        <ReportSection mode={mode} motionEnabled={motionEnabled}>
+          <Page3PeerIntelligence
+            opportunities={memoData.preview_data.all_opportunities || []}
+            peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
+            onCitationClick={handleCitationClick}
+            citationMap={resolvedCitationMap}
+            sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+            destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+            sourceCountry={memoData.preview_data.source_country}
+            destinationCountry={memoData.preview_data.destination_country}
+            sourceCity={memoData.preview_data.source_city}
+            destinationCity={memoData.preview_data.destination_city}
+            peerCohortStats={memoData.preview_data.peer_cohort_stats}
+            capitalFlowData={memoData.preview_data.capital_flow_data}
+            sections={['geographic']}
+            renderMode={mode}
+            isRelocating={memoData.preview_data.peer_cohort_stats?.is_relocating ?? memoData.preview_data.is_relocating ?? false}
+          />
+        </ReportSection>
+      )}
 
       {hasTransparencySection && (
         <ReportSection mode={mode} motionEnabled={motionEnabled}>
@@ -566,10 +641,10 @@ export default function DecisionMemoLinearReport({
         </ReportSection>
       )}
 
-      {memoData.preview_data.real_asset_audit && (
+      {hasRenderableRealAssetAudit && (
         <ReportSection mode={mode} reveal={{ direction: 'left' }} motionEnabled={motionEnabled}>
           <RealAssetAuditSection
-            data={memoData.preview_data.real_asset_audit}
+            data={realAssetAudit!}
             sourceJurisdiction={memoData.preview_data.source_jurisdiction}
             destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
             transactionValue={
@@ -620,9 +695,7 @@ export default function DecisionMemoLinearReport({
         </ReportSection>
       )}
 
-      {(memoData.preview_data.heir_management_analysis ||
-        (memoData.preview_data.heir_management_data &&
-          Object.keys(memoData.preview_data.heir_management_data).length > 0)) && (
+      {hasRenderableHeirManagement && (
         <ReportSection mode={mode} motionEnabled={motionEnabled}>
           <HeirManagementSection
             data={memoData.preview_data.heir_management_data || {}}
@@ -725,43 +798,26 @@ export default function DecisionMemoLinearReport({
               </button>
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-card to-primary/10 p-8 sm:p-12">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-primary/10 to-transparent rounded-bl-full" />
+            <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border-2 border-primary/25 bg-card p-6 sm:p-10">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
-              <div className="relative z-10 text-center max-w-2xl mx-auto">
+              <div className="relative z-10 mx-auto max-w-4xl">
                 <p className="text-xs sm:text-sm font-bold text-primary uppercase tracking-widest mb-4">
-                  Pattern Recognition Engine
+                  Release Readiness Request
                 </p>
 
                 <h3 className="text-xl sm:text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-4">
-                  DOES YOUR NEXT DEAL SURVIVE THE RED TEAM?
+                  Have a live wealth move that should not harden yet?
                 </h3>
 
-                <p className="text-sm text-muted-foreground mb-4 max-w-lg mx-auto leading-relaxed">
-                  The same system that produced this analysis stress-tests high-value Alternative Asset acquisitions (Art, Real Estate, Collectibles) across 50+ jurisdictions.
+                <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                  Share your name, email, phone, and a brief description of the live move. We return with the evidence scope, release gates, and adviser question pack needed before capital, title, authority, or custody moves.
                 </p>
 
-                <p className="text-sm text-foreground font-medium mb-2">Result: Certainty.</p>
-                <p className="text-sm text-foreground font-medium mb-8">Turnaround: 48 Hours.</p>
-
-                <p className="text-xs font-semibold text-primary/80 uppercase tracking-wider mb-6">
-                  {(() => {
-                    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-                    return `${monthNames[new Date().getMonth()]} Allocation: Accepting Mandates`;
-                  })()}
-                </p>
-
-                <div className="flex justify-center">
-                  <a
-                    href="/decision-memo"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-10 py-4 bg-primary text-primary-foreground font-bold rounded-xl text-sm tracking-wide hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
-                  >
-                    INITIATE RED TEAM AUDIT ($5,000)
-                    <ArrowRight className="w-4 h-4" />
-                  </a>
-                </div>
+                <ReleaseReadinessInquiryForm
+                  intakeId={intakeId}
+                  reference={canonicalReference}
+                />
               </div>
             </div>
           </div>

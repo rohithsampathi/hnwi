@@ -1352,10 +1352,18 @@ export interface CitationEntry {
   short_cite: string;      // e.g., "IRC §61"
   title: string;           // e.g., "US Worldwide Taxation"
   reference: string;       // Full legal citation
+  institution?: string;
+  claim_supported?: string;
+  date?: string;
   url?: string;            // Source URL if available
   effective_date?: string; // When the rule took effect
   data_year?: number;      // Year of market data (for market sources)
   sections_used?: string[]; // Which memo sections reference this
+  supports?: string[];
+  route_relevance?: string;
+  source_signal?: string;
+  why_it_matters?: string;
+  source_boundary?: string;
 }
 
 /** Complete legal references section for end of memo */
@@ -1376,6 +1384,17 @@ export interface LegalReferences {
   treaties: CitationEntry[];
   /** IRS guidance (notices, revenue procedures) */
   guidance: CitationEntry[];
+  /** Principal-safe pattern evidence records derived from route witnesses */
+  pattern_evidence_records?: CitationEntry[];
+  pattern_witnesses?: Array<{
+    id?: string;
+    title?: string;
+    pattern?: string;
+    decision_use?: string;
+    source_basis?: string;
+  }>;
+  pattern_count?: number;
+  evidence_class_count?: number;
   /** Total count of all citations */
   total_count: number;
 }

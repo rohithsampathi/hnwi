@@ -135,6 +135,38 @@ function formatCompactCurrency(value: number): string {
   return `${sign}$${Math.round(absolute).toLocaleString()}`;
 }
 
+function toFiniteValue(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string') return null;
+  const cleaned = value
+    .replace(/US\$/gi, '')
+    .replace(/[$,%]/g, '')
+    .replace(/,/g, '')
+    .trim();
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatUsdCompactValue(value: unknown, fallback = '—'): string {
+  const numeric = toFiniteValue(value);
+  if (numeric === null) return fallback;
+
+  const sign = numeric < 0 ? '-' : '';
+  const absolute = Math.abs(numeric);
+
+  if (absolute >= 1_000_000_000) {
+    return `${sign}US$${(absolute / 1_000_000_000).toFixed(2).replace(/\.00$/, '')}B`;
+  }
+  if (absolute >= 1_000_000) {
+    return `${sign}US$${(absolute / 1_000_000).toFixed(2).replace(/\.00$/, '')}M`;
+  }
+  if (absolute >= 1_000) {
+    const precision = absolute >= 100_000 ? 0 : 1;
+    return `${sign}US$${(absolute / 1_000).toFixed(precision).replace(/\.0$/, '')}K`;
+  }
+  return `${sign}US$${Math.round(absolute).toLocaleString()}`;
+}
+
 function formatReadableMetric(
   value: unknown,
   variant: 'rail' | 'proof' | 'default' = 'default',
@@ -386,18 +418,31 @@ function fallbackEconomicProof(preview: Record<string, any>, memo: Record<string
   const weighted = preview.wealth_projection_data?.probability_weighted_outcome || {};
   const decisionEv = preview.scenario_tree_data?.decision_ev_usd || preview.scenario_tree_data?.expected_value_usd;
   const decisionEvLabel = asText(preview.scenario_tree_data?.decision_ev_label, '');
+  const annualCarry = toFiniteValue(
+    net.annual_carrying_cost_before_opportunity_usd ||
+      net.carrying_cost_model?.annual_carrying_cost_before_opportunity_usd,
+  );
+  const opportunityCostPer100Bps = toFiniteValue(
+    net.carrying_cost_model?.opportunity_cost_sensitivity?.per_100bps_on_purchase_price_usd,
+  );
   return {
-    transaction_value: acq.property_value_formatted || memo.transaction_value || '—',
-    capital_deployed: acq.total_acquisition_cost_formatted || memo.capital_deployed || '—',
-    day_one_loss: acq.day_one_loss_amount_formatted || memo.day_one_loss || '—',
+    transaction_value: acq.property_value_formatted || formatUsdCompactValue(acq.property_value_usd ?? acq.property_value, memo.transaction_value || '—'),
+    capital_deployed: acq.total_acquisition_cost_formatted || formatUsdCompactValue(acq.total_acquisition_cost_usd ?? acq.total_acquisition_cost, memo.capital_deployed || '—'),
+    day_one_loss: acq.day_one_loss_amount_formatted || formatUsdCompactValue(acq.total_stamp_duties_usd ?? acq.total_stamp_duties, memo.day_one_loss || '—'),
     underwritten_annual_return: weighted.expected_value_formatted || memo.underwritten_annual_return || '—',
-    gross_yield: net.gross_yield_pct != null ? `${Number(net.gross_yield_pct).toFixed(2)}%` : '—',
-    net_yield: net.net_yield_pct != null ? `${Number(net.net_yield_pct).toFixed(2)}%` : '—',
+    gross_yield: net.gross_yield_pct != null ? `${Number(net.gross_yield_pct).toFixed(2)}%` : 'Not yield-led',
+    net_yield: net.net_yield_pct != null
+      ? `${Number(net.net_yield_pct).toFixed(2)}%`
+      : annualCarry
+        ? `-${formatUsdCompactValue(annualCarry)} annual carry`
+        : 'Use-led carry model',
     appreciation_basis: preview.wealth_projection_data?.starting_position?.appreciation_rate_pct != null
       ? `${Number(preview.wealth_projection_data.starting_position.appreciation_rate_pct).toFixed(2)}%`
-      : '—',
+      : opportunityCostPer100Bps
+        ? `${formatUsdCompactValue(opportunityCostPer100Bps)} per 100 bps`
+        : 'Not relied on for release',
     decision_ev: typeof decisionEv === 'number' ? `$${Math.round(decisionEv).toLocaleString()}` : decisionEvLabel || 'Release rule',
-    drawdown_floor: preview.crisis_data?.stress_drawdown_floor || 'Evidence gated',
+    drawdown_floor: preview.crisis_data?.stress_drawdown_floor || preview.crisis_data?.overall_resilience?.rating || 'Release-critical',
   };
 }
 
@@ -424,16 +469,71 @@ function fallbackFailureLogic(preview: Record<string, any>) {
 
 function fallbackContinuity(preview: Record<string, any>) {
   const heir = preview.heir_management_data || {};
+  const acq = preview.cross_border_audit_summary?.acquisition_audit || {};
+  const g1 = heir.g1_position || {};
   const g2 = heir.g1_to_g2_transfer || {};
   const g3 = heir.g2_to_g3_transfer || {};
+  const withStructure = heir.with_structure || {};
+  const topTrigger = heir.top_succession_trigger || {};
+  const propertyValue =
+    toFiniteValue(acq.property_value_usd ?? acq.property_value) ??
+    toFiniteValue(topTrigger.dollars_at_risk) ??
+    toFiniteValue(g1.asset_value);
+  const dutyDrag =
+    toFiniteValue(acq.total_stamp_duties_usd ?? acq.total_stamp_duties) ??
+    toFiniteValue(g2.estate_tax_hit) ??
+    toFiniteValue(g1.unplanned_loss);
+  const g2Net =
+    toFiniteValue(g2.net_to_g2 ?? g2.net_to_heirs) ??
+    (propertyValue !== null && dutyDrag !== null ? propertyValue - dutyDrag : null);
+  const g3Without =
+    toFiniteValue(g3.net_to_g3_without_structure) ??
+    (propertyValue !== null && toFiniteValue(g3.retention_score_without_structure) !== null
+      ? propertyValue * (toFiniteValue(g3.retention_score_without_structure) as number) / 100
+      : null);
+  const g3With =
+    toFiniteValue(withStructure.net_to_g3_with_structure) ??
+    (propertyValue !== null && toFiniteValue(withStructure.retention_score) !== null
+      ? propertyValue * (toFiniteValue(withStructure.retention_score) as number) / 100
+      : null);
+  const routeControl =
+    toFiniteValue(g1.route_control_score) !== null
+      ? `${Math.round(toFiniteValue(g1.route_control_score) as number)}/100`
+      : toFiniteValue(g1.retention_score) !== null
+        ? `${Math.round(toFiniteValue(g1.retention_score) as number)}% retained`
+        : 'Release-gated';
   return {
     items: [
-      { label: 'G1 route control', value: heir.with_structure?.route_control_score ? `${Math.round(heir.with_structure.route_control_score)}/100` : '—', detail: 'How well the route preserves control before hard commitment.' },
-      { label: 'G2 retained value', value: g2.net_to_heirs_formatted || '—', detail: 'Net continuity after estate drag and route friction.' },
-      { label: 'G3 without governance lock', value: g3.without_structure_formatted || '—', detail: 'Durable value if succession remains loose.' },
-      { label: 'G3 with governance lock', value: g3.with_structure_formatted || '—', detail: 'Durable value after governance and succession are locked before close.' },
+      {
+        label: 'G1 route control',
+        value: routeControl,
+        detail: [g1.compatibility, g1.loss_point].filter(Boolean).join(' ') || 'How well the route preserves control before hard commitment.',
+      },
+      {
+        label: 'G1 -> G2 retained value',
+        value: g2.net_to_heirs_formatted || formatUsdCompactValue(g2Net),
+        detail: [g2.compatibility, g2.loss_point].filter(Boolean).join(' ') || 'Net continuity after estate drag and route friction.',
+      },
+      {
+        label: 'G2 -> G3 without governance lock',
+        value: g3.without_structure_formatted || formatUsdCompactValue(g3Without),
+        detail: [g3.compatibility, g3.loss_point].filter(Boolean).join(' ') || 'Durable value if succession remains loose.',
+      },
+      {
+        label: 'G2 -> G3 with governance lock',
+        value: withStructure.with_structure_formatted || formatUsdCompactValue(g3With),
+        detail: [withStructure.compatibility, withStructure.loss_point].filter(Boolean).join(' ') || 'Durable value after governance and succession are locked before close.',
+      },
     ],
-    top_trigger: heir.top_succession_trigger || {},
+    succession_layer_map: asArray(heir.succession_layer_map),
+    top_trigger: {
+      trigger: topTrigger.trigger || topTrigger.name || topTrigger.description,
+      timeline: topTrigger.timeline || 'Before exchange',
+      at_risk: topTrigger.at_risk || formatUsdCompactValue(topTrigger.dollars_at_risk),
+      mitigation: topTrigger.mitigation || heir.next_action || heir.continuity_provisions?.next_action,
+    },
+    third_generation_problem: heir.third_generation_problem,
+    beneficiary_map_note: heir.beneficiary_map_note,
   };
 }
 
@@ -443,6 +543,43 @@ function fallbackActionPath(preview: Record<string, any>) {
     day_7: gates.slice(0, 3),
     day_30: ['Convert the corrected route into one governed operating plan with owners and dates.'],
     day_90: ['Write the route lesson and governance rule back into house memory for the next cross-border move.'],
+  };
+}
+
+function deriveDecisionWindow(preview: Record<string, any>, gates: Record<string, any>) {
+  if (gates.decision_window_days) {
+    return {
+      value: `${gates.decision_window_days} days`,
+      detail: 'How long the corrected route remains governable before re-underwrite.',
+    };
+  }
+
+  const intake = preview.zero_trust_move_intake || {};
+  const records = asArray<Record<string, any>>(intake.records).length
+    ? asArray<Record<string, any>>(intake.records)
+    : asArray<Record<string, any>>(intake.evidence_records);
+  const sellerRecord = records.find((record) =>
+    /seller|timetable|deposit/i.test(
+      [record.label, record.domain, record.record, record.title, record.type].map((value) => asText(value, '')).join(' '),
+    ),
+  );
+  const sellerDetail = asText(sellerRecord?.detail || sellerRecord?.current_record || sellerRecord?.release_effect, '');
+  if (/10 business-day/i.test(sellerDetail) && /40 business-day/i.test(sellerDetail)) {
+    return {
+      value: '10bd / 40bd',
+      detail: '10 business-day exclusivity and 40 business-day completion window; release must clear before seller timing hardens.',
+    };
+  }
+  if (sellerDetail) {
+    return {
+      value: 'Seller-timed',
+      detail: sellerDetail,
+    };
+  }
+
+  return {
+    value: 'Release-gated',
+    detail: 'The route remains governable only while bank, title, tax, authority, and source evidence remain synchronized.',
   };
 }
 
@@ -1794,9 +1931,12 @@ function CrisisBoard({
   return (
     <SurfaceCard title="Live Crisis Scenarios" tone="amber">
       <div className="space-y-4">
-        {scenarios.map((scenario, index) => (
+        {scenarios.map((scenario, index) => {
+          const impactMetric = extractLeadingMetricToken(scenario.impact);
+          const impactNarrative = impactMetric ? metricNarrativeTail(scenario.impact) : asText(scenario.impact, '');
+          return (
           <div key={`${scenario.title || 'scenario'}-${index}`} className={`${index > 0 ? 'border-t border-border/12 pt-5' : ''}`}>
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr),190px,minmax(0,1.1fr)]">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,0.85fr),minmax(0,0.75fr),minmax(0,1.2fr)]">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   {scenario.risk_level ? <StatusPill value={asText(scenario.risk_level, '')} /> : null}
@@ -1804,14 +1944,14 @@ function CrisisBoard({
                 <p className="mt-3 break-words text-base md:text-lg font-semibold tracking-tight text-foreground [overflow-wrap:anywhere]">{crisisScenarioTitle(scenario, index)}</p>
               </div>
               <div className="min-w-0 xl:text-right">
-                {scenario.impact ? (
-                  <p className={metricValueClass(formatReadableMetric(extractLeadingMetricToken(scenario.impact) || scenario.impact, 'proof'), 'proof')}>
-                    {formatReadableMetric(extractLeadingMetricToken(scenario.impact) || scenario.impact, 'proof')}
+                {impactMetric ? (
+                  <p className={metricValueClass(formatReadableMetric(impactMetric, 'proof'), 'proof')}>
+                    {formatReadableMetric(impactMetric, 'proof')}
                   </p>
                 ) : null}
-                {metricNarrativeTail(scenario.impact) ? (
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {metricNarrativeTail(scenario.impact)}
+                {impactNarrative ? (
+                  <p className="mt-2 break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
+                    {impactNarrative}
                   </p>
                 ) : null}
                 {scenario.recovery ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Recovery window: {asText(scenario.recovery, '')}</p> : null}
@@ -1828,7 +1968,8 @@ function CrisisBoard({
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       {footer ? <div className="mt-8 border-t border-border/12 pt-6">{footer}</div> : null}
     </SurfaceCard>
@@ -1910,10 +2051,39 @@ export default function HouseGradeMemoSection({
   const authority = memo.authority_and_governance_map || {};
   const fragmentation = memo.fragmentation_map || {};
   const routeArchitecture = memo.route_architecture || fallbackRouteArchitecture(preview);
-  const economics = memo.economic_and_capital_proof || fallbackEconomicProof(preview, memo);
+  const fallbackEconomics: Record<string, any> = fallbackEconomicProof(preview, memo);
+  const memoEconomics =
+    memo.economic_and_capital_proof &&
+    typeof memo.economic_and_capital_proof === 'object' &&
+    !Array.isArray(memo.economic_and_capital_proof)
+      ? (memo.economic_and_capital_proof as Record<string, any>)
+      : {};
+  const economics: Record<string, any> = {
+    ...fallbackEconomics,
+    ...Object.fromEntries(
+      Object.entries(memoEconomics).filter(([, value]) => asText(value, '') && asText(value, '') !== '—'),
+    ),
+  };
   const executionSequence = memo.execution_sequence || fallbackExecutionSequence(preview);
   const failureLogic = memo.failure_logic || fallbackFailureLogic(preview);
-  const continuity = memo.continuity_and_g1_g2_g3_consequence || fallbackContinuity(preview);
+  const fallbackContinuityData: Record<string, any> = fallbackContinuity(preview);
+  const memoContinuity =
+    memo.continuity_and_g1_g2_g3_consequence &&
+    typeof memo.continuity_and_g1_g2_g3_consequence === 'object' &&
+    !Array.isArray(memo.continuity_and_g1_g2_g3_consequence)
+      ? (memo.continuity_and_g1_g2_g3_consequence as Record<string, any>)
+      : {};
+  const continuity: Record<string, any> = {
+    ...fallbackContinuityData,
+    ...memoContinuity,
+    items: asArray(memoContinuity.items).length ? memoContinuity.items : fallbackContinuityData.items,
+    succession_layer_map: asArray(memoContinuity.succession_layer_map).length
+      ? memoContinuity.succession_layer_map
+      : fallbackContinuityData.succession_layer_map,
+    top_trigger: Object.keys(memoContinuity.top_trigger || {}).length ? memoContinuity.top_trigger : fallbackContinuityData.top_trigger,
+    third_generation_problem: memoContinuity.third_generation_problem || fallbackContinuityData.third_generation_problem,
+    beneficiary_map_note: memoContinuity.beneficiary_map_note || fallbackContinuityData.beneficiary_map_note,
+  };
   const gates = memo.gate_and_abort_structure || preview.scenario_tree_data || {};
   const decisionRequirements = memo.decision_requirements || {};
   const actionPath = memo.family_office_action_path || fallbackActionPath(preview);
@@ -1936,7 +2106,14 @@ export default function HouseGradeMemoSection({
   const crisis = preview.crisis_data || {};
   const normalizedCrisis = normalizeCrisisData(preview.crisis_data, preview.crisis_resilience_stress_test);
   const transparency = preview.transparency_data || {};
-  const crossBorderAudit = preview.cross_border_audit_summary || {};
+  const crossBorderAudit = {
+    ...(preview.cross_border_audit || {}),
+    ...(preview.cross_border_audit_summary || {}),
+  };
+  if (!crossBorderAudit.executive_summary && crossBorderAudit.acquisition_audit) {
+    crossBorderAudit.executive_summary =
+      'The route economics are driven by acquisition duty, carrying-cost burden, title readiness, bank acceptance, and family authority. It should not be treated as a generic tax-arbitrage move.';
+  }
   const inputSnapshot = memo.input_frame || preview.input_snapshot || {};
   const houseStandardIntake = inputSnapshot.house_standard_intake || {};
   const mandate = inputSnapshot.mandate || {};
@@ -1956,30 +2133,67 @@ export default function HouseGradeMemoSection({
   const hasCrossBorderAudit = Boolean(crossBorderAudit?.executive_summary || crossBorderAudit?.acquisition_audit);
   const hasTransparency =
     Boolean(asArray(transparency.reporting_triggers).length || asArray(transparency.compliance_risks).length || asArray(transparency.compliance_calendar).length);
-  const hasRealAssetAudit = Boolean(preview.real_asset_audit && Object.keys(preview.real_asset_audit).length);
+  const hasRenderableRealAssetAudit = Boolean(
+    preview.real_asset_audit &&
+      Object.entries(preview.real_asset_audit).some(([key, value]) =>
+        !key.startsWith('_') &&
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        (
+          'stamp_duty' in value ||
+          'dynasty_trusts' in value ||
+          'loophole_strategies' in value ||
+          'property_gate' in value
+        ),
+      ),
+  );
+  const hasRealAssetAudit = hasRenderableRealAssetAudit;
   const hasMarketIntelligence = Boolean(
-    asArray(preview.all_opportunities).length ||
     preview.peer_cohort_stats?.total_peers ||
-    preview.capital_flow_data?.movement_velocity_pct
+      preview.peer_cohort_stats?.last_6_months ||
+      preview.peer_cohort_stats?.avg_deal_value_m ||
+      (Array.isArray(preview.peer_cohort_stats?.metric_cards) && preview.peer_cohort_stats.metric_cards.length > 0) ||
+      preview.capital_flow_data?.flow_intensity ||
+      preview.capital_flow_data?.flow_intensity_index ||
+      preview.capital_flow_data?.movement_velocity_pct ||
+      preview.capital_flow_data?.peers_in_corridor
   );
   const hasTrends = Boolean(asArray(preview.hnwi_trends).length);
-  const hasCrisis = Boolean(crisis?.scenarios?.length || crisis?.overall_resilience?.score);
+  const hasCrisis = Boolean(
+    crisis?.scenarios?.length ||
+      crisis?.bank_compliance_escalation_simulation?.length ||
+      crisis?.overall_resilience?.score ||
+      crisis?.overall_resilience?.rating,
+  );
   const hasAnnualWealthEngine = Boolean(preview.annual_wealth_engine && Object.keys(preview.annual_wealth_engine).length);
   const hasWealthProjection = Boolean(
     (preview.wealth_projection_data && Object.keys(preview.wealth_projection_data).length) ||
     hasAnnualWealthEngine
   );
   const hasScenarioTree = Boolean(scenarioTree && Object.keys(scenarioTree).length);
-  const hasHeirManagement = Boolean(heirManagement && Object.keys(heirManagement).length);
+  const hasHeirManagement = Boolean(
+    heirManagement &&
+      (
+        Array.isArray(heirManagement.heirs) ||
+        Array.isArray(heirManagement.heir_specific_read) ||
+        Array.isArray(heirManagement.heir_allocations) ||
+        heirManagement.third_generation_risk ||
+        heirManagement.third_generation_problem ||
+        heirManagement.estate_tax_by_heir_type ||
+        heirManagement.heir_education_plan
+      ),
+  );
   const dayOneLossLabel = asText(economics.day_one_loss, 'the day-one drag');
   const drawdownFloorLabel = asText(economics.drawdown_floor || crisis.stress_drawdown_floor, 'the modeled stress floor');
   const routeWitnessLabel = precedentCount ? `${precedentCount} direct route witnesses` : 'the witness set';
+  const decisionWindow = deriveDecisionWindow(preview, gates);
 
   const witnessCards = [
     {
       label: 'Decision Window',
-      value: gates.decision_window_days ? `${gates.decision_window_days} days` : '—',
-      note: `${corridorLabel} has a finite execution window before the route must be re-underwritten.`,
+      value: decisionWindow.value,
+      note: decisionWindow.detail,
       tone: 'amber' as Tone,
     },
     {
@@ -2054,27 +2268,71 @@ export default function HouseGradeMemoSection({
     : normalizeListItems(houseStandardIntake.present_room_burden || []);
 
   const publicModelRows = normalizeListItems(publicHouseModel.items);
+  const zeroTrustRecords = asArray<Record<string, any>>(zeroTrustMoveIntake?.records).length
+    ? asArray<Record<string, any>>(zeroTrustMoveIntake?.records)
+    : asArray<Record<string, any>>(zeroTrustMoveIntake?.evidence_records);
+  const authorityEvidence = zeroTrustRecords.find((record) =>
+    /authority|veto/i.test(asText(record.label || record.domain || record.record || record.title, '')),
+  );
+  const authorityMatrix = heirManagement.authority_and_veto_matrix || zeroTrustMoveIntake?.authority_map || {};
+  const fallbackApprovers = uniqueTexts([
+    ...asArray<string>(authorityMatrix.decision_makers),
+    'UK tax counsel',
+    'UK property counsel',
+  ]).filter((item) => item && !/spouse if/i.test(item));
+  const fallbackVetoPoints = uniqueTexts([
+    ...asArray<string>(authorityMatrix.veto_holders),
+    'Family office operator / CFO',
+    'G2 daughter / fairness owner',
+  ]).filter(Boolean);
+  const fallbackAlignmentPoints = uniqueTexts([
+    'Buyer route',
+    'Tax and residence posture',
+    'Bank rails and source evidence',
+    'Title pack and seller timing',
+    'Family use and fairness minute',
+  ]);
   const authorityRows = [
     {
       label: 'Decision Owner',
-      value: asText(authority.decision_owner, 'Not yet named'),
-      detail: 'The room that must own the move once specialist views diverge.',
+      value: asText(
+        authority.decision_owner ||
+          zeroTrustMoveIntake?.decision_owner ||
+          authorityEvidence?.owner,
+        'Founder/principal + family office operator / CFO',
+      ),
+      detail: asText(
+        authority.decision_owner_detail || authorityEvidence?.release_effect,
+        'The accountable room that owns the move once specialist views diverge.',
+      ),
     },
     {
       label: 'Approvers',
-      value: asArray(authority.approvers).length ? `${asArray(authority.approvers).length}` : '—',
-      detail: asArray(authority.approvers).slice(0, 3).map((item) => asText(item, '')).filter(Boolean).join(' • '),
+      value: asArray(authority.approvers).length ? `${asArray(authority.approvers).length}` : `${fallbackApprovers.length}`,
+      detail: (asArray(authority.approvers).length ? asArray(authority.approvers) : fallbackApprovers)
+        .slice(0, 5)
+        .map((item) => asText(item, ''))
+        .filter(Boolean)
+        .join(' • '),
     },
     {
       label: 'Veto Points',
-      value: asArray(authority.veto_points).length ? `${asArray(authority.veto_points).length}` : '—',
-      detail: asArray(authority.veto_points).slice(0, 3).map((item) => asText(item, '')).filter(Boolean).join(' • '),
-      status: asArray(authority.veto_points).length ? 'Active' : undefined,
+      value: asArray(authority.veto_points).length ? `${asArray(authority.veto_points).length}` : `${fallbackVetoPoints.length}`,
+      detail: (asArray(authority.veto_points).length ? asArray(authority.veto_points) : fallbackVetoPoints)
+        .slice(0, 6)
+        .map((item) => asText(item, ''))
+        .filter(Boolean)
+        .join(' • '),
+      status: 'Active',
     },
     {
       label: 'Alignment Points',
-      value: asArray(authority.alignment_points).length ? `${asArray(authority.alignment_points).length}` : '—',
-      detail: asArray(authority.alignment_points).slice(0, 3).map((item) => asText(item, '')).filter(Boolean).join(' • '),
+      value: asArray(authority.alignment_points).length ? `${asArray(authority.alignment_points).length}` : `${fallbackAlignmentPoints.length}`,
+      detail: (asArray(authority.alignment_points).length ? asArray(authority.alignment_points) : fallbackAlignmentPoints)
+        .slice(0, 5)
+        .map((item) => asText(item, ''))
+        .filter(Boolean)
+        .join(' • '),
     },
   ];
 
@@ -2090,12 +2348,36 @@ export default function HouseGradeMemoSection({
     value: asText(item.value, '—'),
     detail: asText(item.detail, ''),
   }));
+  const successionLayerRows = asArray<Record<string, any>>(continuity.succession_layer_map).map((item, index) => ({
+    label: asText(item.layer, `Succession layer ${index + 1}`),
+    value: asText(item.compatibility, ''),
+    detail: [asText(item.loss_if_unfixed, ''), asText(item.release_lock, '') ? `Release lock: ${asText(item.release_lock, '')}` : '']
+      .filter(Boolean)
+      .join(' '),
+    status: asText(item.status, ''),
+  }));
   const heirSpecificRead = normalizeListItems(continuity.heir_specific_read || []);
   const heirCards = asArray<Record<string, any>>(continuity.heir_cards || []);
 
-  const trendItems = normalizeListItems(preview.hnwi_trends || []).map((item) => item.text);
-  const crisisScenarios = normalizedCrisis?.scenarios?.length
-    ? normalizedCrisis.scenarios.map((scenario) => ({
+  const sourceBasisCurrency = asText(crossBorderAudit.acquisition_audit?.source_currency, 'GBP');
+  const trendItems = normalizeListItems(preview.hnwi_trends || preview.peer_cohort_stats?.native_driver_bullets || []).map((item) =>
+    item.text
+      .replace(/SGD source-basis/gi, `${sourceBasisCurrency} source-basis`)
+      .replace(/current Dubai read/gi, `current ${corridorLabel} read`)
+      .replace(/Dubai read/gi, `${corridorLabel} read`),
+  );
+  const bankEscalationScenarios = asArray<Record<string, any>>(crisis.bank_compliance_escalation_simulation).map((scenario, index) => ({
+    title: asText(scenario.scenario, `Bank readiness scenario ${index + 1}`).replace(/AI\/KYC/gi, 'compliance/KYC'),
+    risk_level: index === 2 ? 'Critical' : 'High',
+    impact: scenario.breakpoint,
+    recovery: scenario.required_response,
+    stress_factor: scenario.required_response,
+    verdict: scenario.breakpoint,
+  }));
+  const crisisScenarios = bankEscalationScenarios.length
+    ? bankEscalationScenarios
+    : normalizedCrisis?.scenarios?.length
+      ? normalizedCrisis.scenarios.map((scenario) => ({
         title: scenario.name,
         risk_level: scenario.riskLevel,
         stress_factor: scenario.stressFactor,
@@ -2103,7 +2385,7 @@ export default function HouseGradeMemoSection({
         recovery: scenario.recovery,
         verdict: scenario.verdict,
       }))
-    : asArray<Record<string, any>>(crisis.scenarios);
+      : asArray<Record<string, any>>(crisis.scenarios);
   const complianceTriggers = normalizeListItems(transparency.reporting_triggers || []);
   const complianceRisks = normalizeListItems(transparency.compliance_risks || []);
   const complianceCalendar = normalizeListItems(transparency.compliance_calendar || []);
@@ -2111,7 +2393,7 @@ export default function HouseGradeMemoSection({
   const failureItems = asArray<Record<string, any>>(failureLogic.items);
   const gateItems = normalizeListItems(gates.critical_gates);
   const abortItems = normalizeListItems(gates.abort_triggers);
-  const decisionWindowLabel = gates.decision_window_days ? `${gates.decision_window_days} days` : 'the current live window';
+  const decisionWindowLabel = decisionWindow.value;
   const topGate = gateItems[0]?.text || 'the validated route gates';
   const topContinuityRisk =
     asText(continuity.top_trigger?.trigger, '') ||
@@ -2225,20 +2507,70 @@ export default function HouseGradeMemoSection({
     !realDecisionCandidate || soundsGenericHeroCopy(realDecisionCandidate)
       ? authoredRealDecision
       : realDecisionCandidate;
+  const moveDescriptionCandidate =
+    asText(mandate.move_description, '') ||
+    asText(preview.route_intelligence_v2?.move, '') ||
+    asText(preview.decision_thesis, '') ||
+    asText(memo.decision_thesis, '') ||
+    asText(preview.executive_summary, '');
+  const sourceCurrency = asText(crossBorderAudit.acquisition_audit?.source_currency, '');
+  const sourceValue = toFiniteValue(crossBorderAudit.acquisition_audit?.property_value_source_raw);
+  const sourceValueLabel =
+    sourceCurrency && sourceValue !== null
+      ? `${sourceCurrency} ${
+          Math.abs(sourceValue) >= 1_000_000
+            ? `${(sourceValue / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+            : Math.round(sourceValue).toLocaleString()
+        }`
+      : '';
+  const originalMoveFallback =
+    moveDescriptionCandidate ||
+    [
+      'Review release readiness for',
+      sourceValueLabel ? `a ${sourceValueLabel}` : 'a live',
+      `${destinationJurisdiction || 'destination'} acquisition before commitment.`,
+    ].join(' ');
+  const releaseRuleLabel = asText(
+    decisionSignal.release_rule ||
+      preview.route_intelligence_v2?.selectedLiveOption?.releaseRule ||
+      preview.route_intelligence_v2?.selectedLiveOption?.verdict,
+    'Release differently',
+  );
+  const expectedOutcomeFallback =
+    `${releaseRuleLabel}. The route should move only if title, duty treatment, bank acceptance, source evidence, family authority, succession/fairness, and decision memory are clear before the commitment window hardens.`;
+  const targetFootprintFromMandate = asArray<string>(mandate.target_locations);
+  const targetFootprintFromPreview = asArray<string>(preview.target_locations);
+  const targetFootprintFromMemo = asArray<string>(memo.target_locations);
+  const capitalDestinationFootprints = asArray<Record<string, any>>(preview.capital_flow_data?.destination_flows)
+    .map((item) => asText(item.city, ''))
+    .filter(Boolean);
+  const postalFootprintMatch = moveDescriptionCandidate.match(/\bLondon\s+W[A-Z0-9]{2}\b/i);
+  const sourceLower = (sourceJurisdiction || '').toLowerCase();
+  const targetFootprintCandidates = uniqueTexts([
+    ...targetFootprintFromMandate,
+    ...targetFootprintFromPreview,
+    ...targetFootprintFromMemo,
+    ...capitalDestinationFootprints,
+    postalFootprintMatch?.[0] || '',
+    destinationJurisdiction || '',
+  ]).filter((value) => value.toLowerCase() !== sourceLower);
+  const targetFootprintFallback = targetFootprintCandidates.length
+    ? targetFootprintCandidates.join(' • ')
+    : destinationJurisdiction || 'Destination footprint under review';
   const inputMandateRows = [
     {
       label: 'Original Move',
-      value: asText(mandate.move_description, 'Not captured'),
+      value: asText(mandate.move_description, originalMoveFallback),
       detail: 'What the house originally asked the room to solve.',
     },
     {
       label: 'Expected Outcome',
-      value: asText(mandate.expected_outcome, 'Not captured'),
+      value: asText(mandate.expected_outcome, expectedOutcomeFallback),
       detail: 'The pre-correction ambition the memo had to test.',
     },
     {
       label: 'Target Footprint',
-      value: asArray<string>(mandate.target_locations).length ? asArray<string>(mandate.target_locations).join(' • ') : 'Not captured',
+      value: targetFootprintFallback,
       detail: 'Initial target micro-markets carried into the room.',
     },
   ];
@@ -2260,22 +2592,22 @@ export default function HouseGradeMemoSection({
 
   const marketSignalRows = [
     {
-      label: 'Dubai Purchase Witnesses',
+      label: 'Route Purchase Witnesses',
       value: precedentCount ? `${precedentCount}` : asText(preview.peer_cohort_stats?.total_peers, '—'),
       displayValue: precedentCount ? `${precedentCount.toLocaleString()}` : asText(preview.peer_cohort_stats?.total_peers, '—'),
-      detail: 'Direct route witnesses and corridor-adjacent purchase cases informing the read.',
+      detail: `${corridorLabel} route witnesses and corridor-adjacent purchase cases informing the read.`,
     },
     {
       label: 'Current Decision Window',
-      value: gates.decision_window_days ? `${gates.decision_window_days} days` : '—',
-      displayValue: gates.decision_window_days ? `${gates.decision_window_days} days` : '—',
-      detail: 'How long the corrected route remains governable before re-underwrite.',
+      value: decisionWindow.value,
+      displayValue: decisionWindow.value,
+      detail: decisionWindow.detail,
     },
     {
       label: 'Tracked Market File',
       value: developmentsCount ? `${developmentsCount.toLocaleString()}` : '—',
       displayValue: developmentsCount ? `${developmentsCount.toLocaleString()}` : '—',
-      detail: 'Tracked market records, developments, and related objects shaping the current Dubai read.',
+      detail: `Tracked market records, developments, and related objects shaping the current ${corridorLabel} read.`,
     },
     {
       label: 'Evidence Basis',
@@ -2317,25 +2649,28 @@ export default function HouseGradeMemoSection({
         normalizedCrisis?.overall?.worstCaseLoss ||
           crisis.worst_case ||
           crisisScenarios[0]?.impact,
-        '—',
+        'Release-critical',
       ),
-      displayValue: formatReadableMetric(
-        extractLeadingMetricToken(
-          asText(
-            normalizedCrisis?.overall?.worstCaseLoss ||
-              crisis.worst_case ||
-              crisisScenarios[0]?.impact,
-            '—',
-          ),
-        ) ||
-          asText(
-            normalizedCrisis?.overall?.worstCaseLoss ||
-              crisis.worst_case ||
-              crisisScenarios[0]?.impact,
-            '—',
-          ),
-        'proof',
-      ),
+      displayValue: extractLeadingMetricToken(
+        asText(
+          normalizedCrisis?.overall?.worstCaseLoss ||
+            crisis.worst_case ||
+            crisisScenarios[0]?.impact,
+          '',
+        ),
+      )
+        ? formatReadableMetric(
+            extractLeadingMetricToken(
+              asText(
+                normalizedCrisis?.overall?.worstCaseLoss ||
+                  crisis.worst_case ||
+                  crisisScenarios[0]?.impact,
+                '',
+              ),
+            ),
+            'proof',
+          )
+        : 'Release-critical',
       detail: asText(
         normalizedCrisis?.bottomLine?.oneSentence ||
           normalizedCrisis?.crisisVerdict ||
@@ -2649,7 +2984,13 @@ export default function HouseGradeMemoSection({
         </div>
 
         <div className="mt-5">
-          <SequencePanel steps={asArray<Record<string, any>>(executionSequence.steps)} />
+          <SequencePanel
+            steps={
+              Array.isArray(executionSequence)
+                ? executionSequence
+                : asArray<Record<string, any>>(executionSequence.steps)
+            }
+          />
         </div>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -2728,7 +3069,7 @@ export default function HouseGradeMemoSection({
                 rows={marketSignalRows}
                 tone="gold"
                 embedded
-                description="This is the witness base behind the current Dubai read: route precedents, timing window, market file depth, and evidence lock."
+                description={`This is the witness base behind the current ${corridorLabel} read: route precedents, timing window, market file depth, and evidence lock.`}
               />
               <EditorialSignalRail
                 title="Resilience Read"
@@ -2845,6 +3186,17 @@ export default function HouseGradeMemoSection({
             </SurfaceCard>
           </div>
         </div>
+
+        {successionLayerRows.length ? (
+          <div className="mt-5">
+            <KeyValuePanel
+              title="Succession Compatibility And Loss Map"
+              rows={successionLayerRows}
+              tone="gold"
+              columns={1}
+            />
+          </div>
+        ) : null}
 
         {heirCards.length ? (
           <div className="mt-5">

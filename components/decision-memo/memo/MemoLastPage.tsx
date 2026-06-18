@@ -225,7 +225,7 @@ export function MemoLastPage({
               Confidentiality Notice
             </h3>
             <p className="relative text-sm text-muted-foreground/60 leading-relaxed font-normal">
-              This Pattern Audit report is confidential and proprietary to HNWI Chronicles.
+              This release-readiness memo is confidential and proprietary to HNWI Chronicles.
               Unauthorized distribution, reproduction, or disclosure is strictly prohibited.
             </p>
           </div>

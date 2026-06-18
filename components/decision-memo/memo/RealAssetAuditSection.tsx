@@ -177,6 +177,30 @@ function humanizeCompactValue(value: unknown): string {
     .join(' ');
 }
 
+function compactSavingsHeadline(value?: string): string {
+  const text = (value || '').trim();
+  if (!text) return 'Counsel-gated';
+  if (/no tax saving/i.test(text)) return 'No tax saving';
+
+  const currency = text.match(/US\$\s?[\d,.]+(?:K|M|B)?|\$[\d,.]+(?:K|M|B)?/i)?.[0];
+  if (currency) {
+    if (/up to/i.test(text)) return `Up to ${currency}`;
+    if (/higher/i.test(text)) return `${currency} higher`;
+    if (/avoided/i.test(text)) return `${currency} avoided`;
+    return currency;
+  }
+
+  return text.length > 42 ? `${text.slice(0, 39).trim()}...` : text;
+}
+
+function savingsCaption(value?: string, disabled?: boolean): string {
+  const text = (value || '').trim();
+  if (!text) return 'Release effect counsel-gated';
+  if (disabled) return text;
+  const firstSentence = text.split(/(?<=\.)\s+/)[0] || text;
+  return firstSentence.length > 150 ? `${firstSentence.slice(0, 147).trim()}...` : firstSentence;
+}
+
 export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
   data: rawData,
   sourceJurisdiction,
@@ -1000,15 +1024,15 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
                       ? 'border border-border/20 bg-card/30 opacity-75'
                       : 'border border-border/20 bg-card/50'
                   }`}>
-                    <div className="flex items-start justify-between gap-4 mb-3">
-                      <div className="flex items-start gap-3">
+                    <div className="grid gap-4 mb-3 lg:grid-cols-[minmax(0,1fr),minmax(160px,240px)]">
+                      <div className="flex min-w-0 items-start gap-3">
                         <div className={`w-7 h-7 rounded-full border flex items-center justify-center flex-shrink-0 ${
                           isDisabled ? 'border-border/20' : 'border-primary/20'
                         }`}>
                           <span className={`text-xs font-medium ${isDisabled ? 'text-muted-foreground/60' : 'text-primary/60'}`}>{idx + 1}</span>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
                             <h5 className={`text-sm font-normal ${isDisabled ? 'text-muted-foreground/60' : 'text-foreground'}`}>
                               {strategy.name}
                             </h5>
@@ -1047,12 +1071,12 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
                           )}
                         </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className={`text-xl md:text-2xl font-medium tabular-nums tracking-tight ${isDisabled ? 'text-muted-foreground/60 line-through' : 'text-primary/80'}`}>
-                          {strategy.tax_savings_potential}
+                      <div className="min-w-0 lg:text-right">
+                        <p className={`break-words text-lg md:text-xl font-medium tabular-nums tracking-tight [overflow-wrap:anywhere] ${isDisabled ? 'text-muted-foreground/70' : 'text-primary/80'}`}>
+                          {compactSavingsHeadline(strategy.tax_savings_potential)}
                         </p>
-                        <p className="text-xs text-muted-foreground/60">
-                          {isDisabled ? 'not applicable' : 'potential savings'}
+                        <p className="mt-1 break-words text-xs leading-relaxed text-muted-foreground/60 [overflow-wrap:anywhere]">
+                          {savingsCaption(strategy.tax_savings_potential, isDisabled)}
                         </p>
                       </div>
                     </div>

@@ -197,6 +197,9 @@ function VerdictBadge({ verdict, compact = false }: { verdict: string; compact?:
 function checkIdenticalTaxRates(structures: Structure[]): boolean {
   if (structures.length <= 1) return false;
   const first = structures[0];
+  const hasComparableTaxRates = [first.rental_income_rate, first.capital_gains_rate, first.estate_tax_rate]
+    .some((value) => typeof value === 'number' && Number.isFinite(value));
+  if (!hasComparableTaxRates) return false;
   return structures.every(s =>
     s.rental_income_rate === first.rental_income_rate &&
     s.capital_gains_rate === first.capital_gains_rate &&
@@ -481,7 +484,7 @@ export function StructureComparisonMatrix({
                 All structures share identical effective tax rates
               </p>
               <p className="text-sm text-muted-foreground/60 leading-loose sm:leading-relaxed mb-4 font-normal">
-                US worldwide taxation applies at the same rates regardless of ownership vehicle. The differentiator between structures is implementation cost, not tax efficiency.
+                The current structure data does not show tax-rate differentiation across these routes. The differentiator is implementation cost, release readiness, ownership control, and adviser acceptance rather than a modeled tax-rate spread.
               </p>
               <div className="flex flex-wrap gap-3">
                 <span className="text-xs font-medium tabular-nums text-foreground rounded-xl border border-border/20 bg-card/50 px-3 py-1.5">

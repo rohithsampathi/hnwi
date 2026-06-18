@@ -7,7 +7,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Clock,
@@ -165,7 +165,7 @@ function buildPaidAuditSession(intakeId: string): AuditSession {
     principalId: 'sfo_audit',
     status: 'PAID',
     isUnlocked: true,
-    previewUrl: `/decision-memo/audit/${intakeId}`,
+    previewUrl: `/release-readiness/review/${intakeId}`,
     submittedAt: '',
     previewReadyAt: '',
     expiresAt: '',
@@ -188,7 +188,13 @@ export default function DecisionMemoAuditClientPage({
 }: DecisionMemoAuditClientPageProps) {
   const intakeId = initialIntakeId;
   const router = useRouter();
-  const pathname = `/decision-memo/audit/${encodeURIComponent(resolvePublicDecisionMemoId(intakeId))}`;
+  const currentPathname = usePathname();
+  const publicMemoId = resolvePublicDecisionMemoId(intakeId);
+  const canonicalPublicPath = `/release-readiness/review/${encodeURIComponent(publicMemoId)}`;
+  const focusedWarRoomPath = `/war-room?memo=${encodeURIComponent(publicMemoId)}`;
+  const pathname = currentPathname?.startsWith('/release-readiness/')
+    ? currentPathname
+    : canonicalPublicPath;
   const searchParams = useMemo(
     () => new URLSearchParams(initialSearchParamsString),
     [initialSearchParamsString],
@@ -215,7 +221,7 @@ export default function DecisionMemoAuditClientPage({
 
     const query = searchParams.toString();
     router.replace(
-      `/decision-memo/audit/${encodeURIComponent(publicId)}${query ? `?${query}` : ''}`,
+      `/release-readiness/review/${encodeURIComponent(publicId)}${query ? `?${query}` : ''}`,
       { scroll: false }
     );
   }, [intakeId, router, searchParams]);
@@ -864,15 +870,15 @@ export default function DecisionMemoAuditClientPage({
             <AlertTriangle className="w-8 h-8 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold mb-4 text-foreground">
-            {error.toLowerCase().includes('temporarily unavailable') ? 'Decision Memo Temporarily Unavailable' : 'Decision Memo Not Available'}
+            {error.toLowerCase().includes('temporarily unavailable') ? 'Release Readiness Memo Temporarily Unavailable' : 'Release Readiness Memo Not Available'}
           </h1>
           <p className="text-muted-foreground mb-6">{error}</p>
           <Link
-            href="/decision-memo"
+            href={pathname}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Start New Audit
+            Retry
           </Link>
         </div>
       </div>
@@ -1228,8 +1234,9 @@ export default function DecisionMemoAuditClientPage({
     const handleCitationClick = (citationId: string) => {
       openCitation(citationId);
     };
+    const isRouteNativeReleaseMemo = Boolean(routeIntelligence);
     const ReportRenderer =
-      memoViewMode === 'house'
+      memoViewMode === 'house' || isRouteNativeReleaseMemo
         ? HouseDecisionMemoLinearReport
         : CanonicalDecisionMemoLinearReport;
 
@@ -1284,7 +1291,7 @@ export default function DecisionMemoAuditClientPage({
           <div className="max-w-6xl mx-auto px-3 sm:px-6 py-3">
             <div className="flex items-center gap-3 pl-1">
               <button
-                onClick={() => router.push('/war-room')}
+                onClick={() => router.push(focusedWarRoomPath)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded bg-secondary border border-border text-foreground hover:bg-primary hover:text-white transition-colors"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
@@ -1311,7 +1318,7 @@ export default function DecisionMemoAuditClientPage({
                   <span className="text-primary-foreground font-bold text-sm">HC</span>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-foreground font-semibold">Decision Memo</p>
+                  <p className="text-foreground font-semibold">Release Readiness Memo</p>
                   <p className="text-muted-foreground text-xs break-all">
                     Ref: {canonicalMemoReference}
                   </p>
@@ -1430,7 +1437,7 @@ export default function DecisionMemoAuditClientPage({
                   });
 
                   return (
-                    <CanonicalDecisionMemoLinearReport
+                    <HouseDecisionMemoLinearReport
                       memoData={routeScopedSurface.memoData as any}
                       intakeId={intakeId}
                       backendData={routeScopedSurface.backendData}

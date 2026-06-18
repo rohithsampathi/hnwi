@@ -17,6 +17,7 @@ interface MemoCoverPageProps {
   generatedAt: string;
   exposureClass?: string;
   totalSavings?: string;
+  headlineMetricLabel?: string;
   viaNegativa?: ViaNegativaContext;
 }
 
@@ -46,6 +47,7 @@ export function MemoCoverPage({
   generatedAt,
   exposureClass,
   totalSavings,
+  headlineMetricLabel,
   viaNegativa
 }: MemoCoverPageProps) {
   const memoReference = resolveDecisionMemoDisplayReference(intakeId);
@@ -154,7 +156,7 @@ export function MemoCoverPage({
           className="text-3xl sm:text-4xl md:text-5xl font-normal text-white/90 tracking-tight mb-20"
           {...fadeUp(0.6)}
         >
-          SFO Pattern Audit
+          Release Readiness Memo
         </motion.h2>
 
         {/* Jurisdiction Corridor */}
@@ -210,7 +212,7 @@ export function MemoCoverPage({
                 className="text-center px-6 sm:px-10 py-8 rounded-2xl border border-border/20 bg-white/[0.01] min-w-0 transition-all duration-500 hover:border-emerald-500/20"
                 whileHover={{ y: -2 }}
               >
-                <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground/60 mb-4">Value Creation</p>
+                <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground/60 mb-4">{headlineMetricLabel || 'Decision Value'}</p>
                 <p className="text-xl md:text-2xl font-bold text-emerald-500/80">
                   {totalSavings}
                 </p>

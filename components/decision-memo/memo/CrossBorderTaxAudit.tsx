@@ -78,13 +78,30 @@ interface EstateAudit {
 }
 
 interface NetYieldAudit {
-  gross_yield_pct: number;
-  tax_rate_applied_pct: number;
-  net_yield_pct: number;
-  annual_gross_income: number;
-  annual_tax_paid: number;
-  annual_net_income: number;
-  explanation: string;
+  gross_yield_pct?: number;
+  tax_rate_applied_pct?: number;
+  net_yield_pct?: number;
+  annual_gross_income?: number;
+  annual_tax_paid?: number;
+  annual_net_income?: number;
+  explanation?: string;
+  read?: string;
+  annual_carrying_cost_before_opportunity_usd?: number;
+  carrying_cost_model?: {
+    annual_carrying_cost_before_opportunity_usd?: number;
+    annual_components?: Array<{
+      amount_usd?: number;
+      label?: string;
+      owner?: string;
+      release_condition?: string;
+    }>;
+    one_time_fx_spread_control_usd?: number;
+    opportunity_cost_sensitivity?: {
+      per_100bps_on_purchase_price_usd?: number;
+      read?: string;
+    };
+    use_policy_read?: string;
+  };
 }
 
 export interface CrossBorderAuditSummary {
@@ -137,6 +154,10 @@ function formatOptionalCharge(amount: number | null | undefined, fallback = '—
   }
 
   return formatCurrency(amount, fallback);
+}
+
+function hasPositiveValue(value: number | null | undefined): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) >= 0.005;
 }
 
 // Animated number counter
@@ -590,56 +611,146 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
             />
           )}
 
-          {/* Net Yield */}
-          {audit.net_yield_audit && (
-            <motion.div
-              className="relative rounded-xl border border-border/20 bg-card/50 p-6"
-              whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            >
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+          {/* Net Yield / Use-Led Carry */}
+          {audit.net_yield_audit && (() => {
+            const netYieldAudit = audit.net_yield_audit as NetYieldAudit;
+            const carryModel = netYieldAudit.carrying_cost_model;
+            const annualCarry = toFiniteNumber(
+              netYieldAudit.annual_carrying_cost_before_opportunity_usd ||
+                carryModel?.annual_carrying_cost_before_opportunity_usd,
+              0,
+            );
+            const opportunityCost = toFiniteNumber(
+              carryModel?.opportunity_cost_sensitivity?.per_100bps_on_purchase_price_usd,
+              0,
+            );
+            const fxSpreadControl = toFiniteNumber(carryModel?.one_time_fx_spread_control_usd, 0);
+            const hasYieldUnderwriting = [
+              netYieldAudit.gross_yield_pct,
+              netYieldAudit.tax_rate_applied_pct,
+              netYieldAudit.net_yield_pct,
+              netYieldAudit.annual_gross_income,
+              netYieldAudit.annual_tax_paid,
+              netYieldAudit.annual_net_income,
+            ].some(hasPositiveValue);
+            const useLedCarry = annualCarry > 0 && !hasYieldUnderwriting;
 
-              <div className="relative z-10">
-                <h4 className="text-sm font-normal text-foreground mb-5">Net Yield Analysis</h4>
+            if (useLedCarry) {
+              const annualComponents = Array.isArray(carryModel?.annual_components)
+                ? carryModel.annual_components.filter((item) => hasPositiveValue(item.amount_usd)).slice(0, 4)
+                : [];
+              const useRead =
+                carryModel?.use_policy_read ||
+                netYieldAudit.read ||
+                netYieldAudit.explanation ||
+                'The route is not being underwritten as a rental-yield purchase; the release question is whether family purpose, annual carry, and operating ownership are accepted before close.';
 
-                {/* Yield metrics */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-5">
-                  <div className="text-center">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Gross</p>
-                    <p className="text-xl font-bold tabular-nums text-foreground">{toFiniteNumber(audit.net_yield_audit.gross_yield_pct).toFixed(2)}%</p>
+              return (
+                <motion.div
+                  className="relative rounded-xl border border-border/20 bg-card/50 p-6"
+                  whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                >
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+
+                  <div className="relative z-10">
+                    <h4 className="text-sm font-normal text-foreground mb-5">Use-Led Carry Analysis</h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-5">
+                      <div className="text-center">
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Economic stance</p>
+                        <p className="text-base font-bold text-foreground">Not yield-led</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Annual carry</p>
+                        <p className="text-xl font-bold tabular-nums text-foreground/80">{formatCurrency(annualCarry)}</p>
+                      </div>
+                      {opportunityCost > 0 ? (
+                        <div className="text-center">
+                          <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-2">Per 100 bps</p>
+                          <p className="text-xl font-bold tabular-nums text-gold/80">{formatCurrency(opportunityCost)}</p>
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-2">Release basis</p>
+                          <p className="text-base font-bold text-gold/80">Purpose signed</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2.5 mb-4">
+                      {annualComponents.map((item) => (
+                        <div key={`${item.label}-${item.amount_usd}`} className="flex justify-between gap-4 text-xs">
+                          <span className="text-muted-foreground/60 font-normal">{item.label}</span>
+                          <span className="font-medium text-foreground tabular-nums">{formatCurrency(item.amount_usd)}</span>
+                        </div>
+                      ))}
+                      {fxSpreadControl > 0 ? (
+                        <>
+                          <div className="h-px bg-gradient-to-r from-gold/20 via-gold/10 to-transparent" />
+                          <div className="flex justify-between text-xs pt-1">
+                            <span className="font-normal text-foreground">One-time FX spread control</span>
+                            <span className="font-medium text-gold/80 tabular-nums">{formatCurrency(fxSpreadControl)}</span>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+
+                    <p className="text-sm text-muted-foreground/60 leading-relaxed font-normal">
+                      {useRead}
+                    </p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Tax Rate</p>
-                    <p className="text-xl font-bold tabular-nums text-foreground/80">{toFiniteNumber(audit.net_yield_audit.tax_rate_applied_pct).toFixed(2)}%</p>
+                </motion.div>
+              );
+            }
+
+            return (
+              <motion.div
+                className="relative rounded-xl border border-border/20 bg-card/50 p-6"
+                whileHover={{ y: -2, transition: { duration: 0.2 } }}
+              >
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+
+                <div className="relative z-10">
+                  <h4 className="text-sm font-normal text-foreground mb-5">Net Yield Analysis</h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-5">
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Gross</p>
+                      <p className="text-xl font-bold tabular-nums text-foreground">{toFiniteNumber(netYieldAudit.gross_yield_pct).toFixed(2)}%</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Tax Rate</p>
+                      <p className="text-xl font-bold tabular-nums text-foreground/80">{toFiniteNumber(netYieldAudit.tax_rate_applied_pct).toFixed(2)}%</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-2">Net Yield</p>
+                      <p className="text-xl font-bold tabular-nums text-gold/80">{toFiniteNumber(netYieldAudit.net_yield_pct).toFixed(2)}%</p>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-2">Net Yield</p>
-                    <p className="text-xl font-bold tabular-nums text-gold/80">{toFiniteNumber(audit.net_yield_audit.net_yield_pct).toFixed(2)}%</p>
+
+                  <div className="space-y-2.5 mb-4">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground/60 font-normal">Annual Gross Income</span>
+                      <span className="font-medium text-foreground tabular-nums">{formatCurrency(netYieldAudit.annual_gross_income)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground/60 font-normal">Annual Tax Paid</span>
+                      <span className="font-medium text-red-500/80 tabular-nums">-{formatCurrency(netYieldAudit.annual_tax_paid)}</span>
+                    </div>
+                    <div className="h-px bg-gradient-to-r from-gold/20 via-gold/10 to-transparent" />
+                    <div className="flex justify-between text-xs pt-1">
+                      <span className="font-normal text-foreground">Annual Net Income</span>
+                      <span className="font-medium text-gold/80 tabular-nums">{formatCurrency(netYieldAudit.annual_net_income)}</span>
+                    </div>
                   </div>
+
+                  <p className="text-sm text-muted-foreground/60 leading-relaxed font-normal">
+                    {netYieldAudit.explanation}
+                  </p>
                 </div>
-
-                {/* Income breakdown */}
-                <div className="space-y-2.5 mb-4">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground/60 font-normal">Annual Gross Income</span>
-                    <span className="font-medium text-foreground tabular-nums">{formatCurrency(audit.net_yield_audit.annual_gross_income)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground/60 font-normal">Annual Tax Paid</span>
-                    <span className="font-medium text-red-500/80 tabular-nums">-{formatCurrency(audit.net_yield_audit.annual_tax_paid)}</span>
-                  </div>
-                  <div className="h-px bg-gradient-to-r from-gold/20 via-gold/10 to-transparent" />
-                  <div className="flex justify-between text-xs pt-1">
-                    <span className="font-normal text-foreground">Annual Net Income</span>
-                    <span className="font-medium text-gold/80 tabular-nums">{formatCurrency(audit.net_yield_audit.annual_net_income)}</span>
-                  </div>
-                </div>
-
-                <p className="text-sm text-muted-foreground/60 leading-relaxed font-normal">
-                  {audit.net_yield_audit.explanation}
-                </p>
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            );
+          })()}
         </div>
       </motion.div>
 

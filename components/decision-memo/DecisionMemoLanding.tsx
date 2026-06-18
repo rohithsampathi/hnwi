@@ -305,28 +305,28 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
             {/* Content */}
             <div className="relative z-10 p-6 sm:p-8 lg:p-12 text-center">
               <p className="text-xs font-bold text-primary uppercase tracking-widest mb-3">
-                Initiate Red Team Audit
+                Release Readiness Request
               </p>
 
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto mb-8">
-                Secure your slot for the current cycle. 48-hour SLA begins upon data submission. The output is a
-                family-ready Decision Memo and reviewed route record, not generic advisory content.
+                Share your name, email, phone, and a brief description of the live move. The output is a family-ready
+                release-readiness memo and reviewed route record, not generic advisory content.
               </p>
 
               {/* Steps */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mb-8">
-                <StepBadge number={1} text="Upload Details" sub="Encrypted Portal" />
+                <StepBadge number={1} text="Describe Move" sub="Zero-trust brief" />
                 <ArrowRight className="w-4 h-4 text-muted-foreground hidden sm:block" />
-                <StepBadge number={2} text="Secure Brief" sub="One-Time Fee" />
+                <StepBadge number={2} text="Evidence Scope" sub="Release gates" />
                 <ArrowRight className="w-4 h-4 text-muted-foreground hidden sm:block" />
-                <StepBadge number={3} text="Receive Review" sub="Decision Memo + Badge" />
+                <StepBadge number={3} text="Receive Review" sub="Memo + route record" />
               </div>
 
               <button
                 onClick={onContinue}
                 className="inline-flex items-center gap-2 sm:gap-3 px-10 sm:px-14 py-3.5 sm:py-4 bg-primary text-primary-foreground text-sm sm:text-base font-bold tracking-wider rounded-xl hover:bg-primary/90 transition-all shadow-xl shadow-primary/20"
               >
-                <span>INITIATE AUDIT MANDATE</span>
+                <span>REQUEST REVIEW</span>
                 <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 

@@ -1,9 +1,10 @@
 'use client';
 
 import { useRef, type CSSProperties, type ReactNode } from 'react';
-import { ArrowRight, Check, Share2 } from 'lucide-react';
+import { Check, Share2 } from 'lucide-react';
 import { SectionReveal } from '@/components/ui/section-reveal';
 import { computeMemoProps } from '@/lib/decision-memo/compute-memo-props';
+import { resolveDecisionMemoDisplayReference } from '@/lib/decision-memo/memo-id-aliases';
 import { resolveIntelligenceBasisCounts } from '@/lib/decision-memo/resolve-intelligence-basis-counts';
 import type { PdfMemoData } from '@/lib/pdf/pdf-types';
 import { DecisionMemoRenderProvider } from './decision-memo-render-context';
@@ -11,6 +12,7 @@ import { MemoCoverPage } from './MemoCoverPage';
 import { PrintPaginationOptimizer } from './PrintPaginationOptimizer';
 import HouseGradeMemoSection from './HouseGradeMemoSection';
 import { MemoLastPage } from './MemoLastPage';
+import { ReleaseReadinessInquiryForm } from './ReleaseReadinessInquiryForm';
 
 type RenderMode = 'screen' | 'print';
 
@@ -88,6 +90,7 @@ export default function DecisionMemoLinearReport({
   motionEnabled = false,
 }: DecisionMemoLinearReportProps) {
   const printContainerRef = useRef<HTMLDivElement>(null);
+  const canonicalReference = resolveDecisionMemoDisplayReference(intakeId);
   const resolvedBackendData = backendData ?? {};
   const resolvedArtifact =
     fullArtifact ??
@@ -110,6 +113,7 @@ export default function DecisionMemoLinearReport({
     latestGeneratedAt,
     routeEvidenceBasisNote,
     routeHeadlineMetric,
+    coverHeadlineMetric,
     viaNegativaContext,
   } = computeMemoProps(memoData);
 
@@ -136,7 +140,8 @@ export default function DecisionMemoLinearReport({
             destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
             generatedAt={canonicalGeneratedAt}
             exposureClass={memoData.preview_data.exposure_class}
-            totalSavings={routeHeadlineMetric?.value || memoData.preview_data.total_savings}
+            totalSavings={coverHeadlineMetric?.value || routeHeadlineMetric?.value}
+            headlineMetricLabel={coverHeadlineMetric?.label || routeHeadlineMetric?.label}
             viaNegativa={viaNegativaContext}
           />
         </ReportSection>
@@ -189,35 +194,25 @@ export default function DecisionMemoLinearReport({
             </div>
 
             <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-card to-primary/10 p-8 sm:p-12">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-primary/10 to-transparent rounded-bl-full" />
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
-              <div className="relative z-10 text-center max-w-2xl mx-auto">
+              <div className="relative z-10 mx-auto max-w-4xl">
                 <p className="text-xs sm:text-sm font-bold text-primary uppercase tracking-widest mb-4">
-                  House Decision System
+                  Release Readiness Request
                 </p>
 
                 <h3 className="text-xl sm:text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-4">
-                  DOES THE HOUSE HAVE ONE GOVERNING ANSWER?
+                  Have a live wealth move that should not harden yet?
                 </h3>
 
-                <p className="text-sm text-muted-foreground mb-4 max-w-lg mx-auto leading-relaxed">
-                  This memo is built to reduce cross-border fragmentation before capital hardens, not just to analyze a deal after specialists have already split the room.
+                <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                  Share your name, email, phone, and a brief description of the live move. We return with the evidence scope, release gates, and adviser question pack needed before capital, title, authority, or custody moves.
                 </p>
 
-                <p className="text-sm text-foreground font-medium mb-2">Result: one disciplined route.</p>
-                <p className="text-sm text-foreground font-medium mb-8">Turnaround: 48 hours.</p>
-
-                <div className="flex justify-center">
-                  <a
-                    href="/decision-memo"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-10 py-4 bg-primary text-primary-foreground font-bold rounded-xl text-sm tracking-wide hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
-                  >
-                    INITIATE HOUSE-GOVERNED AUDIT
-                    <ArrowRight className="w-4 h-4" />
-                  </a>
-                </div>
+                <ReleaseReadinessInquiryForm
+                  intakeId={intakeId}
+                  reference={canonicalReference}
+                />
               </div>
             </div>
           </div>

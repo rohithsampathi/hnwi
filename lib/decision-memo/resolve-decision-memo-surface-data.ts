@@ -13,6 +13,14 @@ interface ResolveDecisionMemoSurfaceDataInput {
 
 const PRINCIPAL_SURFACE_CONTRACT = 'hnwi_principal_surface_v1';
 
+function textOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function releaseReadinessReviewUrl(intakeId: string): string {
+  return `/release-readiness/review/${encodeURIComponent(intakeId)}`;
+}
+
 export interface ResolvedDecisionMemoSurfaceData {
   memoData: PdfMemoData;
   backendData: RecordLike;
@@ -487,7 +495,7 @@ function buildKingdomNativePreviewSurface(
       library_authority: libraryAuthority,
       next_step: nextStep,
     } as RecordLike,
-    full_memo_url: '',
+    full_memo_url: releaseReadinessReviewUrl(intakeId),
     full_artifact: {
       ...nativePayload,
       preview_data: previewData,
@@ -525,7 +533,7 @@ function buildPrincipalSurface(
     surface_contract_version: surface.surface_contract_version,
     preview_data: surface.preview_data,
     memo_data: surface.memo_data,
-    full_memo_url: surface.full_memo_url ?? '',
+    full_memo_url: textOrNull(surface.full_memo_url) ?? releaseReadinessReviewUrl(publicIntakeId),
     full_artifact: fullArtifact ?? undefined,
   } as PdfMemoData;
 
@@ -906,7 +914,9 @@ export function resolveDecisionMemoSurfaceData({
         memo_data:
           normalizedBackendData.memo_data ??
           buildFallbackMemoMetadata(normalizedFullArtifact),
-        full_memo_url: normalizedBackendData.full_memo_url ?? '',
+        full_memo_url:
+          textOrNull(normalizedBackendData.full_memo_url) ??
+          releaseReadinessReviewUrl(String(normalizedBackendData.intake_id ?? intakeId)),
         full_artifact:
           normalizedBackendData.full_artifact ??
           normalizedBackendData.fullArtifact ??

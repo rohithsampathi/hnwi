@@ -34,8 +34,15 @@ export function encodeDecisionMemoIdForPath(intakeId: string): string {
 }
 
 export function resolvePublicDecisionMemoPath(pathname: string): string | null {
+  const publicAuditMatch = pathname.match(/^\/decision-memo\/audit\/([^/?#]+)(.*)$/i);
+  if (publicAuditMatch) {
+    const currentId = publicAuditMatch[1];
+    const suffix = publicAuditMatch[2] ?? '';
+    const publicId = resolvePublicDecisionMemoId(currentId);
+    return `/release-readiness/review/${encodeDecisionMemoIdForPath(publicId)}${suffix}`;
+  }
+
   const patterns = [
-    /^\/decision-memo\/audit\/([^/?#]+)(.*)$/i,
     /^\/decision-memo-print\/([^/?#]+)(.*)$/i,
   ];
 

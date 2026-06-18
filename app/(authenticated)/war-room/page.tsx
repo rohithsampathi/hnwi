@@ -331,9 +331,113 @@ function buildCorridorGroupKey(audit: Audit): string {
   return `${sourceRaw}→${destinationRaw}`;
 }
 
-function getPreferredCorridorIndex(corridorAudits: Audit[]): number {
+function normalizeMemoId(value: unknown): string {
+  return String(value || '').trim().toUpperCase();
+}
+
+function getPreferredCorridorIndex(corridorAudits: Audit[], focusedMemoId?: string): number {
+  const normalizedFocus = normalizeMemoId(focusedMemoId);
+  if (normalizedFocus) {
+    const focusedIndex = corridorAudits.findIndex(audit => normalizeMemoId(audit.intake_id) === normalizedFocus);
+    if (focusedIndex >= 0) return focusedIndex;
+  }
+
   const accessibleIndex = corridorAudits.findIndex(audit => audit.has_access);
   return accessibleIndex >= 0 ? accessibleIndex : 0;
+}
+
+function asRecord(value: unknown): Record<string, any> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
+function firstText(...values: unknown[]): string {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return '';
+}
+
+function usdMillions(value: unknown): string {
+  const numeric = typeof value === 'number' ? value : Number(String(value || '').replace(/[^0-9.-]/g, ''));
+  if (!Number.isFinite(numeric) || numeric <= 0) return '';
+  return `US$${(numeric / 1_000_000).toFixed(2)}M`;
+}
+
+function buildFocusedAuditFromSurface(intakeId: string, payload: unknown): Audit | null {
+  const root = asRecord(payload);
+  const memoData = asRecord(root.memoData ?? root);
+  const preview = asRecord(memoData.preview_data ?? root.preview_data);
+  const fullArtifact = asRecord(memoData.full_artifact ?? root.fullArtifact ?? root.full_artifact);
+  const fullPreview = asRecord(fullArtifact.preview_data);
+  const assumptionLedger = asRecord(preview.assumption_ledger ?? fullPreview.assumption_ledger);
+  const riskAssessment = asRecord(preview.risk_assessment ?? fullPreview.risk_assessment);
+
+  const source = firstText(
+    preview.source_city,
+    preview.source_jurisdiction,
+    preview.source_country,
+    fullPreview.source_city,
+    fullPreview.source_jurisdiction,
+    fullPreview.source_country,
+  );
+  const destination = firstText(
+    preview.destination_city,
+    preview.destination_jurisdiction,
+    preview.destination_country,
+    fullPreview.destination_city,
+    fullPreview.destination_jurisdiction,
+    fullPreview.destination_country,
+  );
+
+  if (!source || !destination) {
+    return null;
+  }
+
+  const value = firstText(
+    preview.transaction_value,
+    preview.total_exposure,
+    preview.purchase_price_usd,
+    usdMillions(assumptionLedger.purchase_price_usd),
+    usdMillions(assumptionLedger.direct_foreign_individual_all_in_usd),
+  );
+  const verdict = firstText(
+    preview.verdict,
+    riskAssessment.structure_verdict,
+    riskAssessment.verdict,
+    fullArtifact.status,
+  );
+  const summary = firstText(
+    preview.thesis_summary,
+    preview.decision_thesis,
+    preview.executive_summary?.headline,
+    memoData.documentTitle,
+    'Current release-readiness memo corridor',
+  );
+
+  return {
+    intake_id: intakeId,
+    source_jurisdiction: source,
+    destination_jurisdiction: destination,
+    source_country: firstText(preview.source_country, fullPreview.source_country, source),
+    destination_country: firstText(preview.destination_country, fullPreview.destination_country, destination),
+    source_coordinates: null,
+    destination_coordinates: null,
+    created_at: firstText(memoData.generated_at, root.generated_at, new Date().toISOString()),
+    type: 'Release Readiness Memo',
+    value,
+    summary,
+    status: 'completed',
+    is_paid: true,
+    verdict,
+    risk_level: firstText(preview.risk_level, riskAssessment.risk_level, riskAssessment.riskLevel),
+    total_exposure: firstText(preview.total_exposure, usdMillions(assumptionLedger.direct_foreign_individual_all_in_usd)),
+    total_savings: firstText(preview.total_savings),
+    exposure_class: firstText(preview.exposure_class, 'Release readiness'),
+    annual_value: firstText(preview.annual_value),
+    transaction_value: value,
+    has_access: true,
+  };
 }
 
 function getStatusColor(_status: string): string {
@@ -360,6 +464,7 @@ const InteractiveWorldMap = dynamic(
 export default function WarRoomPage() {
   const router = useRouter();
   usePageTitle('War Room', 'Strategic intelligence command centre — audit corridors visualised on a global map.');
+  const [focusedMemoId, setFocusedMemoId] = useState('');
 
   // Auth
   const [user, setUser] = useState<any>(null);
@@ -371,6 +476,7 @@ export default function WarRoomPage() {
 
   // Audit data
   const [audits, setAudits] = useState<Audit[]>([]);
+  const [focusedMemoAudit, setFocusedMemoAudit] = useState<Audit | null>(null);
 
   // Filters — mirrors home dashboard
   const [timeframe, setTimeframe] = useState('live');
@@ -400,6 +506,16 @@ export default function WarRoomPage() {
   useEffect(() => {
     const currentUser = getCurrentUser();
     setUser(currentUser);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setFocusedMemoId(firstText(
+      params.get('memo'),
+      params.get('current'),
+      params.get('focus'),
+      params.get('intakeId'),
+    ));
   }, []);
 
   // Check assessment status
@@ -437,11 +553,58 @@ export default function WarRoomPage() {
     fetchAudits();
   }, [userId]);
 
+  useEffect(() => {
+    if (!focusedMemoId) {
+      setFocusedMemoAudit(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    fetch(`/api/decision-memo/surface/${encodeURIComponent(focusedMemoId)}`, {
+      credentials: 'include',
+      cache: 'no-store',
+    })
+      .then(async response => {
+        if (!response.ok) return null;
+        return response.json();
+      })
+      .then(payload => {
+        if (cancelled || !payload) return;
+        setFocusedMemoAudit(buildFocusedAuditFromSurface(focusedMemoId, payload));
+      })
+      .catch(() => {
+        if (!cancelled) setFocusedMemoAudit(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusedMemoId]);
+
+  const warRoomAudits = useMemo(() => {
+    const normalizedFocus = normalizeMemoId(focusedMemoId);
+    const merged = audits.map(audit => (
+      normalizedFocus && normalizeMemoId(audit.intake_id) === normalizedFocus
+        ? { ...audit, has_access: true, status: audit.status || 'completed' }
+        : audit
+    ));
+
+    if (
+      focusedMemoAudit &&
+      !merged.some(audit => normalizeMemoId(audit.intake_id) === normalizeMemoId(focusedMemoAudit.intake_id))
+    ) {
+      return [focusedMemoAudit, ...merged];
+    }
+
+    return merged;
+  }, [audits, focusedMemoAudit, focusedMemoId]);
+
   // Group audits by corridor (source-destination pair) for navigation
   const corridorGroups = useMemo(() => {
     const groups: Record<string, typeof audits> = {};
     const SKIP_VALUES = ['', 'not specified', 'n/a', 'unknown', 'none'];
-    audits.forEach(audit => {
+    warRoomAudits.forEach(audit => {
       // Skip audits with empty / unspecified jurisdictions (both src AND dst must be usable)
       const srcRaw = (audit.source_jurisdiction || audit.source_country || '').trim();
       const dstRaw = (audit.destination_jurisdiction || audit.destination_country || '').trim();
@@ -458,7 +621,15 @@ export default function WarRoomPage() {
       groups[corridorKey].push(audit);
     });
     return groups;
-  }, [audits]);
+  }, [warRoomAudits]);
+
+  const focusedAudit = useMemo(() => {
+    const normalizedFocus = normalizeMemoId(focusedMemoId);
+    if (!normalizedFocus) return null;
+    return warRoomAudits.find(audit => normalizeMemoId(audit.intake_id) === normalizedFocus) || null;
+  }, [warRoomAudits, focusedMemoId]);
+
+  const focusedCorridorKey = focusedAudit ? buildCorridorGroupKey(focusedAudit) : null;
 
   // Navigation state: track current audit index for each corridor
   const [corridorIndices, setCorridorIndices] = useState<Record<string, number>>({});
@@ -472,8 +643,9 @@ export default function WarRoomPage() {
       if (corridorAudits.length === 0) return;
 
       // Default to an accessible audit when a corridor has multiple entries.
-      const currentIdx = corridorIndices[corridorKey] ?? getPreferredCorridorIndex(corridorAudits);
+      const currentIdx = corridorIndices[corridorKey] ?? getPreferredCorridorIndex(corridorAudits, focusedMemoId);
       const audit = corridorAudits[currentIdx] || corridorAudits[0];
+      const isFocusedAudit = Boolean(focusedMemoId) && normalizeMemoId(audit.intake_id) === normalizeMemoId(focusedMemoId);
 
       // Normalize to city names (resolves country→city), then look up coords
       const srcName = normalizeName(audit.source_jurisdiction || audit.source_country);
@@ -537,9 +709,14 @@ export default function WarRoomPage() {
           },
           // Access control — if user has access, link to audit in personal mode; otherwise link to intake
           exploreUrl: audit.has_access
-            ? `/decision-memo/audit/${audit.intake_id}?personal=true`
+            ? (
+              isFocusedAudit
+                ? `/release-readiness/review/${encodeURIComponent(audit.intake_id)}?view=route`
+                : `/decision-memo/audit/${audit.intake_id}?personal=true`
+            )
             : `/decision-memo/intake`,
           hasAccess: audit.has_access,
+          isFocused: isFocusedAudit,
           // Corridor navigation data
           corridorKey,
           currentIndex: currentIdx,
@@ -555,14 +732,14 @@ export default function WarRoomPage() {
       // false (no access) comes before true (has access) → restricted renders first, accessible on top
       return aHasAccess === bHasAccess ? 0 : aHasAccess ? 1 : -1;
     });
-  }, [corridorGroups, corridorIndices]);
+  }, [corridorGroups, corridorIndices, focusedMemoId]);
 
   // Handler for corridor navigation (left/right arrows)
   const handleCorridorNavigate = useCallback((corridorKey: string, direction: 'prev' | 'next') => {
     const corridorAudits = corridorGroups[corridorKey];
     if (!corridorAudits || corridorAudits.length <= 1) return;
 
-    const currentIdx = corridorIndices[corridorKey] ?? getPreferredCorridorIndex(corridorAudits);
+    const currentIdx = corridorIndices[corridorKey] ?? getPreferredCorridorIndex(corridorAudits, focusedMemoId);
     let newIdx: number;
 
     if (direction === 'next') {
@@ -575,16 +752,16 @@ export default function WarRoomPage() {
       ...prev,
       [corridorKey]: newIdx
     }));
-  }, [corridorGroups, corridorIndices]);
+  }, [corridorGroups, corridorIndices, focusedMemoId]);
 
   // Handler for popup close - reset to the preferred audit, not blindly to index 0
   const handlePopupClose = useCallback((corridorKey: string) => {
     const corridorAudits = corridorGroups[corridorKey];
     setCorridorIndices(prev => ({
       ...prev,
-      [corridorKey]: corridorAudits ? getPreferredCorridorIndex(corridorAudits) : 0
+      [corridorKey]: corridorAudits ? getPreferredCorridorIndex(corridorAudits, focusedMemoId) : 0
     }));
-  }, [corridorGroups]);
+  }, [corridorGroups, focusedMemoId]);
 
   // Fetch opportunities using centralized hook (dashboard mode with personal mode support)
   const {
@@ -753,6 +930,7 @@ export default function WarRoomPage() {
           onNavigate={handleNavigate}
           onCorridorNavigate={handleCorridorNavigate}
           onPopupClose={handlePopupClose}
+          focusCorridorKey={focusedCorridorKey}
           showCrownAssets={showCrownAssets}
           showPriveOpportunities={showPriveOpportunities}
           showHNWIPatterns={showHNWIPatterns}
@@ -781,14 +959,16 @@ export default function WarRoomPage() {
                 <h1 className="text-base md:text-xl lg:text-2xl font-bold text-foreground">
                   War Room
                 </h1>
-                {audits.length > 0 && (
+                {warRoomAudits.length > 0 && (
                   <span className="text-xs text-muted-foreground ml-1">
-                    {audits.length} wealth movement{audits.length !== 1 ? 's' : ''} stress tested
+                    {warRoomAudits.length} wealth movement{warRoomAudits.length !== 1 ? 's' : ''} reviewed
                   </span>
                 )}
               </div>
               <p className="text-muted-foreground text-xs md:text-sm ml-6 md:ml-7 mb-2 md:mb-3">
-                Audit corridors visualised on your Command Centre
+                {focusedAudit
+                  ? `Current memo corridor active: ${normalizeName(focusedAudit.source_jurisdiction || focusedAudit.source_country)} → ${normalizeName(focusedAudit.destination_jurisdiction || focusedAudit.destination_country)}`
+                  : 'Audit corridors visualised on your Command Centre'}
               </p>
             </>
           )}

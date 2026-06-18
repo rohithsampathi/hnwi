@@ -41,14 +41,14 @@ function buildQuery(searchParams: Record<string, string | string[] | undefined> 
 
 function readableSurfaceError(error: unknown): string {
   if (error instanceof DecisionMemoBackendUnavailableError) {
-    return 'Decision memo service temporarily unavailable. The memo may exist, but the backend did not return it.';
+    return 'Release readiness service temporarily unavailable. The memo may exist, but the backend did not return it.';
   }
 
   if (error instanceof DecisionMemoMissingError) {
     return error.message;
   }
 
-  return error instanceof Error ? error.message : 'Decision memo output is not available.';
+  return error instanceof Error ? error.message : 'Release readiness output is not available.';
 }
 
 type RecordLike = Record<string, any>;
@@ -148,9 +148,9 @@ function DecisionMemoServerAuditText({
 }) {
   if (error && !data) {
     return (
-      <section id="decision-memo-server-transcript" className="decision-memo-server-transcript">
+      <section id="release-readiness-server-transcript" className="release-readiness-server-transcript">
         <style>{serverTranscriptCss}</style>
-        <h1>Decision Memo Unavailable</h1>
+        <h1>Release Readiness Memo Unavailable</h1>
         <p>{error}</p>
       </section>
     );
@@ -168,7 +168,7 @@ function DecisionMemoServerAuditText({
     asString(fullArtifact.documentTitle) ||
     asString(memoData.documentTitle) ||
     asString(memoData.title) ||
-    'London Mayfair House Acquisition Pressure Test';
+    'London Mayfair House Acquisition Release Readiness Memo';
   const move =
     asString(routeIntelligence.move) ||
     asString(memoData.thesis_summary) ||
@@ -231,9 +231,9 @@ function DecisionMemoServerAuditText({
 
   return (
     <article
-      id="decision-memo-server-transcript"
-      className="decision-memo-server-transcript"
-      aria-label="Decision memo text for audit"
+      id="release-readiness-server-transcript"
+      className="release-readiness-server-transcript"
+      aria-label="Release readiness memo text"
     >
       <style>{serverTranscriptCss}</style>
       <header>
@@ -275,7 +275,7 @@ function DecisionMemoServerAuditText({
       </section>
 
       <EvidenceList
-        title="Route Options Under Pressure"
+        title="Release Readiness Routes Reviewed"
         items={routeOptions.length ? routeOptions : pressureVariants}
         getPrimary={(item, index) => `${asString(item.rank, String(index + 1))}. ${asString(item.route || item.name || item.title)} - ${asString(item.verdict || item.releaseRule || item.release_rule)}`}
         getSecondary={(item) => [
@@ -287,7 +287,7 @@ function DecisionMemoServerAuditText({
       />
 
       <EvidenceList
-        title="Buyer Profile And Ownership Route Test"
+        title="Buyer Profile And Ownership Route Review"
         items={buyerProfiles}
         getPrimary={(item) => asString(item.profile)}
         getSecondary={(item) => [
@@ -304,7 +304,7 @@ function DecisionMemoServerAuditText({
         items={failureModes}
         getPrimary={(item, index) => asString(item.title || item.name, `Failure mode ${index + 1}`)}
         getSecondary={(item) => [
-          asString(item.description) ? `Pressure read: ${asString(item.description)}` : '',
+          asString(item.description) ? `Release read: ${asString(item.description)}` : '',
           asString(item.owner) ? `Owner: ${asString(item.owner)}` : '',
           asString(item.release_condition) ? `Release condition: ${asString(item.release_condition)}` : '',
           asString(item.fix || item.mitigation) ? `Correction: ${asString(item.fix || item.mitigation)}` : '',
@@ -381,12 +381,12 @@ function DecisionMemoServerAuditText({
       />
 
       <EvidenceList
-        title="Antifragile Resilience Test"
+        title="Antifragile Resilience Review"
         items={antifragile}
         getPrimary={(item, index) => asString(item.control, `Control ${index + 1}`)}
         getSecondary={(item) => [
           asString(item.stress_event) ? `Stress event: ${asString(item.stress_event)}` : '',
-          asString(item.release_test) ? `Release test: ${asString(item.release_test)}` : '',
+          asString(item.release_test) ? `Release review: ${asString(item.release_test)}` : '',
         ]}
       />
 
@@ -419,10 +419,10 @@ function DecisionMemoServerAuditText({
 }
 
 const serverTranscriptCss = `
-  html[data-decision-memo-hydrated="true"] #decision-memo-server-transcript {
+  html[data-decision-memo-hydrated="true"] #release-readiness-server-transcript {
     display: none;
   }
-  .decision-memo-server-transcript {
+  .release-readiness-server-transcript {
     max-width: 980px;
     margin: 0 auto;
     padding: 32px 20px 56px;
@@ -431,18 +431,18 @@ const serverTranscriptCss = `
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     line-height: 1.6;
   }
-  .decision-memo-server-transcript header,
-  .decision-memo-server-transcript section {
+  .release-readiness-server-transcript header,
+  .release-readiness-server-transcript section {
     border-bottom: 1px solid #e7e2d7;
     padding: 24px 0;
   }
-  .decision-memo-server-transcript h1 {
+  .release-readiness-server-transcript h1 {
     margin: 8px 0 16px;
     font-size: clamp(32px, 7vw, 56px);
     line-height: 1.04;
     letter-spacing: 0;
   }
-  .decision-memo-server-transcript h2 {
+  .release-readiness-server-transcript h2 {
     margin: 0 0 14px;
     font-size: 22px;
     line-height: 1.25;
@@ -450,43 +450,43 @@ const serverTranscriptCss = `
     text-transform: uppercase;
     color: #6f5514;
   }
-  .decision-memo-server-transcript .eyebrow {
+  .release-readiness-server-transcript .eyebrow {
     margin: 0;
     font-size: 12px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: #826a2a;
   }
-  .decision-memo-server-transcript p {
+  .release-readiness-server-transcript p {
     margin: 8px 0;
   }
-  .decision-memo-server-transcript ol,
-  .decision-memo-server-transcript ul {
+  .release-readiness-server-transcript ol,
+  .release-readiness-server-transcript ul {
     margin: 0;
     padding-left: 22px;
   }
-  .decision-memo-server-transcript li {
+  .release-readiness-server-transcript li {
     margin: 12px 0;
   }
-  .decision-memo-server-transcript dl {
+  .release-readiness-server-transcript dl {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     gap: 12px;
     margin: 0;
   }
-  .decision-memo-server-transcript dl div {
+  .release-readiness-server-transcript dl div {
     border: 1px solid #e7e2d7;
     border-radius: 8px;
     padding: 12px;
     background: #faf9f5;
   }
-  .decision-memo-server-transcript dt {
+  .release-readiness-server-transcript dt {
     font-size: 12px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: #6f6b60;
   }
-  .decision-memo-server-transcript dd {
+  .release-readiness-server-transcript dd {
     margin: 4px 0 0;
     font-weight: 700;
   }

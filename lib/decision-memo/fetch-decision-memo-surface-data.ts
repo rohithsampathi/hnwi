@@ -65,6 +65,7 @@ function localDecisionMemoStoreDirs(): string[] {
 
   return Array.from(new Set([
     ...configured,
+    path.resolve(process.cwd(), 'data/decision-memo-store'),
     path.resolve(process.cwd(), '../mu/.local_runtime/decision_memo_store'),
   ]));
 }

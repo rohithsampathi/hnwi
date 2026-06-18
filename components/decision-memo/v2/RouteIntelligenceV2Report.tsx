@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { CrossBorderTaxAudit } from '@/components/decision-memo/memo/CrossBorderTaxAudit';
 import { DecisionMemoRenderProvider } from '@/components/decision-memo/memo/decision-memo-render-context';
+import { ReleaseReadinessInquiryForm } from '@/components/decision-memo/memo/ReleaseReadinessInquiryForm';
 import {
   type BuyerProfileRemissionMatrix,
   formatUsdCompact,
@@ -141,10 +142,12 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
     .slice(0, 6);
   const openGateNames = [...missing, ...contradicted].length ? [...missing, ...contradicted] : openRecordNames;
   const openGateCount = openGateNames.length;
+  const releaseDomainRead = recordNames.join(' / ') || 'Evidence domains are assigned in the release file';
+  const openGateRead = openGateNames.slice(0, 2).join(' / ') || 'All listed release gates have assigned owners';
 
   const metrics = [
-    { label: 'Release Domains', value: String(records.length), read: recordNames.join(' / ') || 'Evidence pack under review' },
-    { label: 'Open Release Gates', value: String(openGateCount), read: openGateNames.slice(0, 2).join(' / ') || 'No open gates recorded' },
+    { label: 'Release Domains', value: String(records.length), read: releaseDomainRead },
+    { label: 'Open Release Gates', value: openGateCount ? String(openGateCount) : 'Clear', read: openGateRead },
     { label: 'Adviser Confirmations', value: String(adviserInputs.length), read: 'Property, tax, bank, succession, insurance, and operator desks' },
   ];
 
@@ -182,6 +185,51 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
   );
 }
 
+function NativeRouteDriversPanel({ intelligence }: { intelligence: RouteIntelligenceV2 }) {
+  const drivers = Array.isArray(intelligence.nativeRouteDrivers)
+    ? intelligence.nativeRouteDrivers.filter((driver) => Boolean(driver && driver.trim()))
+    : [];
+  const visibleDrivers = drivers.slice(0, 8);
+
+  if (!drivers.length) return null;
+
+  return (
+    <section className="rounded-lg border border-border/30 bg-card/40 p-4 sm:p-6">
+      <div className="grid gap-5 xl:grid-cols-[0.75fr_1.25fr]">
+        <div className="max-w-2xl">
+          <div className="flex items-center gap-2">
+            <Route className="h-4 w-4 text-gold/80" />
+            <p className="text-xs uppercase tracking-[0.22em] text-gold/80">
+              {intelligence.nativeRouteDriverTitle || 'Native Route Drivers'}
+            </p>
+          </div>
+          <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
+            {intelligence.nativeRouteDriverSubtitle || 'What the route-pattern witnesses actually change in this move.'}
+          </h2>
+          {intelligence.nativeRouteDriverNote ? (
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              {intelligence.nativeRouteDriverNote}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="grid min-w-0 gap-3 md:grid-cols-2">
+          {visibleDrivers.map((driver, index) => (
+            <div key={`${index}-${driver}`} className="rounded-md border border-border/25 bg-background/40 p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
+                Driver {index + 1}
+              </p>
+              <p className="mt-3 text-sm font-medium leading-relaxed text-foreground">
+                {driver}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function RouteSelector({
   routes,
   selectedRouteId,
@@ -208,7 +256,7 @@ function RouteSelector({
           value={selectedRouteId}
           onChange={(event) => onSelect(event.target.value)}
           className="min-h-11 w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-gold/70 lg:w-[360px]"
-          aria-label="Route being pressure-tested"
+          aria-label="Route being reviewed"
         >
           {routes.map((route) => (
             <option key={route.id} value={route.id}>
@@ -555,7 +603,7 @@ function JurisdictionGrid({ route }: { route: RouteIntelligenceOptionV2 }) {
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">{item.jurisdiction}</p>
           </div>
           <p className="mt-3 text-sm font-medium text-foreground">{item.value}</p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.pressureRead}</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.releaseRead}</p>
         </div>
       ))}
     </div>
@@ -680,7 +728,7 @@ function DecisionOutcomeTrack({
               Full Memo Anchor
             </p>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              The full pressure-test report stays attached to the executable route. Hold and Stop remain comparison outcomes inside the route selector.
+              The full release-readiness memo stays attached to the executable route. Hold and Stop remain comparison outcomes inside the route selector.
             </p>
             {recommendedRoute && recommendedRoute.id !== route.id ? (
               <button
@@ -777,13 +825,13 @@ export default function RouteIntelligenceV2Report({
             </Link>
           ) : null}
           <p className={`${embedded ? 'mt-0' : 'mt-5'} text-xs uppercase tracking-[0.28em] text-gold/70`}>
-            {intelligence.surfaceEyebrow ?? 'Proposed Move Release Test'}
+            {intelligence.surfaceEyebrow ?? 'Proposed Move Release Readiness'}
           </p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground md:text-4xl xl:text-5xl">
-            {intelligence.surfaceTitle ?? 'Proposed Move Pressure Test'}
+            {intelligence.surfaceTitle ?? 'Proposed Move Release Readiness Memo'}
           </h1>
           <p className="mt-4 max-w-4xl text-sm leading-relaxed text-muted-foreground">
-            {moveSentence}. This view pressure-tests the route the room is already considering and shows what must change, hold, or stop before release.
+            {moveSentence}. This view reviews the route the room is already considering and shows what must change, hold, or stop before release.
           </p>
         </div>
         <div className="rounded-lg border border-border/30 bg-card/40 p-4 text-sm">
@@ -800,15 +848,17 @@ export default function RouteIntelligenceV2Report({
           selectedRouteId={selectedRoute.id}
           onSelect={setSelectedRouteId}
           label={intelligence.selectorLabel ?? 'Route Being Released'}
-          copy={intelligence.selectorCopy ?? 'Review pressure variants tested against the proposed move. The downstream tax audit, jurisdiction pressure, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.'}
+          copy={intelligence.selectorCopy ?? 'Review release-readiness routes against the proposed move. The downstream tax audit, jurisdiction readiness, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.'}
         />
 
         <ZeroTrustRouteSummary data={zeroTrustMoveIntake} />
 
+        <NativeRouteDriversPanel intelligence={intelligence} />
+
         <section>
           <SectionHeader
-            label={intelligence.comparisonLabel ?? 'Pressure Variants'}
-            title={intelligence.comparisonTitle ?? 'Variants tested against the proposed route, not new advisory options.'}
+            label={intelligence.comparisonLabel ?? 'Release Readiness Routes'}
+            title={intelligence.comparisonTitle ?? 'Routes reviewed against the proposed route, not new advisory options.'}
           />
           <RouteComparison
             routes={routes}
@@ -854,7 +904,7 @@ export default function RouteIntelligenceV2Report({
             </section>
 
             <section>
-              <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific pressure across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
+              <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
               <JurisdictionGrid route={selectedRoute} />
             </section>
 
@@ -869,7 +919,7 @@ export default function RouteIntelligenceV2Report({
             </section>
 
             <section>
-              <SectionHeader label="Operator Control" title="Responsibility transfer and record mismatch pressure test." />
+              <SectionHeader label="Operator Control" title="Responsibility transfer and record mismatch release-readiness review." />
               <ResponsibilityAndRecords route={selectedRoute} />
             </section>
 
@@ -893,8 +943,8 @@ export default function RouteIntelligenceV2Report({
               <p className="text-sm font-medium text-foreground">Release boundary</p>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {intelligence.sourceRead} {!isOutcomeOnlyTrack
-                  ? 'The full memo remains available at the original decision-memo URL while this view isolates route-state consequences for the family office room.'
-                  : 'This selected outcome stays inside the route selector; the full pressure-test report stays anchored to the executable route.'}
+                  ? 'The full memo remains available in this release-readiness review while this view isolates route-state consequences for the family office room.'
+                  : 'This selected outcome stays inside the route selector; the full release-readiness memo stays anchored to the executable route.'}
               </p>
             </div>
           </div>
@@ -903,14 +953,35 @@ export default function RouteIntelligenceV2Report({
         {selectedFullMemo && !isOutcomeOnlyTrack ? (
           <section id="full-decision-memo" className="border-t border-border/40 pt-10">
             <SectionHeader
-              label={`Full Decision Memo · Route ${selectedRoute.rank}`}
-              title={`${selectedRoute.routeName} pressure-test memo.`}
+              label={`Full Release Readiness Memo · Route ${selectedRoute.rank}`}
+              title={`${selectedRoute.routeName} release-readiness memo.`}
             />
             <div className="rounded-lg border border-border/25 bg-background/40 px-0 py-6 sm:px-2">
               {selectedFullMemo}
             </div>
           </section>
         ) : null}
+
+        {selectedFullMemo && !isOutcomeOnlyTrack ? null : (
+          <section className="relative overflow-hidden rounded-lg border border-primary/25 bg-card/50 p-6 sm:p-8">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+            <div className="relative z-10 max-w-4xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                Release Readiness Request
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+                Have a live wealth move that should not harden yet?
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                Share your name, email, phone, and a brief description of the live move. We return with the evidence scope, release gates, and adviser question pack needed before capital, title, authority, or custody moves.
+              </p>
+              <ReleaseReadinessInquiryForm
+                intakeId={publicMemoId}
+                reference={publicMemoId}
+              />
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

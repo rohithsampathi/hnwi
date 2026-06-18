@@ -30,6 +30,7 @@ export default function PersonalStickyControls({
   const router = useRouter();
   const { theme } = useTheme();
   const [linkCopied, setLinkCopied] = useState(false);
+  const focusedWarRoomPath = `/war-room?memo=${encodeURIComponent(intakeId)}`;
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -49,7 +50,7 @@ export default function PersonalStickyControls({
         <div className="max-w-6xl mx-auto px-3 sm:px-6 py-3">
           <div className="flex items-center gap-3 pl-1">
             <button
-              onClick={() => router.push('/war-room')}
+              onClick={() => router.push(focusedWarRoomPath)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded bg-secondary border border-border text-foreground hover:bg-primary hover:text-white transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />

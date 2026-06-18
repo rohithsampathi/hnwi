@@ -33,6 +33,21 @@ export function computeMemoProps(memoData: PdfMemoData) {
     return `$${Math.round(value).toLocaleString()}`;
   };
 
+  const formatUsdPrincipalCompact = (value: number | undefined): string | undefined => {
+    if (value === undefined || !Number.isFinite(value)) {
+      return undefined;
+    }
+    const prefix = value < 0 ? '-' : '';
+    const absoluteValue = Math.abs(value);
+    if (absoluteValue >= 1_000_000) {
+      return `${prefix}US$${(absoluteValue / 1_000_000).toFixed(2)}M`;
+    }
+    if (absoluteValue >= 1_000) {
+      return `${prefix}US$${Math.round(absoluteValue / 1_000)}K`;
+    }
+    return `${prefix}US$${Math.round(absoluteValue).toLocaleString()}`;
+  };
+
   const formatPct = (value: unknown): string | undefined => {
     const numeric = toNumberOrUndefined(value);
     if (numeric === undefined) {
@@ -192,8 +207,29 @@ export function computeMemoProps(memoData: PdfMemoData) {
   }
 
   const executiveSummary = memoData.preview_data.executive_summary as Record<string, any> | undefined;
+  const previewRecord = memoData.preview_data as Record<string, any>;
   const startingPosition = memoData.preview_data.wealth_projection_data?.starting_position as Record<string, any> | undefined;
   const scenarioTreeData = memoData.preview_data.scenario_tree_data as Record<string, any> | undefined;
+  const acquisitionAuditForHeadline =
+    crossBorderAudit?.acquisition_audit ||
+    previewRecord.cross_border_audit?.acquisition_audit ||
+    previewRecord.cross_border_audit_summary?.acquisition_audit ||
+    previewRecord.wealth_projection_data?.starting_position?.cross_border_audit_summary?.acquisition_audit;
+  const acquisitionDutyModelForHeadline =
+    previewRecord.current_market_data?.acquisition_duty_model ||
+    previewRecord.modeled_economics_methodology?.model ||
+    previewRecord.tax_residency_reporting?.capital_model;
+  const allInCapitalCommitted = [
+    acquisitionAuditForHeadline?.total_acquisition_cost_usd,
+    acquisitionAuditForHeadline?.total_acquisition_cost,
+    startingPosition?.total_acquisition_cost_usd,
+    startingPosition?.total_acquisition_cost,
+    acquisitionDutyModelForHeadline?.direct_total_outlay_usd,
+    acquisitionDutyModelForHeadline?.total_acquisition_cost_usd,
+    acquisitionDutyModelForHeadline?.total_acquisition_cost,
+  ]
+    .map(toNumberOrUndefined)
+    .find((value): value is number => value !== undefined && Math.abs(value) > 0);
   const transactionValue =
     toNumberOrUndefined(startingPosition?.transaction_value)
     ?? toNumberOrUndefined((memoData.preview_data as any)?.transaction_value)
@@ -233,6 +269,18 @@ export function computeMemoProps(memoData: PdfMemoData) {
       value: formatted,
       description: 'Expected value of the validated route',
     };
+  })();
+
+  const coverHeadlineMetric = (() => {
+    const formattedAllIn = formatUsdPrincipalCompact(allInCapitalCommitted);
+    if (formattedAllIn) {
+      return {
+        label: 'All-in capital committed',
+        value: formattedAllIn,
+        description: 'Property value plus route-specific day-one duties and acquisition friction',
+      };
+    }
+    return routeHeadlineMetric;
   })();
 
   const routeEvidenceBasisNote =
@@ -298,6 +346,7 @@ export function computeMemoProps(memoData: PdfMemoData) {
     valueCreation,
     latestGeneratedAt,
     routeHeadlineMetric,
+    coverHeadlineMetric,
     routeEvidenceBasisNote,
     routeUnderwritingSnapshot,
   };

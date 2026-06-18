@@ -1564,6 +1564,7 @@ export interface TaxTreatmentAudit {
 // ═══════════════════════════════════════════════════════════════════════
 export interface LegalReferences {
   total_count?: number;
+  sources?: CitationEntry[];
   tax_statutes?: CitationEntry[];
   state_tax_laws?: CitationEntry[];
   foreign_tax_laws?: CitationEntry[];
@@ -1572,18 +1573,36 @@ export interface LegalReferences {
   compliance_forms?: CitationEntry[];
   market_data_sources?: CitationEntry[];
   guidance?: CitationEntry[];
+  pattern_witnesses?: Array<{
+    id?: string;
+    title?: string;
+    pattern?: string;
+    decision_use?: string;
+    source_basis?: string;
+  }>;
+  pattern_evidence_records?: CitationEntry[];
+  pattern_count?: number;
+  evidence_class_count?: number;
   regulatory_sources?: RegulatoryCitation[];
 }
 
 export interface CitationEntry {
   id?: string;
   short_cite?: string;
+  institution?: string;
   title?: string;
   reference?: string;
+  claim_supported?: string;
+  date?: string;
   url?: string;
   effective_date?: string;
   data_year?: number;
   sections_used?: string[];
+  supports?: string[];
+  route_relevance?: string;
+  source_signal?: string;
+  why_it_matters?: string;
+  source_boundary?: string;
 }
 
 export interface RegulatoryCitation {

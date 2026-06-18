@@ -62,7 +62,7 @@ function DataQualityBadge({ quality }: { quality: HNWITrendsDataQuality }) {
   const config: Record<NonNullable<HNWITrendsDataQuality['scientific_grounding']>, { bg: string; text: string; label: string }> = {
     kgv3_primary: { bg: 'bg-primary/20 border-primary/30', text: 'text-primary', label: 'KGv3 Primary' },
     kgv3_fallback: { bg: 'bg-amber-500/20 border-amber-500/30', text: 'text-amber-600 dark:text-amber-400', label: 'KGv3 Fallback' },
-    native_library_route_compiler: { bg: 'bg-primary/20 border-primary/30', text: 'text-primary', label: 'Native Route Compiler' },
+    native_library_route_compiler: { bg: 'bg-primary/20 border-primary/30', text: 'text-primary', label: 'Pattern Library' },
     no_data: { bg: 'bg-muted border-border', text: 'text-muted-foreground', label: 'No Data' },
     error: { bg: 'bg-red-500/20 border-red-500/30', text: 'text-red-500', label: 'Error' }
   };
@@ -171,7 +171,7 @@ export function HNWITrendsSection({
     ? 'Collections Queried'
     : 'KGv3 Collections Queried';
   const footerLabel = dataQuality?.scientific_grounding === 'native_library_route_compiler'
-    ? 'Powered by HNWI Chronicles native route intelligence, castle transaction cases, and corridor macro data'
+    ? 'Powered by HNWI Chronicles route intelligence, route-pattern cases, and corridor macro data'
     : 'Powered by HNWI Chronicles KG Migration Intelligence + Henley Private Wealth Data';
 
   return (

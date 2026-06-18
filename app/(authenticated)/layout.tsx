@@ -36,7 +36,7 @@ import { normalizeAuthUser, resolveCanonicalUserId, resolveStoredUserId } from "
 
 // Helper to check if this is a public route
 const isPublicRoute = (pathname: string): boolean => {
-  return pathname?.includes('/simulation') || pathname?.includes('/decision-memo') || pathname?.includes('/war-room')
+  return pathname?.includes('/simulation') || pathname?.includes('/decision-memo') || pathname?.includes('/release-readiness') || pathname?.includes('/war-room')
 }
 
 interface AuthenticatedLayoutProps {
@@ -95,7 +95,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     pathname.includes('/profile') ||
     pathname.includes('/crown-vault') ||
     pathname.includes('/trusted-network')
-  const needsCitationPanel = pathname.includes('/decision-memo')
+  const needsCitationPanel = pathname.includes('/decision-memo') || pathname.includes('/release-readiness')
   
 
   const handleNavigation = (route: string) => {

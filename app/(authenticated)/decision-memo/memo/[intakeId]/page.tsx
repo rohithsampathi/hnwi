@@ -371,13 +371,13 @@ export default function DecisionMemoPage() {
       stampText: vs?.stamp_text || 'Allocation Not Recommended',
       stampSubtext: vs?.stamp_subtext || 'Key viability thresholds not met in this structure — review alternative corridors and strategies below',
 
-      ctaHeadline: cta?.headline || 'DOES YOUR CURRENT DEAL SURVIVE THIS FILTER?',
-      ctaBody: (cta?.body_template || 'This Pattern Audit identified {dayOneLoss}% Day-One capital exposure.')
+      ctaHeadline: cta?.headline || 'DOES THIS MOVE HAVE RELEASE AUTHORITY?',
+      ctaBody: (cta?.body_template || 'This release-readiness review identified {dayOneLoss}% Day-One capital exposure.')
         .replace('{dayOneLoss}', dayOneLossPct.toFixed(1)),
-      ctaScarcity: cta?.scarcity_text || '5 Slots Remaining — February Cycle',
-      ctaButtonText: cta?.button_text || 'INITIATE YOUR PATTERN AUDIT — $5,000',
-      ctaButtonUrl: cta?.button_url || 'https://app.hnwichronicles.com/decision-memo',
-      ctaContextNote: cta?.context_note || 'The same Pattern Recognition Engine applies to 50+ corridors.',
+      ctaScarcity: cta?.scarcity_text || 'Current review cycle open',
+      ctaButtonText: cta?.button_text || 'REQUEST RELEASE READINESS REVIEW',
+      ctaButtonUrl: cta?.button_url || 'https://app.hnwichronicles.com/release-readiness',
+      ctaContextNote: cta?.context_note || 'The same release-readiness review applies to live wealth moves across corridors.',
     };
   }
 
