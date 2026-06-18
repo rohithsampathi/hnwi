@@ -338,7 +338,7 @@ export function EliteCitationPanel({
                     transition={{ duration: 0.2 }}
                   >
                     {(() => {
-                      const dev = developments.get(activeSelectedCitationId)
+                      const dev = developments.get(activeSelectedCitationId) || preloadedSources?.get(activeSelectedCitationId)
                       if (!dev) {
                         return (
                           <div className="text-center py-8 text-muted-foreground">
@@ -438,7 +438,7 @@ export function EliteCitationPanel({
                     transition={{ duration: 0.2 }}
                   >
                     {(() => {
-                      const dev = developments.get(activeSelectedCitationId)
+                      const dev = developments.get(activeSelectedCitationId) || preloadedSources?.get(activeSelectedCitationId)
                       if (!dev) {
                         return (
                           <div className="text-center py-8 text-muted-foreground">

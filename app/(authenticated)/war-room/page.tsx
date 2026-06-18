@@ -18,6 +18,10 @@ import { getAuditMarkerIcon } from "@/lib/map-markers";
 import type { City, MigrationFlow } from "@/components/interactive-world-map";
 import type { Citation } from "@/lib/parse-dev-citations";
 import { resolveCorridorNodeName } from "@/lib/corridor-display";
+import {
+  buildCitationSourceDevelopment,
+  type CitationSourceDevelopment,
+} from "@/lib/development-citation";
 
 // City + country coordinates for audit route arcs (city-level precision)
 const GEO_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -813,6 +817,43 @@ export default function WarRoomPage() {
   }, [availableCategories]);
 
   // Extract citations from cities
+  const citationPreloadedSources = useMemo(() => {
+    const sources = new Map<string, CitationSourceDevelopment>();
+
+    cities.forEach(city => {
+      if (!city.devIds || city.devIds.length === 0) return;
+
+      city.devIds.forEach(devId => {
+        const citationId = String(devId || '').trim();
+        if (!citationId || sources.has(citationId)) return;
+
+        const source = buildCitationSourceDevelopment({
+          ...city,
+          _id: citationId,
+          id: citationId,
+          dev_id: citationId,
+          devid: citationId,
+          source_development_id: citationId,
+          title: city.title || city.name,
+          name: city.title || city.name,
+          description: city.description || city.summary || city.analysis,
+          short_summary: city.short_summary || city.card_summary || city.summary,
+          summary: city.summary || city.hbyte_summary || city.description || city.analysis,
+          content: city.full_analysis || city.analysis || city.elite_pulse_analysis || city.katherine_analysis,
+          url: city.url || city.source_url,
+          source_url: city.source_url || city.url,
+          category: city.category || city.industry || 'Market Intelligence',
+        }, citationId);
+
+        if (source) {
+          sources.set(citationId, source);
+        }
+      });
+    });
+
+    return sources;
+  }, [cities]);
+
   useEffect(() => {
     const allCitations: Citation[] = [];
     const seenIds = new Set<string>();
@@ -1060,6 +1101,7 @@ export default function WarRoomPage() {
             onClose={closePanel}
             onCitationSelect={(id) => openCitation(id)}
             citationMap={citationMap}
+            preloadedSources={citationPreloadedSources}
           />
         </AnimatePresence>
       )}

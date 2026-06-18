@@ -29,7 +29,19 @@ interface Opportunity {
   description?: string;
   hbyte_summary?: string;
   card_summary?: string;
+  short_summary?: string;
+  full_analysis?: string;
+  full_castle_brief?: string;
+  castle_brief?: string;
+  castle_brief_enriched?: string;
+  brief_source_text?: string;
+  public_mirror_excerpt?: string;
+  brief_title?: string;
+  source_title?: string;
+  source_url?: string;
+  url?: string;
   source: string;
+  dev_id?: string;
   devid?: string;
   mongo_article_id?: string;
   castle_brief_id?: string;
@@ -265,7 +277,26 @@ const transformOpportunityToCity = (
     risk: opp.risk,
     analysis: opp.analysis,
     summary: opp.card_summary || opp.hbyte_summary || opp.summary || opp.description,
+    description: opp.description,
+    hbyte_summary: opp.hbyte_summary,
+    card_summary: opp.card_summary,
+    short_summary: opp.short_summary,
+    full_analysis: opp.full_analysis,
+    full_castle_brief: opp.full_castle_brief,
+    castle_brief: opp.castle_brief,
+    castle_brief_enriched: opp.castle_brief_enriched,
+    brief_source_text: opp.brief_source_text,
+    public_mirror_excerpt: opp.public_mirror_excerpt,
+    brief_title: opp.brief_title,
+    source_title: opp.source_title,
+    source_url: opp.source_url,
+    url: opp.url,
     source: opp.source,
+    source_development_id: opp.source_development_id,
+    dev_id: opp.dev_id,
+    devid: opp.devid,
+    mongo_article_id: opp.mongo_article_id,
+    castle_brief_id: opp.castle_brief_id,
     victor_score: opp.victor_score,
     elite_pulse_analysis: opp.elite_pulse_analysis,
     category: correctedCategory,

@@ -54,7 +54,29 @@ export interface City {
   risk?: string
   analysis?: string
   summary?: string
+  description?: string
+  hbyte_summary?: string
+  card_summary?: string
+  short_summary?: string
+  full_analysis?: string
+  full_castle_brief?: string
+  castle_brief?: string
+  castle_brief_enriched?: string
+  brief_source_text?: string
+  public_mirror_excerpt?: string
+  brief_title?: string
+  source_title?: string
+  source_url?: string
+  url?: string
+  source_article_date?: string
+  generated_at?: string
+  created_at?: string
   source?: string
+  source_development_id?: string
+  dev_id?: string
+  devid?: string
+  mongo_article_id?: string
+  castle_brief_id?: string
   victor_score?: string
   elite_pulse_analysis?: string
   category?: string

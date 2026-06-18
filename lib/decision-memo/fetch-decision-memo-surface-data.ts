@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '@/config/api';
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { resolveCastleBriefCount } from '@/lib/castle-briefs/resolve-castle-brief-count';
 import { logger } from '@/lib/secure-logger';
 import { resolveDecisionMemoSurfaceData } from '@/lib/decision-memo/resolve-decision-memo-surface-data';
@@ -88,7 +88,7 @@ async function readLocalDecisionMemoSurfaceData(
     for (const storeDir of storeDirs) {
       const filePath = path.join(storeDir, filename);
       try {
-        const payload = JSON.parse(await fs.readFile(filePath, 'utf8')) as RecordLike;
+        const payload = JSON.parse(await fs.promises.readFile(filePath, 'utf8')) as RecordLike;
         const resolvedSurfaceData = resolveDecisionMemoSurfaceData({
           intakeId: candidateId,
           backendData: payload,
