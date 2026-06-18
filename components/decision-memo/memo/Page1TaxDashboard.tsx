@@ -24,6 +24,7 @@ interface ExecutionStep {
   timeline?: string;
   whyThisOrder?: string;
   description?: string;
+  release_gate?: string;
 }
 
 interface TaxRates {
@@ -213,44 +214,59 @@ export function Page1TaxDashboard({
     return `${value > 0 ? '+' : ''}${value.toFixed(0)}%`;
   };
 
-  // Parse timeline string to days (e.g., "7-21 days" -> 14, "90 days" -> 90)
-  const parseTimelineToDays = (timeline: string): number => {
-    if (!timeline) return 30;
+  const parseTimelineWindow = (timeline: string) => {
+    if (!timeline) return { start: 0, end: 30, duration: 30, label: 'Evidence window' };
+
     const match = timeline.match(/(\d+)(?:\s*-\s*(\d+))?\s*days?/i);
     if (match) {
-      const min = parseInt(match[1]);
-      const max = match[2] ? parseInt(match[2]) : min;
-      return Math.round((min + max) / 2);
+      const start = match[2] ? parseInt(match[1], 10) : 0;
+      const end = match[2] ? parseInt(match[2], 10) : parseInt(match[1], 10);
+      return {
+        start,
+        end,
+        duration: Math.max(1, end - start),
+        label: timeline
+      };
     }
-    return 30; // Default
+
+    return { start: 0, end: 30, duration: 30, label: timeline };
   };
 
-  // Generate timeline phases from execution sequence - NO FALLBACK DATA
-  // Only show real backend-provided execution sequence
-  const timelinePhases = executionSequence.length > 0
-    ? executionSequence.slice(0, 4).map((step, idx) => {
-        const duration = parseTimelineToDays(step.timeline || '30 days');
-        const start = idx === 0 ? 0 : (idx * 30); // Stagger phases
-        const colorIntensity = ['bg-primary', 'bg-primary/80', 'bg-primary/60', 'bg-primary/50'];
+  const executionLaneForIndex = (index: number) => {
+    if (index <= 2) return 'Authority + bank rails';
+    if (index <= 5) return 'Title + tax counsel';
+    return 'Succession + release';
+  };
 
-        return {
-          id: step.order ?? step.step ?? idx + 1,
-          name: (() => {
-            const stepLabel = step.action || step.title || `Step ${idx + 1}`;
-            return stepLabel.length > 25 ? stepLabel.slice(0, 22) + '...' : stepLabel;
-          })(),
-          description: step.whyThisOrder || step.description || step.action || step.title || `Step ${idx + 1}`,
-          start,
-          duration,
-          color: colorIntensity[idx] || 'bg-primary/40',
-          status: idx === 0 ? 'primary' : 'pending'
-        };
-      })
-    : []; // No fallback - show empty state if no data from backend
+  const releaseSteps = executionSequence.map((step, idx) => {
+    const timing = parseTimelineWindow(step.timeline || '30 days');
+    const accent = idx === 0
+      ? 'border-gold/35 bg-gold/[0.04]'
+      : idx === executionSequence.length - 1
+        ? 'border-primary/25 bg-primary/[0.04]'
+        : 'border-border/25 bg-card/40';
 
-  const hasExecutionSequence = timelinePhases.length > 0;
+    return {
+      id: step.order ?? step.step ?? idx + 1,
+      title: step.title || step.action || `Step ${idx + 1}`,
+      action: step.action || step.description || '',
+      whyThisOrder: step.whyThisOrder || step.description || '',
+      owner: step.owner || 'Owner gated',
+      timeline: step.timeline || timing.label,
+      releaseGate: step.release_gate || 'Release gate must be documented before this step clears.',
+      timing,
+      accent,
+      lane: executionLaneForIndex(idx),
+      status: idx === 0 ? 'Active gate' : idx === executionSequence.length - 1 ? 'Release rule' : 'Sequenced gate',
+    };
+  });
 
-  const totalDays = 365;
+  const hasExecutionSequence = releaseSteps.length > 0;
+  const criticalPathDays = releaseSteps.reduce((max, step) => Math.max(max, step.timing.end), 0);
+  const laneSummary = ['Authority + bank rails', 'Title + tax counsel', 'Succession + release'].map((lane) => ({
+    lane,
+    count: releaseSteps.filter((step) => step.lane === lane).length,
+  }));
   const sourceBreakdownLabel = noRelocationTaxCredit ? 'Source Tax Baseline' : 'Current Structure';
   const destinationBreakdownLabel = noRelocationTaxCredit ? 'Destination Tax Baseline' : 'Optimized Structure';
 
@@ -582,188 +598,163 @@ export function Page1TaxDashboard({
         </>
       )}
 
-      {/* Implementation Timeline */}
+      {/* Implementation Roadmap */}
       {showImplementation && hasExecutionSequence && (
-      <motion.div
-        className="mb-8 sm:mb-12"
-        initial={{ opacity: 0, y: 12 }}
-        animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.6, ease: EASE_OUT_EXPO }}
-      >
-        <div className="mb-8">
-          <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-            Execution Framework
-          </p>
-          <h3 className="text-lg sm:text-xl font-semibold text-foreground tracking-tight mb-1">
-            Implementation Roadmap
-          </h3>
-          <p className="text-sm text-muted-foreground/60 leading-relaxed">
-            Coordinated execution timeline with parallel workstreams
-          </p>
-        </div>
+        <motion.div
+          className="mb-8 sm:mb-12"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.6, ease: EASE_OUT_EXPO }}
+        >
+          <div className="mb-7">
+            <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
+              Execution Framework
+            </p>
+            <h3 className="text-lg sm:text-xl font-semibold text-foreground tracking-tight mb-1">
+              Implementation Roadmap
+            </h3>
+            <p className="text-sm text-muted-foreground/65 leading-relaxed">
+              Release sequence for the first 30 days before exchange authority hardens.
+            </p>
+          </div>
 
-        <div className="relative rounded-2xl border border-border/30 overflow-hidden">
-          {/* Ambient glow */}
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+          <div className="relative overflow-hidden rounded-lg border border-border/35 bg-card/35">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-gold/45 via-border/30 to-transparent" />
 
-          <div className="relative z-10 px-5 sm:px-8 md:px-12 py-10 md:py-12">
-            {/* Timeline Header */}
-            <div className="flex items-center justify-between mb-6 sm:mb-10 pb-4 sm:pb-6">
-              <div className="flex items-center gap-4 sm:gap-8">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gold/60" />
-                  <span className="text-xs text-muted-foreground/60">Active</span>
+            <div className="relative px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+              <div className="grid gap-5 border-b border-border/20 pb-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-gold/70">
+                    Release sequence
+                  </p>
+                  <h4 className="mt-2 text-base font-semibold leading-snug text-foreground sm:text-lg">
+                    The room needs the gates that decide whether this Mayfair route can release differently.
+                  </h4>
+                  <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground/70">
+                    Each step names the owner, timing, and release condition. Nothing here is hidden inside a rail or truncated into a tooltip.
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-border/30" />
-                  <span className="text-xs text-muted-foreground/60">Pending</span>
+
+                <div className="grid grid-cols-3 divide-x divide-border/20 rounded-md border border-border/20 bg-background/35">
+                  <div className="px-3 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/55">Gates</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">{releaseSteps.length}</p>
+                  </div>
+                  <div className="px-3 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/55">Critical path</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">{criticalPathDays}d</p>
+                  </div>
+                  <div className="px-3 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/55">Lanes</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">
+                      {laneSummary.filter((lane) => lane.count > 0).length}
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-sm font-medium text-foreground">365 Days</span>
-                <span className="text-xs text-muted-foreground/60 ml-2 hidden sm:inline">Total Duration</span>
-              </div>
-            </div>
 
-            <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-6 sm:mb-10" />
-
-            {/* Month Markers */}
-            <div className="relative mb-3 sm:mb-6 hidden sm:block">
-              <div className="flex justify-between text-xs text-muted-foreground/60">
-                {['Day 0', 'Month 3', 'Month 6', 'Month 9', 'Month 12'].map((label, i) => (
-                  <span key={label} className="relative">
-                    {label}
-                    <div className="absolute top-5 sm:top-7 left-1/2 w-px h-2 sm:h-3 bg-border/20 -translate-x-1/2" />
-                  </span>
+              <div className="grid gap-3 border-b border-border/20 py-5 md:grid-cols-3">
+                {laneSummary.map((lane) => (
+                  <div key={lane.lane} className="rounded-md border border-border/20 bg-background/30 px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/55">
+                      {lane.lane}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-foreground">
+                      {lane.count} {lane.count === 1 ? 'gate' : 'gates'}
+                    </p>
+                  </div>
                 ))}
               </div>
-            </div>
 
-            {/* Timeline Track */}
-            <div className="relative mt-6 sm:mt-10">
-              {/* Base Track */}
-              <div className="absolute top-0 left-0 right-0 h-px bg-border/20" />
-
-              {/* Gantt Bars */}
-              <div className="space-y-5 sm:space-y-8 pt-5 sm:pt-8">
-                {timelinePhases.map((phase, index) => {
-                  const leftPercent = (phase.start / totalDays) * 100;
-                  const widthPercent = (phase.duration / totalDays) * 100;
-
-                  return (
-                    <motion.div
-                      key={phase.id}
-                      className="relative"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={isVisible ? { opacity: 1, x: 0 } : {}}
-                      transition={{ duration: 0.7, delay: 0.8 + index * 0.15, ease: EASE_OUT_EXPO }}
-                    >
-                      <div className="flex items-center gap-3 sm:gap-4 mb-2 sm:mb-3">
-                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs sm:text-sm font-medium ${
-                          phase.status === 'primary'
-                            ? 'bg-gold/10 text-gold border border-gold/20'
-                            : 'border border-border/20 text-muted-foreground/60'
-                        }`}>
-                          {phase.id}
+              <div className="space-y-4 pt-5">
+                {releaseSteps.map((step, index) => (
+                  <motion.div
+                    key={`${step.id}-${index}`}
+                    className={`rounded-lg border p-4 sm:p-5 ${step.accent}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={isVisible ? { opacity: 1, y: 0 } : {}}
+                    transition={{ duration: 0.65, delay: 0.75 + index * 0.06, ease: EASE_OUT_EXPO }}
+                  >
+                    <div className="grid gap-4 lg:grid-cols-[64px_minmax(0,1fr)_minmax(220px,0.48fr)]">
+                      <div className="flex items-start gap-3 lg:block">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border/25 bg-background/75 text-sm font-semibold text-foreground">
+                          {step.id}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs sm:text-sm font-normal text-foreground line-clamp-2 sm:line-clamp-1">
-                              {phase.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground/60 ml-2 flex-shrink-0">
-                              {phase.duration}d
-                            </span>
-                          </div>
+                        <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground/60 lg:mt-3">
+                          {step.status}
+                        </p>
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex rounded-full border border-border/25 bg-background/60 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground/65">
+                            {step.lane}
+                          </span>
+                          <span className="inline-flex rounded-full border border-gold/20 bg-gold/[0.06] px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gold/80">
+                            {step.timeline}
+                          </span>
+                        </div>
+
+                        <h4 className="mt-3 text-base font-semibold leading-snug text-foreground">
+                          {step.title}
+                        </h4>
+
+                        {step.action ? (
+                          <p className="mt-2 text-sm leading-relaxed text-muted-foreground/75">
+                            {step.action}
+                          </p>
+                        ) : null}
+
+                        {step.whyThisOrder ? (
+                          <p className="mt-2 text-sm leading-relaxed text-muted-foreground/70">
+                            {step.whyThisOrder}
+                          </p>
+                        ) : null}
+
+                        <div className="mt-4 rounded-md border border-border/20 bg-background/55 px-3 py-3">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/55">
+                            Release condition
+                          </p>
+                          <p className="mt-1 text-sm leading-relaxed text-foreground/85">
+                            {step.releaseGate}
+                          </p>
                         </div>
                       </div>
 
-                      {/* Gantt Bar */}
-                      <div className="relative h-7 sm:h-9 ml-6 sm:ml-12">
-                        <div className="absolute inset-y-0 left-0 right-0 bg-muted/20 rounded" />
-                        <motion.div
-                          className={`absolute inset-y-0 ${phase.color} rounded cursor-pointer group`}
-                          style={{ left: `${leftPercent}%` }}
-                          initial={{ width: 0 }}
-                          animate={isVisible ? { width: `${widthPercent}%` } : {}}
-                          transition={{ duration: 0.8, delay: 1 + index * 0.15, ease: EASE_OUT_EXPO }}
-                          title={phase.description}
-                        >
-                          <div className="absolute inset-0 flex items-center px-2 sm:px-3 overflow-hidden">
-                            <span className="text-xs text-white/80 font-normal truncate">
-                              {phase.description}
-                            </span>
-                          </div>
-                          {/* Hover tooltip */}
-                          <div className="absolute left-0 top-full mt-2 z-50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                            <div className="rounded-lg border border-border/20 bg-card/90 backdrop-blur-sm px-3 py-2 whitespace-nowrap">
-                              <p className="text-xs font-normal text-foreground">{phase.description}</p>
-                            </div>
-                          </div>
-                        </motion.div>
+                      <div className="grid gap-3 rounded-md border border-border/20 bg-background/35 p-3 text-sm sm:grid-cols-2 lg:grid-cols-1">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/55">
+                            Owner
+                          </p>
+                          <p className="mt-1 font-medium leading-snug text-foreground">
+                            {step.owner}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/55">
+                            Window
+                          </p>
+                          <p className="mt-1 font-medium text-foreground">
+                            Day {step.timing.start}-{step.timing.end}
+                          </p>
+                        </div>
                       </div>
-                    </motion.div>
-                  );
-                })}
+                    </div>
+                  </motion.div>
+                ))}
               </div>
 
-              {/* Today Marker */}
-              <motion.div
-                className="absolute top-0 bottom-0 w-px bg-gold/40"
-                style={{ left: '0%' }}
-                initial={{ opacity: 0, height: 0 }}
-                animate={isVisible ? { opacity: 1, height: '100%' } : {}}
-                transition={{ duration: 0.7, delay: 1.5, ease: EASE_OUT_EXPO }}
-              >
-                <div className="absolute -top-5 sm:-top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 sm:py-1 bg-gold/10 text-gold border border-gold/20 text-xs rounded">
-                  Start
-                </div>
-              </motion.div>
-            </div>
-
-            {/* Phase Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-8 sm:mt-12 pt-8 sm:pt-10">
-              <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent col-span-full -mt-8 sm:-mt-10 mb-4" />
-              {timelinePhases.map((phase, i) => (
-                <motion.div
-                  key={phase.id}
-                  className="rounded-xl border border-border/20 bg-card/50 p-3 sm:p-5"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={isVisible ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.7, delay: 1.2 + i * 0.1, ease: EASE_OUT_EXPO }}
-                >
-                  <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                    <div className={`w-1.5 h-1.5 rounded-full ${phase.color}`} />
-                    <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 font-medium">
-                      Phase {phase.id}
-                    </span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-normal text-foreground">{phase.name}</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1 sm:mt-2">
-                    Day {phase.start} → {phase.start + phase.duration}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Critical Path Note */}
-            <div className="mt-6 sm:mt-8 rounded-xl border border-gold/10 bg-gold/[0.02] p-4 sm:p-6">
-              <div className="flex items-start gap-3 sm:gap-4">
-                <div className="w-0.5 h-full bg-gold/20 rounded self-stretch flex-shrink-0" />
-                <div>
-                  <p className="text-xs sm:text-sm font-normal text-gold/70 mb-1">
-                    Critical Path: {timelinePhases[0]?.name || 'Initial Phase'}
-                  </p>
-                  <p className="text-sm text-muted-foreground/60 leading-relaxed">
-                    {timelinePhases[0]?.description || 'The initial phase determines the overall timeline.'} Multiple phases
-                    run in parallel to optimize total implementation time for {destinationJurisdiction || 'target'} positioning.
-                  </p>
-                </div>
+              <div className="mt-5 rounded-md border border-gold/25 bg-gold/[0.04] px-4 py-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-gold/75">
+                  Final release rule
+                </p>
+                <p className="mt-2 max-w-5xl text-sm leading-relaxed text-foreground/85">
+                  {releaseSteps[releaseSteps.length - 1]?.releaseGate}
+                </p>
               </div>
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
       )}
     </div>
   );
