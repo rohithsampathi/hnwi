@@ -780,7 +780,7 @@ export function Page3PeerIntelligence({
                   animate={isVisible ? { opacity: 1 } : {}}
                 >
                   <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                    Capital flow metrics calculated from pattern intelligence
+                    Capital flow metrics calculated from route-pattern source records
                   </p>
                 </motion.div>
               )}
@@ -941,7 +941,7 @@ export function Page3PeerIntelligence({
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
 
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-6">
-              {hasNativeDriverBullets ? 'Native Route Drivers' : 'Primary Drivers'}
+              {hasNativeDriverBullets ? 'Route Drivers From Source Review' : 'Primary Drivers'}
             </p>
 
             <div className="space-y-5">

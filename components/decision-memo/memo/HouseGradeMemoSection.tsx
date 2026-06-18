@@ -2186,7 +2186,7 @@ export default function HouseGradeMemoSection({
   );
   const dayOneLossLabel = asText(economics.day_one_loss, 'the day-one drag');
   const drawdownFloorLabel = asText(economics.drawdown_floor || crisis.stress_drawdown_floor, 'the modeled stress floor');
-  const routeWitnessLabel = precedentCount ? `${precedentCount} direct route witnesses` : 'the witness set';
+  const routeWitnessLabel = precedentCount ? `${precedentCount} route-pattern source records` : 'the route-pattern source set';
   const decisionWindow = deriveDecisionWindow(preview, gates);
 
   const witnessCards = [
@@ -2209,9 +2209,9 @@ export default function HouseGradeMemoSection({
       tone: 'gold' as Tone,
     },
     {
-      label: 'Route Witnesses',
+      label: 'Route Source Records',
       value: precedentCount ? `${precedentCount}` : asText(preview.peer_cohort_stats?.total_peers, '—'),
-      note: routeEvidenceBasisNote || `${routeWitnessLabel} and governing objects inform this read.`,
+      note: routeEvidenceBasisNote || `${routeWitnessLabel} and governing objects inform why the release gate matters; they do not prove bank, title, tax, or family authority.`,
       tone: 'default' as Tone,
     },
   ];
@@ -2592,10 +2592,10 @@ export default function HouseGradeMemoSection({
 
   const marketSignalRows = [
     {
-      label: 'Route Purchase Witnesses',
+      label: 'Route-Pattern Source Records',
       value: precedentCount ? `${precedentCount}` : asText(preview.peer_cohort_stats?.total_peers, '—'),
       displayValue: precedentCount ? `${precedentCount.toLocaleString()}` : asText(preview.peer_cohort_stats?.total_peers, '—'),
-      detail: `${corridorLabel} route witnesses and corridor-adjacent purchase cases informing the read.`,
+      detail: `${corridorLabel} route-pattern source records and corridor-adjacent purchase cases informing why each release gate matters.`,
     },
     {
       label: 'Current Decision Window',
@@ -2607,13 +2607,13 @@ export default function HouseGradeMemoSection({
       label: 'Tracked Market File',
       value: developmentsCount ? `${developmentsCount.toLocaleString()}` : '—',
       displayValue: developmentsCount ? `${developmentsCount.toLocaleString()}` : '—',
-      detail: `Tracked market records, developments, and related objects shaping the current ${corridorLabel} read.`,
+      detail: `Tracked market records, source records, and related objects shaping the current ${corridorLabel} read.`,
     },
     {
       label: 'Evidence Basis',
       value: routeEvidenceBasisNote ? 'Locked' : 'Partial',
       displayValue: routeEvidenceBasisNote ? 'Locked' : 'Partial',
-      detail: routeEvidenceBasisNote || `${routeWitnessLabel} and governing objects are present, but the authority basis note is not yet fully written through.`,
+      detail: routeEvidenceBasisNote || `${routeWitnessLabel} and governing objects are present; private release conditions still require signed evidence.`,
     },
   ];
 
@@ -2868,9 +2868,9 @@ export default function HouseGradeMemoSection({
                   detail: asText(visibility.note || visibility.summary, `The house has given enough visibility to govern ${corridorLabel}, but not enough to pretend every downstream fact is closed.`),
                 },
                 {
-                  label: 'Memo Confidence',
+                  label: 'Route Confidence Signal',
                   value: preview.hnwi_trends_confidence ? `${Math.round(preview.hnwi_trends_confidence * 100)}%` : 'Evidence gated',
-                  detail: `Confidence is earned from route-core evidence, ${routeWitnessLabel}, and the legal / banking rails under review.`,
+                  detail: `Methodology signal drawn from route-core evidence, ${routeWitnessLabel}, and the legal / banking rails under review. It is not legal, bank, title, or family-authority proof.`,
                 },
               ]}
               tone="default"
@@ -3054,7 +3054,7 @@ export default function HouseGradeMemoSection({
         {sectionHeader(
           'Chapter IV',
           'Live Market And Crisis Read',
-          `This chapter shows what the market changes and what it does not. Witness strength, corridor pattern intelligence, and live Gulf stress are read together so the house does not mistake market heat for route permission or crisis color for abstraction.`,
+          `This chapter shows what the market changes and what it does not. Source-record strength, route-pattern methodology, and live Gulf stress are read together so the house does not mistake market heat for route permission or crisis color for abstraction.`,
           <Eye className="h-5 w-5" />,
         )}
         <NarrativeReadPanel
@@ -3069,7 +3069,7 @@ export default function HouseGradeMemoSection({
                 rows={marketSignalRows}
                 tone="gold"
                 embedded
-                description={`This is the witness base behind the current ${corridorLabel} read: route precedents, timing window, market file depth, and evidence lock.`}
+                description={`This is the source base behind the current ${corridorLabel} read: route-pattern source records, timing window, market file depth, and evidence lock.`}
               />
               <EditorialSignalRail
                 title="Resilience Read"
@@ -3101,7 +3101,7 @@ export default function HouseGradeMemoSection({
             <ScheduleDivider
               label="Working Papers"
               title="Market, Trend, And Crisis Working Papers"
-              description={`These working papers hold the witness set, corridor pattern read, and live crisis pressure behind this chapter. They are here so the principal can move from the live read into the proof base without changing documents.`}
+              description={`These working papers hold the route-pattern source set, corridor read, and live crisis stress behind this chapter. They are here so the principal can move from the live read into the proof base without changing documents.`}
             />
             <div className="mt-6 space-y-8">
               {hasMarketIntelligence ? (
@@ -3140,6 +3140,7 @@ export default function HouseGradeMemoSection({
                 <CrisisResilienceSection
                   crisisData={preview.crisis_data}
                   content={preview.crisis_resilience_stress_test}
+                  antifragileContent={preview.antifragile_resilience_test}
                   sourceJurisdiction={sourceJurisdiction}
                   destinationJurisdiction={destinationJurisdiction}
                 />

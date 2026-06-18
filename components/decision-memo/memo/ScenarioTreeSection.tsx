@@ -320,7 +320,7 @@ function buildDm64BranchListScenarioTreeData(
         expected_value: expectedValue,
         display_value: branchSignal,
         expected_value_note: source?.decision_ev
-          ? `Route signal from DM64 branch read: ${branchSignal || source.decision_ev}. Financial EV is not asserted until family documents and bank evidence clear.`
+          ? `Route signal from branch read: ${branchSignal || source.decision_ev}. Financial EV is not asserted until family documents and bank evidence clear.`
           : 'Qualitative route outcome; financial EV is not asserted until family documents and bank evidence clear.',
         verdict: summary || defaultVerdictByName[name],
         verdict_conditions: conditions,

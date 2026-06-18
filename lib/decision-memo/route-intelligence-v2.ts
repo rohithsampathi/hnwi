@@ -66,6 +66,30 @@ export interface PrincipalValueGate {
   releaseStatus: string;
 }
 
+export interface RouteDriverSourceRecord {
+  id?: string;
+  title?: string;
+  summary?: string;
+  url?: string;
+  source_url?: string;
+  date?: string;
+  source_date?: string | { $date?: string };
+  industry?: string;
+  decision_posture?: string;
+  quality_score?: number;
+  [key: string]: unknown;
+}
+
+export interface RouteDriverRegisterItem {
+  id: string;
+  title: string;
+  driver: string;
+  releaseRead?: string;
+  evidenceBasis?: string;
+  sourceIds: string[];
+  sources: RouteDriverSourceRecord[];
+}
+
 export interface RouteIntelligenceOptionV2 {
   id: string;
   rank: number;
@@ -124,6 +148,9 @@ export interface RouteIntelligenceV2 {
   nativeRouteDriverTitle?: string;
   nativeRouteDriverSubtitle?: string;
   nativeRouteDriverNote?: string;
+  routeDriverRegister?: {
+    items: RouteDriverRegisterItem[];
+  };
   selectorLabel?: string;
   selectorCopy?: string;
   comparisonLabel?: string;
@@ -164,6 +191,99 @@ function textList(value: unknown): string[] {
   return value
     .map((item) => text(item))
     .filter(Boolean);
+}
+
+function normalizeKey(value: unknown, fallback: string): string {
+  const raw = text(value, fallback);
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || fallback;
+}
+
+function sanitizeRouteDriverTitle(value: unknown): string {
+  const title = text(value, 'Route Drivers From Source Review');
+  return /native\s+route\s+drivers/i.test(title)
+    ? 'Route Drivers From Source Review'
+    : title;
+}
+
+function sanitizeRouteDriverNote(value: unknown): string {
+  const note = text(
+    value,
+    'Route-pattern source records explain why a release gate matters; public law, market, bank, title, and family-document evidence still govern final release.',
+  );
+  return note
+    .replace(/\bPattern intelligence\b/gi, 'Route-pattern source records')
+    .replace(/\bnative\b/gi, 'stored')
+    .trim();
+}
+
+function routeDriverSourceId(driverId: string, source: RouteDriverSourceRecord, sourceIndex: number): string {
+  return text(
+    source.id ?? source.source_development_id ?? source.dev_id ?? source.devid,
+    `route_driver_${driverId}_${sourceIndex + 1}`,
+  );
+}
+
+function normalizeRouteDriverSource(source: unknown): RouteDriverSourceRecord {
+  const record = asRecord(source);
+  const sourceDate = record.source_date;
+  const normalizedDate =
+    typeof sourceDate === 'string'
+      ? sourceDate
+      : isRecord(sourceDate)
+        ? text(sourceDate.$date)
+        : text(record.date);
+
+  return {
+    ...record,
+    id: text(record.id ?? record.source_development_id ?? record.dev_id ?? record.devid),
+    title: text(record.title ?? record.source_title ?? record.name, 'Source record'),
+    summary: text(record.summary ?? record.reference ?? record.claim_supported ?? record.description),
+    url: text(record.url ?? record.source_url),
+    source_url: text(record.source_url ?? record.url),
+    date: normalizedDate || undefined,
+    source_date: normalizedDate || undefined,
+    industry: text(record.industry ?? record.category, 'Route Evidence'),
+    decision_posture: text(record.decision_posture),
+    quality_score: typeof record.quality_score === 'number' ? record.quality_score : undefined,
+  };
+}
+
+function normalizeRouteDriverRegister(value: unknown): { items: RouteDriverRegisterItem[] } | undefined {
+  const record = asRecord(value);
+  const rawItems = Array.isArray(record.items)
+    ? record.items
+    : Array.isArray(value)
+      ? value
+      : [];
+
+  const items = rawItems
+    .filter(isRecord)
+    .map((item, index) => {
+      const id = normalizeKey(item.id ?? item.title, `driver_${index + 1}`);
+      const sources = (Array.isArray(item.sources) ? item.sources : [])
+        .map(normalizeRouteDriverSource)
+        .filter((source) => Boolean(source.title || source.summary || source.url));
+      const sourceIds = sources.map((source, sourceIndex) => routeDriverSourceId(id, source, sourceIndex));
+
+      return {
+        id,
+        title: text(item.title, `Route driver ${index + 1}`),
+        driver: text(item.driver ?? item.text ?? item.summary),
+        releaseRead: text(item.releaseRead ?? item.release_read),
+        evidenceBasis: text(item.evidenceBasis ?? item.evidence_basis),
+        sourceIds,
+        sources: sources.map((source, sourceIndex) => ({
+          ...source,
+          id: sourceIds[sourceIndex],
+        })),
+      };
+    })
+    .filter((item) => Boolean(item.driver || item.title));
+
+  return items.length ? { items } : undefined;
 }
 
 function numberOr(value: unknown, fallback = 0): number {
@@ -1274,7 +1394,14 @@ export function buildRouteIntelligenceV2(
   const nativeRouteDrivers = textList(
     nativeRouteIntelligence.nativeRouteDrivers ??
       nativeRouteIntelligence.native_route_drivers ??
+      nativeRouteIntelligence.routeDrivers ??
+      nativeRouteIntelligence.route_drivers ??
       peerStats.native_driver_bullets,
+  );
+  const routeDriverRegister = normalizeRouteDriverRegister(
+    nativeRouteIntelligence.routeDriverRegister ??
+      nativeRouteIntelligence.route_driver_register ??
+      preview.route_driver_register,
   );
   const nativePressureVariants = Array.isArray(nativeRouteIntelligence.pressureVariants)
     ? nativeRouteIntelligence.pressureVariants
@@ -1306,10 +1433,9 @@ export function buildRouteIntelligenceV2(
       surfaceEyebrow: text(nativeRouteIntelligence.surfaceEyebrow ?? nativeRouteIntelligence.surface_eyebrow, 'Proposed Move Release Readiness'),
       surfaceTitle: text(nativeRouteIntelligence.surfaceTitle ?? nativeRouteIntelligence.surface_title, 'Proposed Move Release Readiness Memo'),
       nativeRouteDrivers,
-      nativeRouteDriverTitle: text(
+      nativeRouteDriverTitle: sanitizeRouteDriverTitle(
         nativeRouteIntelligence.nativeRouteDriverTitle ??
           nativeRouteIntelligence.native_route_driver_title,
-        'Native Route Drivers',
       ),
       nativeRouteDriverSubtitle: text(
         nativeRouteIntelligence.nativeRouteDriverSubtitle ??
@@ -1317,12 +1443,12 @@ export function buildRouteIntelligenceV2(
           peerStats.driver_analysis_subtitle,
         'What the route-pattern witnesses actually change in this move.',
       ),
-      nativeRouteDriverNote: text(
+      nativeRouteDriverNote: sanitizeRouteDriverNote(
         nativeRouteIntelligence.nativeRouteDriverNote ??
           nativeRouteIntelligence.native_route_driver_note ??
           peerStats.driver_analysis_note,
-        'Pattern intelligence informs the release-readiness need; public market sources bound market context; private family documents govern final release.',
       ),
+      routeDriverRegister,
       selectorLabel: text(nativeRouteIntelligence.selectorLabel ?? nativeRouteIntelligence.selector_label, 'Route Being Released'),
       selectorCopy: text(
         nativeRouteIntelligence.selectorCopy ?? nativeRouteIntelligence.selector_copy,
@@ -1447,12 +1573,12 @@ export function buildRouteIntelligenceV2(
     surfaceEyebrow: 'Proposed Move Release Readiness',
     surfaceTitle: 'Proposed Move Release Readiness Memo',
     nativeRouteDrivers,
-    nativeRouteDriverTitle: 'Native Route Drivers',
+    nativeRouteDriverTitle: 'Route Drivers From Source Review',
     nativeRouteDriverSubtitle: text(peerStats.driver_analysis_subtitle, 'What the route-pattern witnesses actually change in this move.'),
-    nativeRouteDriverNote: text(
+    nativeRouteDriverNote: sanitizeRouteDriverNote(
       peerStats.driver_analysis_note,
-      'Pattern intelligence informs the release-readiness need; public market sources bound market context; private family documents govern final release.',
     ),
+    routeDriverRegister,
     selectorLabel: 'Route Being Released',
     selectorCopy: 'Review release-readiness routes against the proposed move. The downstream tax audit, jurisdiction readiness, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.',
     comparisonLabel: 'Release Readiness Routes',

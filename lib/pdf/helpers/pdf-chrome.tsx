@@ -68,7 +68,7 @@ export const PageFooter: React.FC<PageFooterProps> = ({ date }) => {
   const styles = getStyles();
   return (
     <View style={styles.footer}>
-      <Text style={styles.footerText}>HNWI Chronicles — Private Intelligence Division</Text>
+      <Text style={styles.footerText}>HNWI Chronicles — Release Readiness Review</Text>
       <Text style={styles.footerText}>{date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</Text>
     </View>
   );

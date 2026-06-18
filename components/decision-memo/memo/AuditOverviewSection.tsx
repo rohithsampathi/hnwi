@@ -802,18 +802,18 @@ export function AuditOverviewSection({
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-xs uppercase tracking-wide text-emerald-500 font-bold mb-3">Intelligence Basis</h3>
+              <h3 className="text-xs uppercase tracking-wide text-emerald-500 font-bold mb-3">Evidence Boundary</h3>
               <p className="text-sm sm:text-base text-foreground/90 leading-relaxed">
-                This audit draws on{' '}
+                This release-readiness review draws on{' '}
                 {hasDevelopmentCount ? (
                   <>
                     <span className="font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded">
                       {developmentsCount.toLocaleString()}
                     </span>{' '}
-                    validated developments from 3 years of HNWI wealth pattern tracking
+                    source records and route-pattern records from the HNWI Chronicles evidence library
                   </>
                 ) : (
-                  <>validated HNWI developments from 3 years of wealth pattern tracking</>
+                  <>source records and route-pattern records from the HNWI Chronicles evidence library</>
                 )}
                 {evidenceBasisNote ? (
                   <>
@@ -821,7 +821,7 @@ export function AuditOverviewSection({
                     <span className="font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded">
                       {evidenceBasisNote}
                     </span>
-                    . All findings are citation-backed.
+                    . Public-law and market claims are source-backed; bank, title, family, and adviser claims remain release gates until signed.
                   </>
                 ) : hasPrecedentCount ? (
                   <>
@@ -829,11 +829,11 @@ export function AuditOverviewSection({
                     <span className="font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded">
                       {precedentCount.toLocaleString()}
                     </span>{' '}
-                    route precedents specific to the{' '}
+                    route-pattern source records specific to the{' '}
                     <span className="font-medium text-foreground">
                       {cleanJurisdiction(sourceJurisdiction)}→{cleanJurisdiction(destinationJurisdiction)}
                     </span>{' '}
-                    corridor. All findings are citation-backed.
+                    corridor. These records explain why a release gate matters; they do not prove legal status, bank acceptance, title, or family authority.
                   </>
                 ) : (
                   <>
@@ -841,7 +841,7 @@ export function AuditOverviewSection({
                     <span className="font-medium text-foreground">
                       {cleanJurisdiction(sourceJurisdiction)}→{cleanJurisdiction(destinationJurisdiction)}
                     </span>{' '}
-                    corridor. All findings are citation-backed.
+                    corridor. Public-law and market claims are source-backed; private release conditions require signed evidence.
                   </>
                 )}
               </p>

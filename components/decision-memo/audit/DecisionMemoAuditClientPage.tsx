@@ -48,6 +48,10 @@ import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import type { Citation } from '@/lib/parse-dev-citations';
 import { extractDevIds } from '@/lib/parse-dev-citations';
+import {
+  buildCitationSourceDevelopment,
+  type CitationSourceDevelopment,
+} from '@/lib/development-citation';
 import { AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/contexts/theme-context';
 import type { ResolvedDecisionMemoSurfaceData } from '@/lib/decision-memo/resolve-decision-memo-surface-data';
@@ -178,6 +182,138 @@ interface DecisionMemoAuditClientPageProps {
   initialSearchParamsString?: string;
   initialSurfaceData?: ResolvedDecisionMemoSurfaceData | null;
   initialSurfaceError?: string | null;
+}
+
+type MemoSourceRecord = {
+  id: string;
+  payload: Record<string, unknown>;
+};
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function asRecordArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value) ? value.filter(isPlainRecord) : [];
+}
+
+function firstText(record: Record<string, unknown>, fields: string[], fallback = ''): string {
+  for (const field of fields) {
+    const value = record[field];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (isPlainRecord(value) && typeof value.$date === 'string' && value.$date.trim()) {
+      return value.$date.trim();
+    }
+  }
+  return fallback;
+}
+
+function normalizeSourceDate(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (isPlainRecord(value) && typeof value.$date === 'string' && value.$date.trim()) {
+    return value.$date.trim();
+  }
+  return undefined;
+}
+
+function normalizedIdPart(value: unknown, fallback: string): string {
+  const raw = typeof value === 'string' && value.trim() ? value.trim() : fallback;
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || fallback;
+}
+
+function sourceRecordId(record: Record<string, unknown>, fallback: string): string {
+  return firstText(record, ['id', '_id', 'brief_id', 'dev_id', 'devid', 'source_development_id'], fallback);
+}
+
+function memoSourcePayload(record: Record<string, unknown>, fallbackId: string): Record<string, unknown> {
+  const id = sourceRecordId(record, fallbackId);
+  const date = normalizeSourceDate(record.date ?? record.source_date ?? record.source_article_date ?? record.published_at);
+  const url = firstText(record, ['url', 'source_url']);
+  const summary =
+    firstText(record, ['full_castle_brief', 'full_analysis', 'analysis', 'summary', 'reference', 'claim_supported', 'why_it_matters']) ||
+    firstText(record, ['description', 'brief_source_text', 'public_mirror_excerpt']);
+
+  return {
+    ...record,
+    id,
+    title: firstText(record, ['title', 'brief_title', 'source_title', 'name'], 'Source record'),
+    summary,
+    description: firstText(record, ['description', 'short_summary', 'claim_supported', 'reference'], summary),
+    industry: firstText(record, ['industry', 'category'], 'Route Evidence'),
+    url,
+    source_url: url,
+    date,
+    source_date: date,
+  };
+}
+
+function addMemoSourceRecord(records: MemoSourceRecord[], seen: Set<string>, record: Record<string, unknown>, fallbackId: string) {
+  const payload = memoSourcePayload(record, fallbackId);
+  const id = String(payload.id || fallbackId).trim();
+  const normalized = id.toLowerCase();
+  if (!id || seen.has(normalized)) return;
+  seen.add(normalized);
+  records.push({ id, payload });
+}
+
+function collectMemoSourceRecords(previewData: unknown): MemoSourceRecord[] {
+  const preview = isPlainRecord(previewData) ? previewData : {};
+  const legalReferences = isPlainRecord(preview.legal_references) ? preview.legal_references : {};
+  const records: MemoSourceRecord[] = [];
+  const seen = new Set<string>();
+
+  const addList = (value: unknown, fallbackPrefix: string) => {
+    asRecordArray(value).forEach((record, index) => {
+      addMemoSourceRecord(records, seen, record, `${fallbackPrefix}_${index + 1}`);
+    });
+  };
+
+  addList(preview.source_register, 'source_register');
+  addList(preview.governing_source_register, 'governing_source');
+  addList(legalReferences.sources, 'legal_source');
+  addList(legalReferences.pattern_evidence_records, 'route_pattern_source');
+  addList(legalReferences.pattern_witnesses, 'route_pattern_witness');
+  addList(preview.pattern_evidence_records, 'pattern_evidence');
+  addList(preview.sources, 'memo_source');
+
+  const routeIntelligence = isPlainRecord(preview.route_intelligence_v2) ? preview.route_intelligence_v2 : {};
+  const routeDriverRegister =
+    isPlainRecord(preview.route_driver_register)
+      ? preview.route_driver_register
+      : isPlainRecord(routeIntelligence.routeDriverRegister)
+        ? routeIntelligence.routeDriverRegister
+        : isPlainRecord(routeIntelligence.route_driver_register)
+          ? routeIntelligence.route_driver_register
+          : {};
+
+  asRecordArray(routeDriverRegister.items).forEach((driver, driverIndex) => {
+    const driverId = normalizedIdPart(driver.id ?? driver.title, `driver_${driverIndex + 1}`);
+    asRecordArray(driver.sources).forEach((source, sourceIndex) => {
+      const sourceId = firstText(
+        source,
+        ['id', 'source_development_id', 'dev_id', 'devid'],
+        `route_driver_${driverId}_${sourceIndex + 1}`,
+      );
+      addMemoSourceRecord(
+        records,
+        seen,
+        {
+          ...source,
+          id: sourceId,
+          title: firstText(source, ['title', 'source_title', 'name'], firstText(driver, ['title'], `Route driver ${driverIndex + 1}`)),
+          claim_supported: firstText(driver, ['driver', 'release_read', 'evidence_basis']),
+          route_relevance: firstText(driver, ['release_read']),
+          source_signal: firstText(driver, ['evidence_basis']),
+        },
+        sourceId,
+      );
+    });
+  });
+
+  return records;
 }
 
 export default function DecisionMemoAuditClientPage({
@@ -357,8 +493,9 @@ export default function DecisionMemoAuditClientPage({
   // SYNCHRONOUS citation extraction using useMemo — available on first render
   // This fixes the timing issue where useEffect fires AFTER render, leaving the citationMap empty
   // when Leaflet popups first render (causing all citations to show [1])
-  const { computedCitations, computedCitationMap } = useMemo(() => {
+  const { computedCitations, computedCitationMap, computedPreloadedSources } = useMemo(() => {
     const previewData = resolvedSurfaceData?.memoData?.preview_data ?? backendData?.preview_data;
+    const sourceRecords = collectMemoSourceRecords(previewData);
     const opportunities = Array.isArray(previewData?.all_opportunities)
       ? (previewData.all_opportunities as Array<{
           dev_id?: string;
@@ -367,10 +504,10 @@ export default function DecisionMemoAuditClientPage({
           opportunity_narrative?: string;
         }>)
       : [];
-    if (opportunities.length === 0) return { computedCitations: [] as Citation[], computedCitationMap: new Map<string, number>() };
 
     const allDevIds: string[] = [];
     const seenNormalized = new Set<string>();
+    const preloadedSources = new Map<string, CitationSourceDevelopment>();
 
     const addDevId = (devId: string) => {
       const trimmed = String(devId).trim();
@@ -380,6 +517,14 @@ export default function DecisionMemoAuditClientPage({
         allDevIds.push(trimmed);
       }
     };
+
+    sourceRecords.forEach(({ id, payload }) => {
+      addDevId(id);
+      const source = buildCitationSourceDevelopment(payload, id);
+      if (source) {
+        preloadedSources.set(id, source);
+      }
+    });
 
     opportunities.forEach((opp) => {
       if (opp.dev_id) {
@@ -411,7 +556,7 @@ export default function DecisionMemoAuditClientPage({
     const citMap = new Map<string, number>();
     citationList.forEach(c => citMap.set(c.id, c.number));
 
-    return { computedCitations: citationList, computedCitationMap: citMap };
+    return { computedCitations: citationList, computedCitationMap: citMap, computedPreloadedSources: preloadedSources };
   }, [backendData, resolvedSurfaceData]);
 
   // Sync computed citations with useCitationManager (for EliteCitationPanel)
@@ -530,7 +675,7 @@ export default function DecisionMemoAuditClientPage({
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `HNWI-Decision-Audit-${(intakeId.slice(10, 22) || intakeId.slice(0, 12)).toUpperCase()}.pdf`;
+            link.download = `HNWI-Release-Readiness-${(intakeId.slice(10, 22) || intakeId.slice(0, 12)).toUpperCase()}.pdf`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -760,7 +905,7 @@ export default function DecisionMemoAuditClientPage({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `HNWI-Decision-Audit-${(intakeId.slice(10, 22) || intakeId.slice(0, 12)).toUpperCase()}.pdf`;
+      link.download = `HNWI-Release-Readiness-${(intakeId.slice(10, 22) || intakeId.slice(0, 12)).toUpperCase()}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1424,6 +1569,8 @@ export default function DecisionMemoAuditClientPage({
                 publicMemoId={canonicalMemoReference}
                 v1Href={buildAuditViewHref(false, 'linear')}
                 embedded
+                onCitationClick={handleCitationClick}
+                citationMap={computedCitationMap}
                 zeroTrustMoveIntake={(memoData.preview_data as Record<string, unknown>).zero_trust_move_intake as Record<string, unknown> | undefined}
                 fullMemo={(selectedRoute) => {
                   const routeScopedSurface = buildRouteScopedDecisionMemoSurface({
@@ -1496,6 +1643,7 @@ export default function DecisionMemoAuditClientPage({
             onClose={closePanel}
             onCitationSelect={setSelectedCitationId}
             citationMap={computedCitationMap}
+            preloadedSources={computedPreloadedSources}
           />
         </div>
       )}
@@ -1509,6 +1657,7 @@ export default function DecisionMemoAuditClientPage({
             onClose={closePanel}
             onCitationSelect={setSelectedCitationId}
             citationMap={computedCitationMap}
+            preloadedSources={computedPreloadedSources}
           />
         </AnimatePresence>
       )}

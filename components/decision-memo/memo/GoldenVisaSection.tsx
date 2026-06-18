@@ -266,7 +266,7 @@ export function GoldenVisaSection({
         >
           <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border/30" />
           <p className="text-xs text-muted-foreground/60 leading-relaxed">
-            Sourced from HNWI Chronicles KG Golden Visa Programs 2025 + Investment Migration Database
+            Sourced from HNWI Chronicles Golden Visa Programs 2025 + Investment Migration Database
           </p>
           <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border/30" />
         </motion.div>

@@ -182,7 +182,7 @@ export const PdfPatternIntelligencePage: React.FC<PdfPatternIntelligencePageProp
       <View style={{ marginBottom: spacing.lg, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border }}>
         <GradientAccentBar width={483} height={4} theme={theme} />
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginTop: 10 }}>
-          <Text style={{ ...styles.pageTitle, flexShrink: 1, maxWidth: '70%' }}>Pattern Intelligence</Text>
+          <Text style={{ ...styles.pageTitle, flexShrink: 1, maxWidth: '70%' }}>Route Pattern Source Review</Text>
           <View style={{ paddingHorizontal: spacing.sm, paddingVertical: 3, backgroundColor: darkTheme.surfaceBg, borderWidth: 1, borderColor: darkTheme.border }}>
             <Text style={{ ...typography.microBold, letterSpacing: 1, color: darkTheme.textMuted, textTransform: 'uppercase' }}>INTELLIGENCE</Text>
           </View>
@@ -194,7 +194,7 @@ export const PdfPatternIntelligencePage: React.FC<PdfPatternIntelligencePageProp
         <View>
           <Text style={{ ...styles.microLabelFaint, marginBottom: spacing.xs }}>Intelligence Depth</Text>
           <Text style={styles.metricLgPrimary}>{devCount.toLocaleString()}+</Text>
-          <Text style={{ ...styles.captionFaint, marginTop: 2 }}>Validated developments in KGv3</Text>
+          <Text style={{ ...styles.captionFaint, marginTop: 2 }}>Route-pattern source records</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={{ ...styles.microLabelFaint, marginBottom: spacing.xs }}>Corridor Precedents</Text>
@@ -353,7 +353,7 @@ export const PdfPatternIntelligencePage: React.FC<PdfPatternIntelligencePageProp
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: 12 }}>
         <GradientDivider width={200} height={1} color={darkTheme.border} />
         <Text style={{ ...pdfStyles.footerCenter, marginHorizontal: 12 }}>
-          Pattern intelligence sourced from {devCount.toLocaleString()}+ KGv3 developments
+          Route-pattern methodology sourced from {devCount.toLocaleString()}+ source records
         </Text>
         <GradientDivider width={200} height={1} color={darkTheme.border} />
       </View>

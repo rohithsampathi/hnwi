@@ -214,7 +214,7 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
         </View>
 
         {/* Tagline */}
-        <Text style={{ ...tagline, marginBottom: 16 }}>Private Intelligence Division</Text>
+        <Text style={{ ...tagline, marginBottom: 16 }}>Release Readiness Review</Text>
 
         {/* Premium divider with diamond */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
@@ -225,10 +225,10 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
 
         {/* Document classification */}
         <View style={{ borderWidth: 1, borderColor: darkTheme.border, paddingHorizontal: 18, paddingVertical: 6, marginBottom: 12 }}>
-          <Text style={classification}>SFO Decision Memorandum — {quarterLabel}</Text>
+          <Text style={classification}>SFO Release Readiness Review — {quarterLabel}</Text>
         </View>
-        <Text style={{ ...coverTitle, marginBottom: 6 }}>Pattern Audit</Text>
-        <Text style={{ ...coverSubtitle, marginBottom: 20 }}>Strategic Intelligence Analysis</Text>
+        <Text style={{ ...coverTitle, marginBottom: 6 }}>Release Readiness Memo</Text>
+        <Text style={{ ...coverSubtitle, marginBottom: 20 }}>Gated Capital Movement Review</Text>
 
         {/* Verdict Preview Badge */}
         {!!verdict && !viaNegativa?.isActive && (
@@ -283,7 +283,7 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
         {precedentCount > 0 && (
           <View style={{ marginBottom: spacing.sm, alignItems: 'center' }}>
             <Text style={provenanceLine}>
-              Powered by KGv3 — {precedentCount.toLocaleString()} validated developments analyzed
+              Route source file — {precedentCount.toLocaleString()} route-pattern source records reviewed
             </Text>
           </View>
         )}
@@ -310,7 +310,7 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
         <Text style={footerText}>© {currentYear} HNWI Chronicles</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{ width: 4, height: 4, backgroundColor: colors.amber[500], borderRadius: 2, marginHorizontal: spacing.sm }} />
-          <Text style={footerText}>Private Intelligence Division</Text>
+          <Text style={footerText}>Release Readiness Review</Text>
           <View style={{ width: 4, height: 4, backgroundColor: colors.amber[500], borderRadius: 2, marginHorizontal: spacing.sm }} />
         </View>
         <Text style={footerText}>Institutional Grade</Text>

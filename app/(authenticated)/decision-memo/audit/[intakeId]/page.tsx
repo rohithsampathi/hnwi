@@ -237,7 +237,7 @@ function DecisionMemoServerAuditText({
     >
       <style>{serverTranscriptCss}</style>
       <header>
-        <p className="eyebrow">HNWI Chronicles / Private Intelligence Division</p>
+        <p className="eyebrow">HNWI Chronicles / Release Readiness Review</p>
         <h1>{title}</h1>
         <p><strong>Reference:</strong> {reference}</p>
         <p><strong>Corridor:</strong> {corridor}</p>

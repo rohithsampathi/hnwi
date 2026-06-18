@@ -92,7 +92,7 @@ export function PdfHNWITrendsSection({
           )}
         </View>
         <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: colors.amber[500], backgroundColor: colors.tints.goldMedium }}>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: colors.amber[500], textTransform: 'uppercase', letterSpacing: 0.5 }}>KGv3 Verified</Text>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: colors.amber[500], textTransform: 'uppercase', letterSpacing: 0.5 }}>Source Reviewed</Text>
         </View>
       </View>
 
@@ -116,7 +116,7 @@ export function PdfHNWITrendsSection({
       {/* Data Sources Section */}
       {trendsData.collections_queried && trendsData.collections_queried.length > 0 && (
         <View style={{ backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, padding: 12, marginBottom: 16 }}>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>KGv3 Collections Queried</Text>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Source Collections Queried</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
             {trendsData.collections_queried.map((source, i) => (
               <View key={i} style={{ backgroundColor: darkTheme.surfaceBg, paddingHorizontal: 8, paddingVertical: 4, marginRight: 6, marginBottom: 6 }}>
@@ -148,7 +148,7 @@ export function PdfHNWITrendsSection({
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: darkTheme.border }}>
         <View style={{ width: 4, height: 4, backgroundColor: colors.amber[500], borderRadius: 2, marginHorizontal: 6 }} />
         <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint }}>
-          Powered by HNWI Chronicles KG Migration Intelligence + Henley Private Wealth Data
+          Powered by HNWI Chronicles migration source review + Henley Private Wealth Data
         </Text>
       </View>
     </View>

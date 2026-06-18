@@ -318,7 +318,7 @@ export const SECTIONS: SectionDefinition[] = [
   },
   {
     id: 'peer-benchmark-ticker',
-    title: 'Pattern Intelligence',
+    title: 'Route Pattern Source Review',
     category: 'risk-analysis',
     component: PeerBenchmarkTicker,
     shouldRender: (data) => {
@@ -393,7 +393,7 @@ export const SECTIONS: SectionDefinition[] = [
     ),
     estimatedReadTime: 5,
     aidaNext: ['structure-comparison', 'heir-management'],
-    description: 'KGv3-powered residency program analysis'
+    description: 'Source-reviewed residency program analysis'
   },
   {
     id: 'golden-visa-basic',

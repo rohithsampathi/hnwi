@@ -17,6 +17,7 @@ import { memoNumberClass } from '@/lib/decision-memo/memo-design-tokens';
 interface CrisisResilienceSectionProps {
   crisisData?: Record<string, unknown>;
   content?: string;
+  antifragileContent?: unknown;
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
 }
@@ -73,6 +74,7 @@ export interface NormalizedCrisisData {
   recommendations: NormalizedRecommendation[];
   priorityEvents: NormalizedDetailItem[];
   routeRisks: NormalizedDetailItem[];
+  antifragileControls: NormalizedDetailItem[];
   decisionFlags: string[];
   marketRegimes: NormalizedDetailItem[];
   sourceFamilies: string[];
@@ -151,10 +153,10 @@ function canonicalSourceFamily(value: unknown): string {
   if (lowered === "crisis_bundle" || lowered === "crisis_event") return "Crisis World-State Rail";
   if (lowered === "market_regime") return "Gulf Energy Market Rail";
   if (lowered.includes("crisis world-state") || lowered.includes("crisis rail")) return "Crisis World-State Rail";
-  if (lowered.includes("castle")) return "Route Pattern Cases";
-  if (lowered.includes("pattern")) return "Pattern Intelligence";
+  if (lowered.includes("castle")) return "Route-Pattern Source Records";
+  if (lowered.includes("pattern")) return "Route-Pattern Source Records";
   if (lowered.includes("kgv2.1") || lowered.includes("analytical surface")) return "KGv2.1 Analytical Surface";
-  if (lowered.includes("kgv3") || lowered.includes("validated market")) return "KGv3 Validated Market Surface";
+  if (lowered.includes("kgv3") || lowered.includes("validated market")) return "Validated Market Surface";
   if (lowered.includes("route metric")) return "Route Metric Packet";
   if (lowered.includes("gulf energy") || lowered.includes("brent") || lowered.includes("oil")) return "Gulf Energy Market Rail";
   return text;
@@ -171,13 +173,18 @@ function normalizeDetailItems(value: unknown): NormalizedDetailItem[] {
       }
       if (!item || typeof item !== "object") return undefined;
       const record = item as Record<string, unknown>;
-      const label = String(record.label || record.title || record.name || record.event || "").trim();
+      const label = String(record.label || record.title || record.name || record.event || record.control || "").trim();
       if (!label) return undefined;
+      const detailParts = [
+        String(record.detail || record.description || record.note || record.impact || record.movement || "").trim(),
+        String(record.release_test || "").trim() ? `Release gate: ${String(record.release_test).trim()}` : "",
+        String(record.stress_event || "").trim() ? `Stress event: ${String(record.stress_event).trim()}` : "",
+      ].filter(Boolean);
       return {
         id: String(record.event_id || record.regime_id || record.id || label),
         label,
         status: String(record.status || record.risk_level || record.severity || record.magnitude || "").trim() || undefined,
-        detail: String(record.detail || record.description || record.note || record.impact || record.movement || "").trim() || undefined,
+        detail: detailParts.join(" ") || undefined,
         routeScope: String(record.route_scope || record.jurisdiction || "").trim() || undefined,
         decisionWindowDays: toFiniteNumber(record.decision_window_days),
         impactChannels: toStringList(record.impact_channels),
@@ -201,6 +208,7 @@ function parseEmbeddedJson(content?: string): Record<string, unknown> | undefine
 export function normalizeCrisisData(
   input?: Record<string, unknown>,
   content?: string,
+  antifragileContent?: unknown,
 ): NormalizedCrisisData | undefined {
   const parsed = input && Object.keys(input).length > 0 ? input : parseEmbeddedJson(content);
   if (!parsed) return undefined;
@@ -267,6 +275,12 @@ export function normalizeCrisisData(
   const priorityEvents = normalizeDetailItems(parsed.priority_events);
   const routeRisks = normalizeDetailItems(parsed.route_risks);
   const marketRegimes = normalizeDetailItems(parsed.market_regimes);
+  const antifragileControls = normalizeDetailItems(
+    antifragileContent ||
+      parsed.antifragile_resilience_test ||
+      parsed.crisis_resilience_stress_test ||
+      parsed.antifragile_controls,
+  );
 
   const sourceFamilies = dedupe([
     ...toStringList(parsed.source_families).map(canonicalSourceFamily),
@@ -344,6 +358,7 @@ export function normalizeCrisisData(
     recommendations,
     priorityEvents,
     routeRisks,
+    antifragileControls,
     decisionFlags: toStringList(parsed.decision_flags),
     marketRegimes,
     sourceFamilies,
@@ -453,6 +468,7 @@ function ResilienceGauge({ score, rating = "Evidence gated" }: { score?: number;
 export function CrisisResilienceSection({
   crisisData,
   content,
+  antifragileContent,
   sourceJurisdiction = "",
   destinationJurisdiction = "",
 }: CrisisResilienceSectionProps) {
@@ -465,8 +481,8 @@ export function CrisisResilienceSection({
   }, [isInView]);
 
   const normalized = useMemo(
-    () => normalizeCrisisData(crisisData, content),
-    [crisisData, content],
+    () => normalizeCrisisData(crisisData, content, antifragileContent),
+    [antifragileContent, crisisData, content],
   );
 
   if (!normalized) return null;
@@ -689,6 +705,33 @@ export function CrisisResilienceSection({
           </motion.div>
         )}
 
+        {normalized.antifragileControls.length > 0 && (
+          <motion.div
+            className="rounded-2xl border border-gold/25 bg-gold/[0.025] px-6 sm:px-8 py-8"
+            initial={{ opacity: 0, y: 12 }}
+            animate={isVisible ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.18, ease: EASE_OUT_EXPO }}
+          >
+            <div className="flex items-center gap-3 mb-5">
+              <Shield className="w-4 h-4 text-gold/70" />
+              <p className="text-xs uppercase tracking-[0.2em] text-gold/70">Antifragility Readiness Controls</p>
+            </div>
+            <p className="mb-6 text-sm leading-relaxed text-muted-foreground/70">
+              These controls are not public-source facts. They are the release-readiness instrumentation the route must survive before the house treats the move as executable under stress.
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              {normalized.antifragileControls.map((control) => (
+                <div key={control.id} className="rounded-xl border border-border/20 bg-card/60 p-4">
+                  <p className="text-sm font-medium leading-snug text-foreground">{control.label}</p>
+                  {control.detail && (
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground/70">{control.detail}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {(normalized.priorityEvents.length > 0 || normalized.routeRisks.length > 0 || normalized.marketRegimes.length > 0 || normalized.decisionFlags.length > 0) && (
           <motion.div
             className="space-y-6"
@@ -864,7 +907,7 @@ export function CrisisResilienceSection({
         >
           <Clock3 className="w-3.5 h-3.5 text-muted-foreground/40" />
           <p className="text-xs text-muted-foreground/60 leading-relaxed">
-            Grounded in HNWI Chronicles crisis world-state rail, castle transaction cases, pattern intelligence, and corridor execution data
+            Grounded in HNWI Chronicles crisis rail, route-pattern transaction records, public market references, and corridor execution data
           </p>
         </motion.div>
       </div>

@@ -81,10 +81,10 @@ function internalCitation(id: string, title: string, reference: string, sections
 function patternWitnessCitation(witness: PatternWitnessEntry, index: number): CitationEntry {
   return {
     id: witness.id || `pattern_witness_${index + 1}`,
-    short_cite: `Pattern ${index + 1}`,
-    title: witness.title || `Route pattern ${index + 1}`,
+    short_cite: `Route signal ${index + 1}`,
+    title: witness.title || `Route-pattern source record ${index + 1}`,
     reference: [witness.pattern, witness.decision_use].filter(Boolean).join(' Decision use: '),
-    sections_used: ['Route pattern', 'Release readiness'],
+    sections_used: ['Route-pattern source record', 'Release readiness'],
   };
 }
 
@@ -209,13 +209,13 @@ function buildReferenceGroups(references: LegalReferences, developmentsCount: nu
   if (!patternWitnesses.length && (developmentsCount > 0 || precedentCount > 0)) {
     patternEvidence.push({
       id: 'hc_route_pattern_library',
-      short_cite: 'HC pattern library',
-      title: 'Route pattern and precedent intelligence used for release-readiness judgment',
+      short_cite: 'Route source file',
+      title: 'Route-pattern source records used for release-readiness judgment',
       reference: [
-        developmentsCount > 0 ? `${developmentsCount.toLocaleString()} HNWI developments` : '',
-        precedentCount > 0 ? `${precedentCount.toLocaleString()} route precedents` : '',
-      ].filter(Boolean).join(' and ') || 'Pattern intelligence rail used for route judgment.',
-      sections_used: ['Pattern intelligence', 'Failure modes', 'Release routes'],
+        developmentsCount > 0 ? `${developmentsCount.toLocaleString()} source records` : '',
+        precedentCount > 0 ? `${precedentCount.toLocaleString()} route-pattern source records` : '',
+      ].filter(Boolean).join(' and ') || 'Route-pattern source file used for route judgment.',
+      sections_used: ['Route-pattern methodology', 'Failure modes', 'Release routes'],
     });
   }
 
@@ -257,8 +257,8 @@ function buildReferenceGroups(references: LegalReferences, developmentsCount: nu
       citations: [...(references.market_data_sources || []), ...sourceMarket],
     },
     {
-      title: 'Patterns & Methodology',
-      description: 'Pattern intelligence, route precedent, and methodology references used to interpret what usually breaks or releases.',
+      title: 'Route Pattern Methodology',
+      description: 'Route-pattern source records used to interpret why a gate matters. They do not prove legal status, bank acceptance, title, tax treatment, or family authority.',
       icon: <ShieldCheck className="w-4 h-4 text-gold" />,
       citations: [...sourcePatterns, ...patternEvidence],
     },
@@ -406,8 +406,8 @@ export function ReferencesSection({ references, developmentsCount = 0, precedent
         </h3>
         <p className="text-sm text-foreground/75 mt-2 max-w-3xl leading-relaxed">
           {publicAuthorityCount} public authorities
-          {patternWitnessCount ? <> and {patternWitnessCount} named route-pattern witnesses</> : null}
-          {' '}plus private evidence classes and governance rails used to separate source-backed claims from family-document release conditions.
+          {patternWitnessCount ? <> and {patternWitnessCount} named route-pattern source records</> : null}
+          {' '}plus private evidence classes and governance rails used to separate source-backed claims from signed release conditions.
         </p>
       </div>
 
@@ -420,11 +420,11 @@ export function ReferencesSection({ references, developmentsCount = 0, precedent
       >
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
         <p className="relative text-sm text-foreground/80 leading-relaxed font-normal">
-          <strong className="text-foreground font-medium">Decision Basis:</strong> This memo is backed by legal, tax, market, banking, governance, family-document, structure, and pattern-authority rails
-          {developmentsCount > 0 && <> spanning <strong className="text-foreground/70 font-medium">{developmentsCount.toLocaleString()}</strong> HNWI developments</>}
-          {precedentCount > 0 && <> and <strong className="text-foreground/70 font-medium">{precedentCount.toLocaleString()}</strong> direct route precedents</>}.
-          {' '}Legal and tax claims are anchored to primary guidance. Route judgment is anchored to the exact market briefs, pattern objects, and intelligence packets used in the memo.
-          {patternWitnessCount ? <> The pattern ledger below lists all <strong className="text-foreground/70 font-medium">{patternWitnessCount}</strong> route witnesses rather than collapsing them into a count.</> : null}
+          <strong className="text-foreground font-medium">Evidence Boundary:</strong> This memo separates public authorities, market/listing sources, private evidence classes, and route-pattern source records
+          {developmentsCount > 0 && <> spanning <strong className="text-foreground/70 font-medium">{developmentsCount.toLocaleString()}</strong> source records</>}
+          {precedentCount > 0 && <> and <strong className="text-foreground/70 font-medium">{precedentCount.toLocaleString()}</strong> route-pattern source records</>}.
+          {' '}Legal, tax, and market claims are source-backed. Bank acceptance, title state, seller terms, family authority, and adviser sign-off remain release conditions until signed. Route-pattern records explain the decision risk; they do not replace counsel, bank, title, or family evidence.
+          {patternWitnessCount ? <> The route-methodology ledger below lists all <strong className="text-foreground/70 font-medium">{patternWitnessCount}</strong> route-pattern source records rather than collapsing them into a count.</> : null}
         </p>
       </motion.div>
 
@@ -454,7 +454,7 @@ export function ReferencesSection({ references, developmentsCount = 0, precedent
             Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
           <p className="text-xs text-muted-foreground/60 tracking-[0.15em]">
-            HNWI CHRONICLES | PATTERN INTELLIGENCE DIVISION
+            HNWI CHRONICLES | RELEASE READINESS EVIDENCE LEDGER
           </p>
         </div>
       </motion.div>

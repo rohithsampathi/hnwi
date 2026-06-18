@@ -185,8 +185,8 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
     <View style={{ marginBottom: spacing.xl }}>
       {/* 1. Section Header */}
       <PdfSectionHeader
-        title="Pattern Intelligence"
-        subtitle={`Corridor Intelligence Match \u2014 Pattern-Matched Against ${precedentCount.toLocaleString()}+ Analyzed Corridor Signals`}
+        title="Route Pattern Source Review"
+        subtitle={`Corridor Evidence Match \u2014 Reviewed Against ${precedentCount.toLocaleString()}+ Analyzed Corridor Signals`}
       />
 
       {/* 2. System Pattern Match Banner */}

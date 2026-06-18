@@ -371,10 +371,10 @@ export default function DecisionMemoLinearReport({
                   HNWI Chronicles
                 </p>
                 <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Private Intelligence Division
+                  Release Readiness Review
                 </p>
                 <h1 className="mt-5 text-3xl font-semibold tracking-normal text-foreground sm:text-4xl">
-                  Full Decision Memo
+                  Full Release Readiness Memo
                 </h1>
                 <p className="mt-3 text-sm font-medium text-muted-foreground">
                   {memoData.preview_data.source_jurisdiction} / {memoData.preview_data.destination_jurisdiction}
@@ -385,7 +385,7 @@ export default function DecisionMemoLinearReport({
                   Confidential
                 </p>
                 <p className="text-sm font-mono text-foreground">Reference: {canonicalReference}</p>
-                <p className="text-sm text-muted-foreground">45-page report structure</p>
+                <p className="text-sm text-muted-foreground">Principal release-readiness structure</p>
                 {headlineMetric && (
                   <div>
                     {headlineMetricLabel && (
@@ -727,7 +727,7 @@ export default function DecisionMemoLinearReport({
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
               <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-2">
-              Pattern Intelligence Complete
+              Route Evidence Review Complete
               </h3>
               <p className="text-sm text-muted-foreground max-w-xl">
                 This audit
@@ -735,7 +735,7 @@ export default function DecisionMemoLinearReport({
                   <>
                     {' '}analyzed{' '}
                     <span className="text-foreground font-medium">
-                      {Number(developmentCount).toLocaleString()} validated developments
+                      {Number(developmentCount).toLocaleString()} source records
                     </span>
                     , and
                   </>

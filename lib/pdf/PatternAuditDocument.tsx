@@ -102,7 +102,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
     : (v.allMistakes.length > 0 ? v.mistakesAsRiskFactors : v.riskFactors);
 
   return (
-    <Document title={`HNWI Decision Audit - ${v.intakeId.slice(10, 22)}`} author="HNWI Chronicles - Private Intelligence Division" subject="SFO Pattern Audit" keywords="HNWI, Family Office, Decision Audit, Tax Optimization">
+    <Document title={`HNWI Release Readiness - ${v.intakeId.slice(10, 22)}`} author="HNWI Chronicles - Release Readiness Review" subject="SFO Release Readiness Review" keywords="HNWI, Family Office, Release Readiness, Tax">
       <PdfCoverPage intakeId={v.intakeId} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} generatedAt={v.generatedAt} exposureClass={v.exposureClass} valueCreation={v.valueCreation} verdict={v.verdict} precedentCount={v.precedentCount} viaNegativa={v.pdfViaNegativa} />
 
       {/* ═══ SECTION 1: HEADER ═══ */}

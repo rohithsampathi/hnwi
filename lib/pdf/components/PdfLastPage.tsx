@@ -110,7 +110,7 @@ export const PdfLastPage: React.FC<PdfLastPageProps> = ({ intakeId, precedentCou
           <Text style={s.brandGold}>HNWI</Text>
           <Text style={s.brandWhite}> CHRONICLES</Text>
         </View>
-        <Text style={{ ...s.subtitle, marginBottom: 20 }}>Private Intelligence Division</Text>
+        <Text style={{ ...s.subtitle, marginBottom: 20 }}>Release Readiness Review</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
           <View style={{ width: spacing.xxxl, height: 1, backgroundColor: darkTheme.border, marginHorizontal: spacing.sm }} />
           <View style={{ width: 6, height: 6, backgroundColor: colors.amber[500], transform: 'rotate(45deg)' }} />
@@ -149,7 +149,7 @@ export const PdfLastPage: React.FC<PdfLastPageProps> = ({ intakeId, precedentCou
           </View>
           <View style={{ flexDirection: 'row' }}>
             {[
-              { title: 'Intelligence Base', text: `Powered by ${precedentCount > 0 ? precedentCount.toLocaleString() : '1,500'}+ analyzed HNWI developments and regulatory precedents from our proprietary KGv3 knowledge graph.` },
+              { title: 'Evidence Base', text: `Draws on ${precedentCount > 0 ? precedentCount.toLocaleString() : '1,500'}+ route-pattern source records and regulatory precedents. Route-pattern records explain decision risk; they do not replace signed counsel, bank, title, or family evidence.` },
               { title: 'Important Notice', text: 'For execution and implementation, consult qualified legal, tax, and financial advisory teams. Past patterns do not guarantee future outcomes.' },
             ].map((n, i) => (
               <View key={i} style={{ flex: 1, borderTopWidth: 2, borderTopColor: darkTheme.surfaceBg, paddingTop: 12, marginRight: i === 0 ? 20 : 0 }}>

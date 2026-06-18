@@ -56,7 +56,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
       <View style={{ marginBottom: 28 }}>
         <PdfSectionHeader
           title="Real Asset Audit Intelligence"
-          badge="KGv3 Verified"
+          badge="Source Reviewed"
           subtitle="Comprehensive analysis of stamp duty, tax strategies, and trust structures"
         />
 

@@ -6,11 +6,21 @@ const FULL_ANALYSIS_FIELDS = [
   "analysis",
   "content",
   "summary",
+  "reference",
+  "claim_supported",
+  "source_signal",
+  "why_it_matters",
+  "route_relevance",
+  "decision_use",
+  "pattern",
   "brief_source_text",
   "public_mirror_excerpt",
 ] as const
 
 const SHORT_DESCRIPTION_FIELDS = [
+  "claim_supported",
+  "reference",
+  "source_signal",
   "description",
   "short_summary",
 ] as const
@@ -50,8 +60,13 @@ function cleanText(value: unknown): string {
 
 function pickFirstText(payload: DevelopmentPayload, fields: readonly string[]): string {
   for (const field of fields) {
-    const text = cleanText(payload[field])
+    const value = payload[field]
+    const text = cleanText(value)
     if (text) return text
+    if (value && typeof value === "object" && "$date" in value) {
+      const dateText = cleanText((value as Record<string, unknown>).$date)
+      if (dateText) return dateText
+    }
   }
 
   return ""

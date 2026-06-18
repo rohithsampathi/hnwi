@@ -332,7 +332,7 @@ export const PdfRiskFactorsPage: React.FC<PdfRiskFactorsPageProps> = ({
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: spacing.sm + 4 }}>
         <GradientDivider width={200} height={1} color={darkTheme.border} />
         <Text style={{ ...styles.footerCaption, marginHorizontal: spacing.sm + 4 }}>
-          Risk analysis powered by HNWI Chronicles KGv3 Intelligence Engine
+          Risk analysis supported by HNWI Chronicles route-pattern source review
         </Text>
         <GradientDivider width={200} height={1} color={darkTheme.border} />
       </View>

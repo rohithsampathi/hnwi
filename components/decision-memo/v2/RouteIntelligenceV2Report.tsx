@@ -23,6 +23,7 @@ import {
   type BuyerProfileRemissionMatrix,
   formatUsdCompact,
   type PrincipalValueGate,
+  type RouteDriverRegisterItem,
   type RouteIntelligenceOptionV2,
   type RouteScenarioPoint,
   type RouteIntelligenceV2,
@@ -37,6 +38,8 @@ interface RouteIntelligenceV2ReportProps {
   fullMemo?: FullMemoRenderer;
   zeroTrustMoveIntake?: Record<string, unknown> | null;
   embedded?: boolean;
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
 }
 
 function pct(value: number): string {
@@ -185,13 +188,37 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
   );
 }
 
-function NativeRouteDriversPanel({ intelligence }: { intelligence: RouteIntelligenceV2 }) {
-  const drivers = Array.isArray(intelligence.nativeRouteDrivers)
-    ? intelligence.nativeRouteDrivers.filter((driver) => Boolean(driver && driver.trim()))
-    : [];
-  const visibleDrivers = drivers.slice(0, 8);
+function sourceChipLabel(sourceId: string, citationMap?: Map<string, number>, index = 0): string {
+  const citationNumber = citationMap?.get(sourceId);
+  return citationNumber ? `Source [${citationNumber}]` : `Source ${index + 1}`;
+}
 
-  if (!drivers.length) return null;
+function NativeRouteDriversPanel({
+  intelligence,
+  onCitationClick,
+  citationMap,
+}: {
+  intelligence: RouteIntelligenceV2;
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
+}) {
+  const registerItems = intelligence.routeDriverRegister?.items || [];
+  const fallbackItems: RouteDriverRegisterItem[] = (Array.isArray(intelligence.nativeRouteDrivers)
+    ? intelligence.nativeRouteDrivers.filter((driver) => Boolean(driver && driver.trim()))
+    : []
+  ).map((driver, index) => ({
+    id: `driver_${index + 1}`,
+    title: `Route driver ${index + 1}`,
+    driver,
+    sourceIds: [],
+    sources: [],
+  }));
+  const visibleDrivers = (registerItems.length ? registerItems : fallbackItems).slice(0, 8);
+  const title = /native\s+route\s+drivers/i.test(intelligence.nativeRouteDriverTitle || '')
+    ? 'Route Drivers From Source Review'
+    : (intelligence.nativeRouteDriverTitle || 'Route Drivers From Source Review');
+
+  if (!visibleDrivers.length) return null;
 
   return (
     <section className="rounded-lg border border-border/30 bg-card/40 p-4 sm:p-6">
@@ -200,7 +227,7 @@ function NativeRouteDriversPanel({ intelligence }: { intelligence: RouteIntellig
           <div className="flex items-center gap-2">
             <Route className="h-4 w-4 text-gold/80" />
             <p className="text-xs uppercase tracking-[0.22em] text-gold/80">
-              {intelligence.nativeRouteDriverTitle || 'Native Route Drivers'}
+              {title}
             </p>
           </div>
           <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
@@ -215,13 +242,36 @@ function NativeRouteDriversPanel({ intelligence }: { intelligence: RouteIntellig
 
         <div className="grid min-w-0 gap-3 md:grid-cols-2">
           {visibleDrivers.map((driver, index) => (
-            <div key={`${index}-${driver}`} className="rounded-md border border-border/25 bg-background/40 p-4">
+            <div key={driver.id || `${index}-${driver.driver}`} className="rounded-md border border-border/25 bg-background/40 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
                 Driver {index + 1}
               </p>
+              <h3 className="mt-2 text-sm font-semibold leading-snug text-foreground">
+                {driver.title}
+              </h3>
               <p className="mt-3 text-sm font-medium leading-relaxed text-foreground">
-                {driver}
+                {driver.driver}
               </p>
+              {driver.releaseRead || driver.evidenceBasis ? (
+                <div className="mt-3 space-y-2 border-t border-border/20 pt-3 text-xs leading-relaxed text-muted-foreground">
+                  {driver.releaseRead ? <p><span className="font-semibold text-foreground/80">Release read:</span> {driver.releaseRead}</p> : null}
+                  {driver.evidenceBasis ? <p><span className="font-semibold text-foreground/80">Evidence boundary:</span> {driver.evidenceBasis}</p> : null}
+                </div>
+              ) : null}
+              {driver.sourceIds.length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {driver.sourceIds.slice(0, 3).map((sourceId, sourceIndex) => (
+                    <button
+                      key={sourceId}
+                      type="button"
+                      onClick={() => onCitationClick?.(sourceId)}
+                      className="rounded-full border border-gold/25 bg-gold/[0.04] px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-gold transition hover:border-gold/60 hover:bg-gold/[0.08]"
+                    >
+                      {sourceChipLabel(sourceId, citationMap, sourceIndex)}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -780,6 +830,8 @@ export default function RouteIntelligenceV2Report({
   fullMemo,
   zeroTrustMoveIntake,
   embedded = false,
+  onCitationClick,
+  citationMap,
 }: RouteIntelligenceV2ReportProps) {
   const routes = useMemo(
     () => (intelligence.pressureVariants?.length ? intelligence.pressureVariants : intelligence.routeOptions) ?? [],
@@ -853,7 +905,11 @@ export default function RouteIntelligenceV2Report({
 
         <ZeroTrustRouteSummary data={zeroTrustMoveIntake} />
 
-        <NativeRouteDriversPanel intelligence={intelligence} />
+      <NativeRouteDriversPanel
+        intelligence={intelligence}
+        onCitationClick={onCitationClick}
+        citationMap={citationMap}
+      />
 
         <section>
           <SectionHeader

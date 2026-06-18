@@ -325,7 +325,7 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.md + 2, paddingTop: spacing.sm + 4 }}>
         <GradientDivider width={180} height={1} color={darkTheme.border} />
         <Text style={{ ...styles.footerCaption, marginHorizontal: spacing.sm + 4 }}>
-          Tax analysis powered by HNWI Chronicles KGv3 Jurisdiction Intelligence
+          Tax analysis supported by HNWI Chronicles jurisdiction source review
         </Text>
         <GradientDivider width={180} height={1} color={darkTheme.border} />
       </View>

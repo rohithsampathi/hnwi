@@ -117,7 +117,7 @@ export function MemoLastPage({
           className="text-xs text-muted-foreground/60 tracking-[0.4em] uppercase mb-14"
           {...fadeUp(0.4)}
         >
-          Private Intelligence Division
+          Release Readiness Review
         </motion.p>
 
         {/* Divider — center outward with rotating diamond */}

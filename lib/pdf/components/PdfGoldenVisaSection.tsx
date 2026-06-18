@@ -441,7 +441,7 @@ export function PdfGoldenVisaSection({ destinationDrivers, destinationJurisdicti
 
       {!!destinationDrivers?.key_catalyst && <ChangesNotice title="Key Catalyst" text={destinationDrivers.key_catalyst} />}
 
-      <PdfGroundedNote source={hasKGv3 ? "HNWI Chronicles KGv3 Golden Visa Intelligence + Investment Migration Database" : "HNWI Chronicles KG Golden Visa Programs 2026 + Investment Migration Database"} />
+      <PdfGroundedNote source={hasKGv3 ? "HNWI Chronicles investment-migration source review + Investment Migration Database" : "HNWI Chronicles Golden Visa Programs 2026 + Investment Migration Database"} />
     </View>
   );
 }

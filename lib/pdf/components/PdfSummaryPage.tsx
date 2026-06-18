@@ -52,7 +52,7 @@ const PdfSummaryPage: React.FC<PdfSummaryPageProps> = ({
     {/* Verdict-colored accent bar */}
     <View style={{ width: 48, height: 4, backgroundColor: verdictTheme.primary, marginBottom: 16 }} />
     <Text style={{ fontSize: 24, fontFamily: "Inter", fontWeight: 700, color: darkTheme.textPrimary, marginBottom: 8 }}>
-      Pattern Intelligence Complete
+      Route Evidence Review Complete
     </Text>
     <Text style={{ fontSize: 10, fontFamily: "Inter", color: darkTheme.textMuted, marginBottom: 32 }}>
       {cleanJurisdiction(sourceJurisdiction)} &gt; {cleanJurisdiction(destinationJurisdiction)} Strategic Analysis

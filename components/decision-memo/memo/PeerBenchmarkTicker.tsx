@@ -199,7 +199,7 @@ export function PeerBenchmarkTicker({
         >
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-              Pattern Intelligence
+              Route Pattern Source Review
             </p>
             <h3 className="text-xl md:text-2xl font-normal text-foreground tracking-tight">
               Corridor Intelligence Match

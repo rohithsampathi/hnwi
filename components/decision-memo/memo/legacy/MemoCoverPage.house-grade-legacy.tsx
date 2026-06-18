@@ -132,7 +132,7 @@ export function MemoCoverPage({
           className="text-xs text-muted-foreground/60 tracking-[0.4em] uppercase mb-20"
           {...fadeUp(0.45)}
         >
-          Private Intelligence Division
+          Release Readiness Review
         </motion.p>
 
         {/* Divider — center outward with softened diamond */}
@@ -156,7 +156,7 @@ export function MemoCoverPage({
           className="text-3xl sm:text-4xl md:text-5xl font-normal text-white/90 tracking-tight mb-20"
           {...fadeUp(0.6)}
         >
-          {reportTitle || 'House-Governed Decision Memo'}
+          {reportTitle || 'House-Governed Release Readiness Memo'}
         </motion.h2>
 
         {/* Jurisdiction Corridor */}

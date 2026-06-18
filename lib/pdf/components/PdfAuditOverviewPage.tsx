@@ -104,19 +104,19 @@ export const PdfAuditOverviewPage: React.FC<PdfAuditOverviewPageProps> = ({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, color: '#22C55E', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
-              Intelligence Basis
+              Evidence Boundary
             </Text>
             {/* Prose matching web exactly — inline highlighted numbers */}
             <Text style={{ fontSize: 10, fontFamily: 'Inter', color: darkTheme.textSecondary, lineHeight: 1.65 }}>
-              {'This audit draws on '}
+              {'This release-readiness review draws on '}
               <Text style={{ fontFamily: 'Inter', fontWeight: 700, color: colors.amber[500] }}>
                 {developmentsCount.toLocaleString()}
               </Text>
-              {' validated developments from 3 years of HNWI wealth pattern tracking, cross-referenced against '}
+              {' source records and route-pattern records from the HNWI Chronicles evidence library, cross-referenced against '}
               <Text style={{ fontFamily: 'Inter', fontWeight: 700, color: colors.amber[500] }}>
                 {precedentCount.toLocaleString()}
               </Text>
-              {` corridor signals specific to the ${srcLabel}\u2192${dstLabel} corridor. All findings are citation-backed.`}
+              {` route-pattern source records specific to the ${srcLabel}\u2192${dstLabel} corridor. Public-law and market claims are source-backed; bank, title, family, and adviser claims remain release gates until signed.`}
             </Text>
           </View>
         </View>

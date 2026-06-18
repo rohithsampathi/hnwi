@@ -227,7 +227,7 @@ export async function renderDecisionMemoPdf(request: NextRequest, intakeId: stri
             border-top: 0.5px solid rgba(171, 149, 112, 0.35);
             padding-top: 8px;
           ">
-            <span style="letter-spacing: 0.8px; text-transform: uppercase;">Decision Memo · ${refId}</span>
+            <span style="letter-spacing: 0.8px; text-transform: uppercase;">Release Readiness · ${refId}</span>
             <span style="color: #8f6a25; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase;">HNWI Chronicles</span>
             <span style="letter-spacing: 0.8px; text-transform: uppercase;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
           </div>
@@ -241,7 +241,7 @@ export async function renderDecisionMemoPdf(request: NextRequest, intakeId: stri
       sizeKB: Math.round(pdfBuffer.length / 1024),
     });
 
-    const fileName = `HNWI-Decision-Audit-${refId}.pdf`;
+    const fileName = `HNWI-Release-Readiness-${refId}.pdf`;
 
     return new Response(Buffer.from(pdfBuffer), {
       status: 200,

@@ -130,7 +130,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
           <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 20, marginBottom: 6, color: dataQuality === 'Strong' ? colors.amber[500] : dataQuality === 'Good' ? colors.amber[600] : darkTheme.textMuted }}>{dataQuality}</Text>
           <ConfidenceMeter level={confidenceBars} size={60} theme={theme} />
           <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, textAlign: 'center', marginTop: 6 }}>
-            Based on {precedentCount.toLocaleString()} KGv3 precedents
+            Based on {precedentCount.toLocaleString()} route-pattern source records
           </Text>
         </View>
         <View style={{ width: 1, height: 60, backgroundColor: darkTheme.border, marginLeft: 24, marginRight: 24 }} />
@@ -199,7 +199,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: 12 }}>
         <GradientDivider width={200} height={1} color={darkTheme.border} />
         <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint, letterSpacing: 0.5, marginHorizontal: 12 }}>
-          Assessment powered by HNWI Chronicles KGv3 Intelligence Engine
+          Assessment supported by HNWI Chronicles route-pattern source review
         </Text>
         <GradientDivider width={200} height={1} color={darkTheme.border} />
       </View>

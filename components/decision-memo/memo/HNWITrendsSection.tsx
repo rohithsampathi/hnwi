@@ -60,8 +60,8 @@ function DataQualityBadge({ quality }: { quality: HNWITrendsDataQuality }) {
   const grounding = quality.scientific_grounding;
 
   const config: Record<NonNullable<HNWITrendsDataQuality['scientific_grounding']>, { bg: string; text: string; label: string }> = {
-    kgv3_primary: { bg: 'bg-primary/20 border-primary/30', text: 'text-primary', label: 'KGv3 Primary' },
-    kgv3_fallback: { bg: 'bg-amber-500/20 border-amber-500/30', text: 'text-amber-600 dark:text-amber-400', label: 'KGv3 Fallback' },
+    kgv3_primary: { bg: 'bg-primary/20 border-primary/30', text: 'text-primary', label: 'Primary Source Review' },
+    kgv3_fallback: { bg: 'bg-amber-500/20 border-amber-500/30', text: 'text-amber-600 dark:text-amber-400', label: 'Fallback Source Review' },
     native_library_route_compiler: { bg: 'bg-primary/20 border-primary/30', text: 'text-primary', label: 'Pattern Library' },
     no_data: { bg: 'bg-muted border-border', text: 'text-muted-foreground', label: 'No Data' },
     error: { bg: 'bg-red-500/20 border-red-500/30', text: 'text-red-500', label: 'Error' }
@@ -169,10 +169,10 @@ export function HNWITrendsSection({
 
   const collectionsLabel = dataQuality?.scientific_grounding === 'native_library_route_compiler'
     ? 'Collections Queried'
-    : 'KGv3 Collections Queried';
+    : 'Source Collections Queried';
   const footerLabel = dataQuality?.scientific_grounding === 'native_library_route_compiler'
     ? 'Powered by HNWI Chronicles route intelligence, route-pattern cases, and corridor macro data'
-    : 'Powered by HNWI Chronicles KG Migration Intelligence + Henley Private Wealth Data';
+    : 'Powered by HNWI Chronicles migration source review + Henley Private Wealth Data';
 
   return (
     <div ref={sectionRef}>
