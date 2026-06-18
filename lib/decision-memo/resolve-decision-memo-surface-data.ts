@@ -12,6 +12,21 @@ interface ResolveDecisionMemoSurfaceDataInput {
 }
 
 const PRINCIPAL_SURFACE_CONTRACT = 'hnwi_principal_surface_v1';
+const INTERNAL_METHOD_COUNT_KEYS = new Set([
+  'collections_queried',
+  'observation_count',
+  'pattern_rows_reviewed',
+  'rows_reviewed',
+  'source_rows_reviewed',
+]);
+const INTERNAL_OBJECT_KEYS = new Set([
+  'dm64_kernel',
+  'dm64_manual_repair',
+  'native_contradiction_register',
+  'native_moat_packet',
+  'runtime_packet',
+  'writeback_packet',
+]);
 
 function textOrNull(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -19,6 +34,109 @@ function textOrNull(value: unknown): string | null {
 
 function releaseReadinessReviewUrl(intakeId: string): string {
   return `/release-readiness/review/${encodeURIComponent(intakeId)}`;
+}
+
+function sanitizePrincipalSurfaceText(value: string): string {
+  return value
+    .replace(
+      /\b2222 route-pattern rows reviewed; 8 driver families selected; 21 route witnesses carried into the memo\./gi,
+      'Route-pattern source records were reviewed; 8 driver families and 21 route witnesses were carried into the memo as methodology, not release proof.',
+    )
+    .replace(
+      /\b2222 route-pattern rows, 21 named route witnesses, and 8 selected driver families inform the memo's route sequencing\./gi,
+      'Route-pattern source records, 21 named route witnesses, and 8 selected driver families inform route sequencing as methodology, not legal, bank, title, or family-authority proof.',
+    )
+    .replace(
+      /\b2222 route-pattern rows, 110 route weights, 1464 pattern weights, 19 similarity clusters, 21 route witnesses, 8 selected driver families, and 31 source anchors are carried into this Mayfair memo\./gi,
+      'Route-pattern source records, route weights, similarity clusters, 21 route witnesses, 8 selected driver families, and 31 source anchors are carried into this Mayfair memo as methodology, not legal, bank, title, or family-authority proof.',
+    )
+    .replace(/\bNative Route Drivers\b/g, 'Route Drivers From Source Review')
+    .replace(/\bHNWI Chronicles pattern-library ledger\b/gi, 'HNWI Chronicles source-review register')
+    .replace(/\bpattern-library\b/gi, 'source-review')
+    .replace(/\bsource rows\b/gi, 'source records')
+    .replace(/\broute-pattern rows\b/gi, 'route-pattern source records')
+    .replace(/\bcastle briefs?\b/gi, 'source briefs')
+    .replace(/\bCastle Briefs?\b/g, 'Source Briefs')
+    .replace(/\bKGv3\b/g, 'source register')
+    .replace(/\bkgv3\b/g, 'source_register')
+    .replace(/\bDM64\b/g, 'release-readiness compiler')
+    .replace(/\bGranthika\b/g, 'source library')
+    .replace(/\bAquarium\b/g, 'source-review memory')
+    .replace(/\bnative_library_route_compiler\b/gi, 'source_review_route_compiler')
+    .replace(/\b2,222\b/g, 'methodology-bounded')
+    .replace(/\b2222\b/g, 'methodology-bounded');
+}
+
+function shouldDropPrincipalSurfaceField(key: string, value: unknown): boolean {
+  const normalizedKey = key.trim().toLowerCase();
+  if (INTERNAL_OBJECT_KEYS.has(normalizedKey)) {
+    return true;
+  }
+
+  if (
+    (INTERNAL_METHOD_COUNT_KEYS.has(normalizedKey) || normalizedKey === 'count') &&
+    ((typeof value === 'number' && value === 2222) ||
+      (typeof value === 'string' && value.trim().replace(/,/g, '') === '2222'))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function sanitizePrincipalSurfacePayload<T>(value: T, key = ''): T {
+  if (typeof value === 'string') {
+    return sanitizePrincipalSurfaceText(value) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizePrincipalSurfacePayload(item, key))
+      .filter((item) => item !== undefined) as T;
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const output: RecordLike = {};
+  Object.entries(value as RecordLike).forEach(([entryKey, entryValue]) => {
+    if (shouldDropPrincipalSurfaceField(entryKey, entryValue)) {
+      return;
+    }
+
+    const sanitized = sanitizePrincipalSurfacePayload(entryValue, entryKey);
+    if (sanitized !== undefined) {
+      output[entryKey] = sanitized;
+    }
+  });
+
+  return output as T;
+}
+
+function sanitizeResolvedDecisionMemoSurfaceData(
+  resolved: ResolvedDecisionMemoSurfaceData,
+): ResolvedDecisionMemoSurfaceData {
+  const memoData = sanitizePrincipalSurfacePayload(resolved.memoData);
+  const fullArtifact = resolved.fullArtifact
+    ? sanitizePrincipalSurfacePayload(resolved.fullArtifact)
+    : resolved.fullArtifact;
+
+  return {
+    ...resolved,
+    memoData: {
+      ...memoData,
+      full_artifact: fullArtifact ?? memoData.full_artifact,
+    },
+    backendData: sanitizePrincipalSurfacePayload({
+      ...resolved.backendData,
+      preview_data: memoData.preview_data,
+      memo_data: memoData.memo_data,
+      fullArtifact: fullArtifact ?? resolved.backendData.fullArtifact,
+      full_artifact: fullArtifact ?? resolved.backendData.full_artifact,
+    }),
+    fullArtifact,
+  };
 }
 
 export interface ResolvedDecisionMemoSurfaceData {
@@ -502,7 +620,7 @@ function buildKingdomNativePreviewSurface(
     },
   };
 
-  return {
+  return sanitizeResolvedDecisionMemoSurfaceData({
     memoData,
     backendData: {
       ...nativePayload,
@@ -514,7 +632,7 @@ function buildKingdomNativePreviewSurface(
     },
     fullArtifact: memoData.full_artifact ?? null,
     developmentsCount: 0,
-  };
+  });
 }
 
 function buildPrincipalSurface(
@@ -570,12 +688,12 @@ function buildPrincipalSurface(
     resolvedDevelopmentsCount: developmentsCount ?? undefined,
   };
 
-  return {
+  return sanitizeResolvedDecisionMemoSurfaceData({
     memoData,
     backendData: publicBackendData,
     fullArtifact,
     developmentsCount,
-  };
+  });
 }
 
 function mergePreviewData(basePreviewData: RecordLike, backendData: RecordLike, fullArtifact: RecordLike | null): RecordLike {
@@ -980,7 +1098,7 @@ export function resolveDecisionMemoSurfaceData({
     numericOrNull(memoData.preview_data?.hnwi_world_count) ??
     numericOrNull(normalizedBackendData?.preview_data?.hnwi_world_count);
 
-  return {
+  return sanitizeResolvedDecisionMemoSurfaceData({
     memoData,
     backendData: {
       ...(normalizedBackendData ?? {}),
@@ -990,5 +1108,5 @@ export function resolveDecisionMemoSurfaceData({
     },
     fullArtifact: normalizedFullArtifact,
     developmentsCount,
-  };
+  });
 }
