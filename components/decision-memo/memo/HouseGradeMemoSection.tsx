@@ -338,8 +338,7 @@ function formatDecisionCode(value?: string): string {
   if (!normalized) return 'Decision Pending';
   return normalized
     .replace(/_/g, ' ')
-    .replace(/\bPROCEED MODIFIED\b/gi, 'Proceed under signed gates')
-    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
     .replace(/\bDecision EV\b/gi, 'Model output - not release authority')
     .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
@@ -351,7 +350,7 @@ function principalSafeMemoText(value?: string | null): string {
   if (!value) return '';
   return value
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
-    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
     .replace(/\bDecision EV\b/gi, 'Model output - not release authority')
     .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
     .replace(/\bOPEN GATES\b/gi, 'Release Gate Status')
@@ -364,6 +363,15 @@ function principalSafeMemoText(value?: string | null): string {
     .replace(/\bNo open release boundary recorded\b/gi, 'Release evidence remains open until signed evidence is received')
     .replace(/\breleased differently\b/gi, 'advanced under signed gates')
     .replace(/\brelease differently\b/gi, 'advance under signed gates')
+    .replace(/\bfuture-grandchild\b/gi, 'next-generation')
+    .replace(/\bgrandson\b/gi, 'next-generation record')
+    .replace(/\bson-use\b/gi, 'named family-user')
+    .replace(/\bson use\b/gi, 'named family-user')
+    .replace(/\bnamed family user-use\b/gi, 'named family-user use')
+    .replace(/\bdaughter\/fairness\b/gi, 'family-fairness')
+    .replace(/\bspouse veto if relevant\b/gi, 'family-home veto position where recorded')
+    .replace(/\bspouse if relevant\b/gi, 'family-home veto holder where recorded')
+    .replace(/\bspouse veto\b/gi, 'family-home veto position')
     .replace(/\s+/g, ' ')
     .trim();
 }

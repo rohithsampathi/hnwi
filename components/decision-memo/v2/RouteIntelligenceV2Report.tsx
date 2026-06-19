@@ -51,7 +51,7 @@ function routeDisplayText(value: unknown): string {
   if (typeof value !== 'string') return '';
   return value
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
-    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
     .replace(/\bNative Route Drivers\b/gi, 'Route Drivers From Source Review')
     .replace(/\bSIX-BOOK OPENING\b/gi, 'Decision Opening')
     .replace(/\bSix-book opening\b/gi, 'Decision opening')
@@ -66,6 +66,22 @@ function routeDisplayText(value: unknown): string {
     .replace(/\bPressure Test\b/gi, 'Release Readiness Review')
     .replace(/\bpressure-test(?:ed|ing)?\b/gi, 'release-readiness reviewed')
     .replace(/\bpressure\b/gi, 'readiness')
+    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/g, 'generation-to-generation')
+    .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/g, 'generation-to-generation')
+    .replace(/\bG1 principal\b/gi, 'principal')
+    .replace(/\bG2 son\b/gi, 'named family user')
+    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, 'named family-fairness owner')
+    .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, 'named family-fairness owner')
+    .replace(/\bdaughter\/fairness\b/gi, 'family-fairness')
+    .replace(/\bG3 grandson\b/gi, 'next-generation record')
+    .replace(/\bfuture-grandchild\b/gi, 'next-generation')
+    .replace(/\bgrandson\b/gi, 'next-generation record')
+    .replace(/\bson-use\b/gi, 'named family-user')
+    .replace(/\bson use\b/gi, 'named family-user')
+    .replace(/\bnamed family user-use\b/gi, 'named family-user use')
+    .replace(/\bspouse veto if relevant\b/gi, 'family-home veto position where recorded')
+    .replace(/\bspouse if relevant\b/gi, 'family-home veto holder where recorded')
+    .replace(/\bspouse veto\b/gi, 'family-home veto position')
     .replace(/\s+/g, ' ')
     .trim();
 }

@@ -43,7 +43,7 @@ interface ScenarioTreeSectionProps {
 function scenarioDisplayText(value?: string | null): string {
   if (!value) return '';
   return value
-    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
     .replace(/\bDecision EV\b/gi, 'model output - not release authority')
     .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
@@ -410,7 +410,7 @@ function buildStructuredScenarioTreeData(
     : 'Branch values below use one comparable basis: modeled route-outcome value under the corridor benchmark, separate from the dedicated 10-year wealth projection surface.';
   const decisionEvLabel = (typeof raw.decision_ev_label === 'string' ? raw.decision_ev_label : 'Model output - not release authority')
     .replace(/\bDecision EV\b/gi, 'model output - not release authority')
-    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only');
   const decisionEvNote = typeof raw.decision_ev_note === 'string'
     ? raw.decision_ev_note
@@ -1446,7 +1446,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
   const branchValueBasisLabel = typedData.value_basis_label || 'Expected Value';
   const decisionEvLabel = (typedData.decision_ev_label || 'Model output - not release authority')
     .replace(/\bDecision EV\b/gi, 'model output - not release authority')
-    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only');
   const rationale = Array.isArray(typedData.rationale) ? typedData.rationale : [];
   const decisionGates = Array.isArray(typedData.decision_gates) ? typedData.decision_gates : [];

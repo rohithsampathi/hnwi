@@ -715,7 +715,7 @@ function EvidenceMethodologyView({
           </div>
           <div className="lg:col-span-2 grid gap-3 sm:grid-cols-2">
             {[
-              ['Route sequencing', 'Source records help identify known failure modes, sequencing gaps, and when a route usually needs to hold or release differently.'],
+              ['Route sequencing', 'Source records help identify known failure modes, sequencing gaps, and when a route usually needs to hold or advance under signed gates.'],
               ['Market discipline', 'Market references sharpen bid discipline, seller timing, carrying cost, and walk-away logic.'],
               ['Family governance', 'Generational and authority patterns shape the questions the family file must answer before exchange.'],
               ['Release proof', 'Release authority comes from signed private evidence, not from pattern similarity or public market support.'],

@@ -628,7 +628,7 @@ export function Page1TaxDashboard({
                     Release sequence
                   </p>
                   <h4 className="mt-2 text-base font-semibold leading-snug text-foreground sm:text-lg">
-                    The room needs the gates that decide whether this Mayfair route can release differently.
+                    The room needs the gates that decide whether this Mayfair route can advance under signed gates.
                   </h4>
                   <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground/70">
                     Each step names the owner, timing, and release condition. Nothing here is hidden inside a rail or truncated into a tooltip.

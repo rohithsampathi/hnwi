@@ -180,7 +180,7 @@ function numberOr(value: unknown, fallback = 0): number {
 function sanitizeShareText(value: unknown): string {
   return text(value)
     .replace(/\bRelease Differently\b/gi, "Gated negotiation only")
-    .replace(/\bProceed Modified\b/gi, "Proceed under signed gates")
+    .replace(/\bproceed[-\s]modified\b/gi, "Proceed under signed gates")
     .replace(/\bHouse Signal Rail\b/gi, "Route Control Summary")
     .replace(/\bDecision EV\b/gi, "Internal model output - not release authority")
     .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")
@@ -232,9 +232,12 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bson\b/gi, "named family user")
     .replace(/\bdaughter\b/gi, "named family-fairness owner")
     .replace(/\bson-use\b/gi, "named family-user")
+    .replace(/\bson use\b/gi, "named family-user")
+    .replace(/\bnamed family user-use\b/gi, "named family-user use")
     .replace(/\bdaughter\/fairness\b/gi, "family-fairness")
     .replace(/\bspouse veto if relevant\b/gi, "family-home veto position where recorded")
     .replace(/\bspouse if relevant\b/gi, "family-home veto holder where recorded")
+    .replace(/\bspouse veto\b/gi, "family-home veto position")
     .replace(/\bmemo source file\b/gi, "source register")
     .replace(/\brelease-readiness reviewing\b/gi, "release-readiness review")
     .replace(/\s+/g, " ")
@@ -596,6 +599,7 @@ function routeSanitizedParty(value: unknown): string {
     .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, "Named family-fairness owner")
     .replace(/\bG3\/grandchild\b/gi, "Next-generation continuity")
     .replace(/\bG3 grandson\b/gi, "Next-generation continuity")
+    .replace(/\bfuture-grandchild\b/gi, "next-generation")
     .replace(/\bgrandson\b/gi, "next-generation beneficiary");
 }
 
@@ -1246,7 +1250,7 @@ function buildScenarioTreeSection(resolved: ResolvedDecisionMemoSurfaceData): Re
   return reportSection({
     id: "release-rule-scenario-tree",
     eyebrow: "Release rule scenario tree",
-    title: text(tree.decision_point, "Should the family release, release differently, hold, or stop?"),
+    title: sanitizeShareText(text(tree.decision_point, "Should the family advance under signed gates, hold, or stop?")),
     intro:
       "The final decision does not turn on whether London is attractive. It turns on whether evidence, authority, banking, title, tax, and family consequence can carry the route.",
     table: {

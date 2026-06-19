@@ -1080,10 +1080,10 @@ function evidenceGates(kind: ReturnType<typeof routeKind>): RouteEvidenceGate[] 
     },
     {
       gate: 'Family authority and veto',
-      owner: 'Founder, G2 son, daughter/fairness owner, and family office operator / CFO',
+      owner: 'Founder, named family user, named family-fairness owner, and family office operator / CFO',
       evidenceRequired: 'Who can approve, stop, sign, move funds, retrieve records, and explain the purchase without the founder.',
       releaseStatus: 'Required before visibility',
-      consequenceIfMissing: 'Late spouse/G2/fairness veto can convert a property decision into a family-governance event.',
+      consequenceIfMissing: 'Late family-home, next-generation, or fairness veto can convert a property decision into a family-governance event.',
     },
     {
       gate: 'Succession and decision memory',
@@ -1138,8 +1138,8 @@ function responsibilityTransfer(kind: ReturnType<typeof routeKind>) {
     ? 'No one releases funds; owners preserve evidence and review trigger.'
     : 'Named owner can act without waiting for informal founder interpretation.';
   return [
-    { action: 'See the full record', primaryOwner: 'Family office operator / CFO', fallbackOwner: 'G2 son', releaseCondition },
-    { action: 'Stop the move', primaryOwner: 'Founder', fallbackOwner: 'Daughter/fairness owner + counsel', releaseCondition: 'Stop authority is written before seller timing starts.' },
+    { action: 'See the full record', primaryOwner: 'Family office operator / CFO', fallbackOwner: 'Named family user', releaseCondition },
+    { action: 'Stop the move', primaryOwner: 'Founder', fallbackOwner: 'Named family-fairness owner + counsel', releaseCondition: 'Stop authority is written before seller timing starts.' },
     { action: 'Sign and release funds', primaryOwner: 'Founder or appointed signer', fallbackOwner: 'Bank-approved alternate signer', releaseCondition: kind === 'hold' || kind === 'stop' ? 'Not released under this route.' : 'Bank mandates, FX authority, and signer limits match the route.' },
     { action: 'Move funds across rails', primaryOwner: 'UAE source bank lead', fallbackOwner: 'Fallback bank rail owner', releaseCondition: kind === 'hold' || kind === 'stop' ? 'Rail review only; no settlement transfer.' : 'Primary and fallback rails have accepted SoW/SoF.' },
     { action: 'Retrieve and explain the decision', primaryOwner: 'Family office operator / CFO', fallbackOwner: 'Succession counsel', releaseCondition: 'Decision memory packet is retrievable within 72 hours.' },
@@ -1158,7 +1158,7 @@ function recordMismatchMap(kind: ReturnType<typeof routeKind>) {
     { record: 'Cash and FX path', currentRead: 'Dubai-origin funds must be corroborated and transferable.', targetRead: `${routeRead}; bank rails accept source file and FX authority.`, releaseStatus: 'Release-gated' },
     { record: 'Title and beneficial ownership', currentRead: 'Buyer and use purpose must not be assumed from family intent.', targetRead: `${routeRead}; title record and beneficial-owner record say the same thing.`, releaseStatus: 'Release-gated' },
     { record: 'Tax and duty position', currentRead: 'Duty drag changes by route and buyer category.', targetRead: `${routeRead}; written acquisition-duty computation is attached.`, releaseStatus: 'Release-gated' },
-    { record: 'Family authority', currentRead: 'Founder, son, daughter/fairness owner, and operator roles are not interchangeable.', targetRead: `${routeRead}; approval, veto, signer, and fallback roles are signed.`, releaseStatus: 'Release-gated' },
+    { record: 'Family authority', currentRead: 'Founder, named family user, named family-fairness owner, and operator roles are not interchangeable.', targetRead: `${routeRead}; approval, veto, signer, and fallback roles are signed.`, releaseStatus: 'Release-gated' },
     { record: 'Succession memory', currentRead: 'Decision cannot live only in one adviser thread.', targetRead: `${routeRead}; decision memory is indexed for G2/G3 retrieval.`, releaseStatus: 'Release-gated' },
   ];
 }
@@ -1209,7 +1209,7 @@ function routeJurisdictionValues(kind: ReturnType<typeof routeKind>, routeName: 
       value: 'G1/G2/G3 authority and decision memory',
       releaseRead: kind === 'hold' || kind === 'stop'
         ? 'The family keeps optionality until authority, veto, succession, and record retrieval can survive release conditions.'
-        : 'The family must make the purchase explainable to son, daughter/fairness owner, and future grandson memory, not only to the founder.',
+        : 'The family must make the purchase explainable to the named family user, named family-fairness owner, and next-generation record, not only to the founder.',
     },
   ];
 }
@@ -1347,7 +1347,7 @@ function deriveRouteOption(
                 : 'Route under release-readiness review',
     verdict:
       kind === 'direct'
-        ? 'Proceed Modified: Release Differently'
+        ? 'Gated negotiation only'
         : kind === 'hold'
           ? 'Hold Until Release Evidence Clears'
           : kind === 'stop' || kind === 'entity'

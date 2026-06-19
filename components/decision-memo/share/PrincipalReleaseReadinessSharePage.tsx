@@ -53,7 +53,7 @@ function cleanDisplayText(value: unknown): string {
   if (typeof value !== "string") return "";
   return value
     .replace(/\bRelease Differently\b/gi, "Gated negotiation only")
-    .replace(/\bProceed Modified\b/gi, "Proceed under signed gates")
+    .replace(/\bproceed[-\s]modified\b/gi, "Proceed under signed gates")
     .replace(/\bHouse Signal Rail\b/gi, "Route Control Summary")
     .replace(/\bDecision EV\b/gi, "Internal model output - not release authority")
     .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")
@@ -81,8 +81,11 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bfuture-grandchild\b/gi, "next-generation")
     .replace(/\bgrandson\b/gi, "next-generation record")
     .replace(/\bson-use\b/gi, "named family-user")
+    .replace(/\bson use\b/gi, "named family-user")
+    .replace(/\bnamed family user-use\b/gi, "named family-user use")
     .replace(/\bspouse veto if relevant\b/gi, "family-home veto position where recorded")
     .replace(/\bspouse if relevant\b/gi, "family-home veto holder where recorded")
+    .replace(/\bspouse veto\b/gi, "family-home veto position")
     .replace(/\bSIX-BOOK OPENING\b/gi, "Decision Opening")
     .replace(/\bSix-book opening\b/gi, "Decision opening")
     .replace(/\bDM64\b/g, "release-readiness compiler")
