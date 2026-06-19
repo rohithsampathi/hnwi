@@ -743,7 +743,7 @@ export function InteractiveWorldMap({
           const auditCount = flow.midpoint?.totalAudits || 1
           const arcWeight = Math.min(1.5 + auditCount * 1, 6)
 
-          const isHovered = isFocusedCorridor && (
+          const isHovered = (
             hoveredCorridorKey === corridorKey ||
             selectedCorridorKey === corridorKey ||
             (hoveredDestination !== null && flow.destination.name === hoveredDestination)
@@ -753,7 +753,9 @@ export function InteractiveWorldMap({
             (!rawHasAccess && (hoveredCorridorKey !== null || selectedCorridorKey !== null || hoveredDestination !== null) && !isHovered)
 
           const accessOpacityMultiplier = !isFocusedCorridor ? 0.42 : (rawHasAccess ? 1 : 0.4)
+          const canHoverFlow = !cityFocusActive
           const canInteractWithFlow = !cityFocusActive && isFocusedCorridor
+          const shouldShowPermanentRouteLabel = isFocusMode ? isFocusedCorridor : hasAccess
 
           // Destination marker — black dot with neon arc-color border/glow
           const destinationIcon = flow.midpoint ? L.divIcon({
@@ -810,10 +812,10 @@ export function InteractiveWorldMap({
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
-                interactive={canInteractWithFlow}
+                interactive={canHoverFlow}
                 eventHandlers={{
                   mouseover: () => {
-                    if (!canInteractWithFlow) return
+                    if (!canHoverFlow) return
                     setHoveredCorridorKey(corridorKey)
                   },
                   mouseout: () => {
@@ -834,7 +836,7 @@ export function InteractiveWorldMap({
                   }
                 }}
               >
-                {!flow.midpoint && (
+                {!flow.midpoint && canInteractWithFlow && (
                   <Popup autoPan={false} keepInView={false}>
                     <div className="text-sm">
                       <div className="font-semibold mb-1">
@@ -846,7 +848,7 @@ export function InteractiveWorldMap({
                     </div>
                   </Popup>
                 )}
-                {flow.midpoint && (
+                {flow.midpoint && canInteractWithFlow && (
                   <Popup maxWidth={340} autoPan={false} keepInView={false}>
                     <div
                       className={`w-full ${theme === 'dark' ? 'bg-[#1a1a1a] text-white' : 'bg-white text-black'}`}
@@ -967,7 +969,7 @@ export function InteractiveWorldMap({
                   </Popup>
                 )}
                 {/* Tooltip that follows cursor on hover */}
-                {!cityFocusActive && (
+                {!cityFocusActive && !shouldShowPermanentRouteLabel && (
                   <Tooltip
                     permanent={false}
                     sticky={true}
@@ -1208,10 +1210,7 @@ export function InteractiveWorldMap({
               )}
               {/* Airline-style route label at arc midpoint. In focus mode, non-current corridors
                   remain visible as grey context while only the focused corridor is clickable. */}
-              {(
-                (isFocusMode ? true : hasAccess) ||
-                (hoveredDestination !== null && flow.destination.name === hoveredDestination) // Show when destination hovered (any zoom)
-              ) && hoveredCorridorKey !== corridorKey && (
+              {shouldShowPermanentRouteLabel && (
                 <Marker
                   position={arcMid}
                   icon={routeLabel}
