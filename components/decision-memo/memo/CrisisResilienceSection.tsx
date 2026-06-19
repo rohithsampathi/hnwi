@@ -437,7 +437,7 @@ function RiskBadge({ level }: { level: NormalizedScenario["riskLevel"] }) {
     CRITICAL: "border-red-500/20 text-red-500/80",
   };
   return (
-    <span className={`inline-flex text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${styles[level]}`}>
+    <span className={`inline-flex max-w-full shrink-0 whitespace-nowrap text-[10px] sm:text-xs tracking-[0.12em] uppercase font-medium rounded-full px-2.5 sm:px-3 py-1 border ${styles[level]}`}>
       {level}
     </span>
   );
@@ -818,17 +818,17 @@ export function CrisisResilienceSection({
                 <div className="space-y-4">
                   {normalized.priorityEvents.map((event) => (
                     <div key={event.id} className="rounded-xl border border-border/20 bg-card/50 p-4">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <p className="text-sm text-foreground leading-relaxed">{event.label}</p>
+                      <div className="flex min-w-0 items-start justify-between gap-2 mb-2">
+                        <p className="min-w-0 flex-1 text-sm text-foreground leading-relaxed break-words [overflow-wrap:anywhere]">{event.label}</p>
                         {event.status && <RiskBadge level={riskLevel(event.status)} />}
                       </div>
                       {event.detail && <p className="text-sm text-muted-foreground/60 leading-relaxed">{event.detail}</p>}
                       {(event.routeScope || event.decisionWindowDays || event.impactChannels.length > 0) && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {event.routeScope && <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{event.routeScope}</span>}
-                          {event.decisionWindowDays !== undefined && <span className="text-[11px] uppercase tracking-[0.15em] text-primary/80">{event.decisionWindowDays}d window</span>}
+                        <div className="flex min-w-0 flex-wrap gap-2 mt-3">
+                          {event.routeScope && <span className="max-w-full text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60 break-words [overflow-wrap:anywhere]">{event.routeScope}</span>}
+                          {event.decisionWindowDays !== undefined && <span className="max-w-full text-[11px] uppercase tracking-[0.12em] text-primary/80 break-words [overflow-wrap:anywhere]">{event.decisionWindowDays}d window</span>}
                           {event.impactChannels.map((channel) => (
-                            <span key={channel} className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{channel}</span>
+                            <span key={channel} className="max-w-full text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60 break-words [overflow-wrap:anywhere]">{channel}</span>
                           ))}
                         </div>
                       )}
@@ -845,17 +845,17 @@ export function CrisisResilienceSection({
                 <div className="space-y-4">
                   {normalized.routeRisks.map((risk) => (
                     <div key={risk.id} className="rounded-xl border border-border/20 bg-card/50 p-4">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <p className="text-sm text-foreground leading-relaxed">{risk.label}</p>
+                      <div className="flex min-w-0 items-start justify-between gap-2 mb-2">
+                        <p className="min-w-0 flex-1 text-sm text-foreground leading-relaxed break-words [overflow-wrap:anywhere]">{risk.label}</p>
                         {risk.status && <RiskBadge level={riskLevel(risk.status)} />}
                       </div>
                       {risk.detail && <p className="text-sm text-muted-foreground/60 leading-relaxed">{risk.detail}</p>}
                       {(risk.routeScope || risk.decisionWindowDays || risk.impactChannels.length > 0) && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {risk.routeScope && <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{risk.routeScope}</span>}
-                          {risk.decisionWindowDays !== undefined && <span className="text-[11px] uppercase tracking-[0.15em] text-primary/80">{risk.decisionWindowDays}d window</span>}
+                        <div className="flex min-w-0 flex-wrap gap-2 mt-3">
+                          {risk.routeScope && <span className="max-w-full text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60 break-words [overflow-wrap:anywhere]">{risk.routeScope}</span>}
+                          {risk.decisionWindowDays !== undefined && <span className="max-w-full text-[11px] uppercase tracking-[0.12em] text-primary/80 break-words [overflow-wrap:anywhere]">{risk.decisionWindowDays}d window</span>}
                           {risk.impactChannels.map((channel) => (
-                            <span key={channel} className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{channel}</span>
+                            <span key={channel} className="max-w-full text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60 break-words [overflow-wrap:anywhere]">{channel}</span>
                           ))}
                         </div>
                       )}
@@ -872,17 +872,17 @@ export function CrisisResilienceSection({
                 <div className="space-y-4">
                   {normalized.marketRegimes.map((regime) => (
                     <div key={regime.id} className="rounded-xl border border-border/20 bg-card/50 p-4">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <p className="text-sm text-foreground leading-relaxed">{regime.label}</p>
+                      <div className="flex min-w-0 items-start justify-between gap-2 mb-2">
+                        <p className="min-w-0 flex-1 text-sm text-foreground leading-relaxed break-words [overflow-wrap:anywhere]">{regime.label}</p>
                         {regime.status && <RiskBadge level={riskLevel(regime.status)} />}
                       </div>
                       {regime.detail && <p className="text-sm text-muted-foreground/60 leading-relaxed">{regime.detail}</p>}
                       {(regime.routeScope || regime.decisionWindowDays || regime.impactChannels.length > 0) && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {regime.routeScope && <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{regime.routeScope}</span>}
-                          {regime.decisionWindowDays !== undefined && <span className="text-[11px] uppercase tracking-[0.15em] text-primary/80">{regime.decisionWindowDays}d window</span>}
+                        <div className="flex min-w-0 flex-wrap gap-2 mt-3">
+                          {regime.routeScope && <span className="max-w-full text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60 break-words [overflow-wrap:anywhere]">{regime.routeScope}</span>}
+                          {regime.decisionWindowDays !== undefined && <span className="max-w-full text-[11px] uppercase tracking-[0.12em] text-primary/80 break-words [overflow-wrap:anywhere]">{regime.decisionWindowDays}d window</span>}
                           {regime.impactChannels.map((channel) => (
-                            <span key={channel} className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{channel}</span>
+                            <span key={channel} className="max-w-full text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60 break-words [overflow-wrap:anywhere]">{channel}</span>
                           ))}
                         </div>
                       )}
