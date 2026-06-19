@@ -46,6 +46,7 @@ interface EliteCitationPanelProps {
   preloadedSources?: Map<string, Development>
   shareId?: string
   hideUnavailablePublicSources?: boolean
+  preferRemoteSources?: boolean
 }
 
 export function EliteCitationPanel({
@@ -56,7 +57,8 @@ export function EliteCitationPanel({
   citationMap,
   preloadedSources,
   shareId,
-  hideUnavailablePublicSources = false
+  hideUnavailablePublicSources = false,
+  preferRemoteSources = false
 }: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
   const [loadingCitationId, setLoadingCitationId] = useState<string | null>(null)
@@ -65,6 +67,7 @@ export function EliteCitationPanel({
   const [localCitationMap, setLocalCitationMap] = useState<Map<string, number>>(citationMap || new Map())
   const desktopScrollRef = React.useRef<HTMLDivElement>(null)
   const mobileScrollRef = React.useRef<HTMLDivElement>(null)
+  const effectivePreloadedSources = preferRemoteSources ? undefined : preloadedSources
 
   // Initialize local state when props change
   useEffect(() => {
@@ -77,15 +80,15 @@ export function EliteCitationPanel({
       return allCitations
     }
 
-    if (!preloadedSources || preloadedSources.size === 0) {
+    if (!effectivePreloadedSources || effectivePreloadedSources.size === 0) {
       return []
     }
 
     return allCitations.filter((citation) => {
       const loadedDevelopment = developments.get(citation.id)
-      return Boolean(preloadedSources.get(citation.id) || loadedDevelopment)
+      return Boolean(effectivePreloadedSources.get(citation.id) || loadedDevelopment)
     })
-  }, [allCitations, developments, hideUnavailablePublicSources, preloadedSources])
+  }, [allCitations, developments, effectivePreloadedSources, hideUnavailablePublicSources])
 
   const activeSelectedCitationId = React.useMemo(() => {
     if (!hideUnavailablePublicSources) {
@@ -129,7 +132,7 @@ export function EliteCitationPanel({
     // show it immediately and upgrade it only when the public source returns a
     // real citation payload.
     if (!developments.has(normalizedCitationId)) {
-      const preloadedSource = preloadedSources?.get(normalizedCitationId)
+      const preloadedSource = effectivePreloadedSources?.get(normalizedCitationId)
       if (preloadedSource) {
         resolvedSource = preloadedSource
         setDevelopments(prev => new Map(prev).set(normalizedCitationId, preloadedSource))
@@ -194,7 +197,7 @@ export function EliteCitationPanel({
       }
     }
 
-    if (hideUnavailablePublicSources && !resolvedSource && !preloadedSources?.get(normalizedCitationId)) {
+    if (hideUnavailablePublicSources && !resolvedSource && !effectivePreloadedSources?.get(normalizedCitationId)) {
       setAllCitations(prev => prev.filter(citation => citation.id !== normalizedCitationId))
       setLocalCitationMap(prev => {
         const next = new Map(prev)
@@ -203,7 +206,7 @@ export function EliteCitationPanel({
       })
       const nextAvailable = allCitations.find((citation) => (
         citation.id !== normalizedCitationId &&
-        Boolean(preloadedSources?.get(citation.id) || developments.get(citation.id))
+        Boolean(effectivePreloadedSources?.get(citation.id) || developments.get(citation.id))
       ))
       if (nextAvailable) {
         onCitationSelect(nextAvailable.id)
@@ -213,7 +216,7 @@ export function EliteCitationPanel({
 
     // Select the citation
     onCitationSelect(normalizedCitationId)
-  }, [allCitations, developments, hideUnavailablePublicSources, localCitationMap, onCitationSelect, preloadedSources, shareId])
+  }, [allCitations, developments, effectivePreloadedSources, hideUnavailablePublicSources, localCitationMap, onCitationSelect, shareId])
 
   // Auto-load the selected citation when panel opens (if one is selected)
   useEffect(() => {
@@ -354,7 +357,7 @@ export function EliteCitationPanel({
                     transition={{ duration: 0.2 }}
                   >
                     {(() => {
-                      const dev = developments.get(activeSelectedCitationId) || preloadedSources?.get(activeSelectedCitationId)
+                      const dev = developments.get(activeSelectedCitationId) || effectivePreloadedSources?.get(activeSelectedCitationId)
                       if (!dev) {
                         return (
                           <div className="text-center py-8 text-muted-foreground">
@@ -454,7 +457,7 @@ export function EliteCitationPanel({
                     transition={{ duration: 0.2 }}
                   >
                     {(() => {
-                      const dev = developments.get(activeSelectedCitationId) || preloadedSources?.get(activeSelectedCitationId)
+                      const dev = developments.get(activeSelectedCitationId) || effectivePreloadedSources?.get(activeSelectedCitationId)
                       if (!dev) {
                         return (
                           <div className="text-center py-8 text-muted-foreground">

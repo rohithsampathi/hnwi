@@ -145,6 +145,14 @@ function mergeFullHByteSummary(
 }
 
 function citationSummaryLabel(sourceField: string): string {
+  if (
+    sourceField === "full_castle_brief" ||
+    sourceField === "castle_brief_enriched" ||
+    sourceField === "castle_brief"
+  ) {
+    return "Full Castle Brief"
+  }
+
   if (sourceField === "hbyte_summary" || sourceField === "executive_summary") {
     return "HByte"
   }
@@ -153,7 +161,7 @@ function citationSummaryLabel(sourceField: string): string {
     return "Source Summary"
   }
 
-  return "Full Source Brief"
+  return "Source Record"
 }
 
 function pickCitationAnalysis(payload: DevelopmentPayload): {

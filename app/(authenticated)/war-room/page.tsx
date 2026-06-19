@@ -1256,6 +1256,7 @@ export default function WarRoomPage() {
             onCitationSelect={(id) => openCitation(id)}
             citationMap={citationMap}
             preloadedSources={citationPreloadedSources}
+            preferRemoteSources
           />
         </AnimatePresence>
       )}

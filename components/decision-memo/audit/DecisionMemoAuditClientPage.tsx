@@ -49,7 +49,6 @@ import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import type { Citation } from '@/lib/parse-dev-citations';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import {
-  buildCitationSourceDevelopment,
   type CitationSourceDevelopment,
 } from '@/lib/development-citation';
 import { AnimatePresence } from 'framer-motion';
@@ -228,8 +227,21 @@ function sourceRecordId(record: Record<string, unknown>, fallback: string): stri
   return firstText(record, ['id', '_id', 'brief_id', 'dev_id', 'devid', 'source_development_id'], fallback);
 }
 
+function remoteCitationId(record: Record<string, unknown>): string {
+  return firstText(record, ['source_development_id', 'dev_id', 'devid', '_id', 'id', 'brief_id']);
+}
+
+function isRemoteResolvableCitationId(value: string): boolean {
+  const id = value.trim();
+  if (!id) return false;
+  if (/^castle_[a-z0-9]+$/i.test(id)) return true;
+  if (/^[a-f0-9]{24}$/i.test(id)) return true;
+  if (/^dev_[a-z0-9_-]+$/i.test(id)) return true;
+  return false;
+}
+
 function memoSourcePayload(record: Record<string, unknown>, fallbackId: string): Record<string, unknown> {
-  const id = sourceRecordId(record, fallbackId);
+  const id = remoteCitationId(record) || sourceRecordId(record, fallbackId);
   const date = normalizeSourceDate(record.date ?? record.source_date ?? record.source_article_date ?? record.published_at);
   const url = firstText(record, ['url', 'source_url']);
   const summary =
@@ -251,8 +263,11 @@ function memoSourcePayload(record: Record<string, unknown>, fallbackId: string):
 }
 
 function addMemoSourceRecord(records: MemoSourceRecord[], seen: Set<string>, record: Record<string, unknown>, fallbackId: string) {
+  const remoteId = remoteCitationId(record);
+  if (!isRemoteResolvableCitationId(remoteId)) return;
+
   const payload = memoSourcePayload(record, fallbackId);
-  const id = String(payload.id || fallbackId).trim();
+  const id = String(payload.id || remoteId).trim();
   const normalized = id.toLowerCase();
   if (!id || seen.has(normalized)) return;
   seen.add(normalized);
@@ -271,13 +286,9 @@ function collectMemoSourceRecords(previewData: unknown): MemoSourceRecord[] {
     });
   };
 
-  addList(preview.source_register, 'source_register');
-  addList(preview.governing_source_register, 'governing_source');
-  addList(legalReferences.sources, 'legal_source');
   addList(legalReferences.pattern_evidence_records, 'route_pattern_source');
   addList(legalReferences.pattern_witnesses, 'route_pattern_witness');
   addList(preview.pattern_evidence_records, 'pattern_evidence');
-  addList(preview.sources, 'memo_source');
 
   const routeIntelligence = isPlainRecord(preview.route_intelligence_v2) ? preview.route_intelligence_v2 : {};
   const routeDriverRegister =
@@ -518,12 +529,8 @@ export default function DecisionMemoAuditClientPage({
       }
     };
 
-    sourceRecords.forEach(({ id, payload }) => {
+    sourceRecords.forEach(({ id }) => {
       addDevId(id);
-      const source = buildCitationSourceDevelopment(payload, id);
-      if (source) {
-        preloadedSources.set(id, source);
-      }
     });
 
     opportunities.forEach((opp) => {
@@ -1644,6 +1651,7 @@ export default function DecisionMemoAuditClientPage({
             onCitationSelect={setSelectedCitationId}
             citationMap={computedCitationMap}
             preloadedSources={computedPreloadedSources}
+            preferRemoteSources
           />
         </div>
       )}
@@ -1658,6 +1666,7 @@ export default function DecisionMemoAuditClientPage({
             onCitationSelect={setSelectedCitationId}
             citationMap={computedCitationMap}
             preloadedSources={computedPreloadedSources}
+            preferRemoteSources
           />
         </AnimatePresence>
       )}
