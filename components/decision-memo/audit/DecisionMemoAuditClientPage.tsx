@@ -188,6 +188,27 @@ type MemoSourceRecord = {
   payload: Record<string, unknown>;
 };
 
+type EvidenceMethodologyRecord = {
+  id: string;
+  title: string;
+  category: string;
+  claim: string;
+  owner?: string;
+  status?: string;
+  date?: string;
+  institution?: string;
+  url?: string;
+  citationId?: string;
+};
+
+type EvidenceMethodologySection = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  records: EvidenceMethodologyRecord[];
+};
+
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -332,24 +353,306 @@ function sourcePayloadText(payload: Record<string, unknown>, fields: string[], f
     const value = payload[field];
     if (typeof value === 'string' && value.trim()) return value.trim();
     if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    if (Array.isArray(value)) {
+      const textValue = value
+        .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        .slice(0, 2)
+        .join(' ');
+      if (textValue.trim()) return textValue.trim();
+    }
   }
   return fallback;
 }
 
+function principalSafeEvidenceText(value: string): string {
+  return value
+    .replace(/\bHNWI Chronicles pattern-library ledger\b/gi, 'Source-review ledger')
+    .replace(/\bpattern-library review\b/gi, 'Source review')
+    .replace(/\bPattern-library review\b/g, 'Source review')
+    .replace(/\bPattern-library\b/g, 'Source-review')
+    .replace(/\bpattern-library\b/g, 'source-review')
+    .replace(/\bCastle Briefs?\b/g, 'Source record')
+    .replace(/\bcastle_briefs_v31\b/g, 'source record')
+    .replace(/\bDM64\b/g, 'release-readiness compiler')
+    .replace(/\bGranthika\b/g, 'source library')
+    .replace(/\bAquarium\b/g, 'source memory');
+}
+
+function evidenceRecordKey(record: EvidenceMethodologyRecord): string {
+  return `${record.id || record.title}:${record.claim}`.toLowerCase();
+}
+
+function addEvidenceMethodologyRecord(
+  records: EvidenceMethodologyRecord[],
+  seen: Set<string>,
+  record: EvidenceMethodologyRecord,
+) {
+  const normalizedRecord = {
+    ...record,
+    title: principalSafeEvidenceText(record.title),
+    category: principalSafeEvidenceText(record.category),
+    claim: principalSafeEvidenceText(record.claim),
+    owner: record.owner ? principalSafeEvidenceText(record.owner) : undefined,
+    status: record.status ? principalSafeEvidenceText(record.status) : undefined,
+    institution: record.institution ? principalSafeEvidenceText(record.institution) : undefined,
+  };
+  const key = evidenceRecordKey(normalizedRecord);
+  if (!normalizedRecord.title || !normalizedRecord.claim || seen.has(key)) return;
+  seen.add(key);
+  records.push(normalizedRecord);
+}
+
+function makeSourceRegisterRecord(record: Record<string, unknown>, fallbackId: string): EvidenceMethodologyRecord {
+  const title = sourcePayloadText(record, ['title', 'source_title', 'name'], 'Source register entry');
+  const claim = sourcePayloadText(
+    record,
+    ['claim_supported', 'supports', 'reference', 'summary', 'description'],
+    'Supports the legal, tax, market, or evidence boundary applied in this memo.',
+  );
+
+  return {
+    id: sourcePayloadText(record, ['id', '_id'], fallbackId),
+    title,
+    category: sourcePayloadText(record, ['category'], 'Source Register'),
+    claim,
+    date: sourcePayloadText(record, ['date', 'source_date', 'published_at']),
+    institution: sourcePayloadText(record, ['institution', 'publisher', 'source']),
+    url: sourcePayloadText(record, ['url', 'source_url']),
+  };
+}
+
+function makeChecklistRecord(record: Record<string, unknown>, fallbackId: string): EvidenceMethodologyRecord {
+  return {
+    id: sourcePayloadText(record, ['id', '_id'], fallbackId),
+    title: sourcePayloadText(record, ['category', 'domain'], 'Release evidence'),
+    category: sourcePayloadText(record, ['category', 'domain'], 'Release Evidence'),
+    claim: sourcePayloadText(
+      record,
+      ['item', 'evidence', 'question', 'why_it_matters', 'release_condition'],
+      'Evidence item required before release.',
+    ),
+    owner: sourcePayloadText(record, ['owner', 'advisor']),
+    status: sourcePayloadText(record, ['status', 'timeline', 'release_status']),
+  };
+}
+
+function makeGoverningEvidenceRecord(record: Record<string, unknown>, fallbackId: string): EvidenceMethodologyRecord {
+  return {
+    id: sourcePayloadText(record, ['id', '_id'], fallbackId),
+    title: sourcePayloadText(record, ['title', 'category'], 'Governing evidence'),
+    category: sourcePayloadText(record, ['category'], 'Governing Evidence'),
+    claim: sourcePayloadText(record, ['evidence', 'item', 'why_it_matters'], 'Evidence used by the memo.'),
+    owner: sourcePayloadText(record, ['owner']),
+    status: sourcePayloadText(record, ['release_status', 'status']),
+  };
+}
+
+function makeAdviserQuestionRecord(record: Record<string, unknown>, fallbackId: string): EvidenceMethodologyRecord {
+  return {
+    id: sourcePayloadText(record, ['id', '_id'], fallbackId),
+    title: sourcePayloadText(record, ['domain'], 'Adviser question'),
+    category: 'Adviser Question Pack',
+    claim: sourcePayloadText(record, ['question'], 'Question to settle before release.'),
+    owner: sourcePayloadText(record, ['owner', 'advisor']),
+    status: sourcePayloadText(record, ['status'], 'To be answered by the relevant adviser desk'),
+  };
+}
+
+function makeZeroTrustRecord(record: Record<string, unknown>, fallbackId: string): EvidenceMethodologyRecord {
+  return {
+    id: sourcePayloadText(record, ['id', '_id'], fallbackId),
+    title: sourcePayloadText(record, ['label', 'detail', 'type'], 'Private evidence class'),
+    category: sourcePayloadText(record, ['type'], 'Private Evidence Class'),
+    claim: sourcePayloadText(
+      record,
+      ['release_effect', 'source_ref', 'detail'],
+      'Private evidence class used to settle release readiness without exposing family identity.',
+    ),
+    owner: sourcePayloadText(record, ['owner']),
+    status: sourcePayloadText(record, ['state', 'status']),
+  };
+}
+
+function collectEvidenceMethodologySections(
+  previewData: unknown,
+  sourceRecords: MemoSourceRecord[],
+): EvidenceMethodologySection[] {
+  const preview = isPlainRecord(previewData) ? previewData : {};
+  const legalReferences = isPlainRecord(preview.legal_references) ? preview.legal_references : {};
+  const zeroTrust = isPlainRecord(preview.zero_trust_move_intake) ? preview.zero_trust_move_intake : {};
+  const ddChecklist = isPlainRecord(preview.dd_checklist) ? preview.dd_checklist : {};
+
+  const legalTaxRecords: EvidenceMethodologyRecord[] = [];
+  const propertyMarketRecords: EvidenceMethodologyRecord[] = [];
+  const structuresRecords: EvidenceMethodologyRecord[] = [];
+  const familyGovernanceRecords: EvidenceMethodologyRecord[] = [];
+  const bankingRecords: EvidenceMethodologyRecord[] = [];
+  const releaseRecords: EvidenceMethodologyRecord[] = [];
+  const adviserRecords: EvidenceMethodologyRecord[] = [];
+  const routeSourceRecords: EvidenceMethodologyRecord[] = [];
+
+  const seen = new Map<string, Set<string>>();
+  const seenFor = (key: string) => {
+    if (!seen.has(key)) seen.set(key, new Set<string>());
+    return seen.get(key)!;
+  };
+
+  const sourceRegisterRows = [
+    ...asRecordArray(preview.governing_source_register),
+    ...asRecordArray(preview.regulatory_citations),
+    ...asRecordArray(legalReferences.sources),
+  ];
+
+  sourceRegisterRows.forEach((row, index) => {
+    const record = makeSourceRegisterRecord(row, `source_register_${index + 1}`);
+    const haystack = `${record.category} ${record.title} ${record.claim} ${record.institution}`.toLowerCase();
+    if (haystack.includes('legal') || haystack.includes('tax') || haystack.includes('sdlt') || haystack.includes('hmrc') || haystack.includes('gov.uk') || haystack.includes('iht')) {
+      addEvidenceMethodologyRecord(legalTaxRecords, seenFor('legal_tax'), record);
+    } else if (haystack.includes('structure') || haystack.includes('company') || haystack.includes('trust') || haystack.includes('overseas') || haystack.includes('beneficial')) {
+      addEvidenceMethodologyRecord(structuresRecords, seenFor('structures'), record);
+    } else if (haystack.includes('governance') || haystack.includes('family') || haystack.includes('succession') || haystack.includes('document')) {
+      addEvidenceMethodologyRecord(familyGovernanceRecords, seenFor('family'), record);
+    } else {
+      addEvidenceMethodologyRecord(propertyMarketRecords, seenFor('property_market'), record);
+    }
+  });
+
+  const checklistRows = [
+    ...asRecordArray(ddChecklist.items),
+    ...asRecordArray(preview.programmatic_dd_checklist),
+    ...asRecordArray(preview.governing_evidence),
+  ];
+
+  checklistRows.forEach((row, index) => {
+    const record = row.evidence
+      ? makeGoverningEvidenceRecord(row, `governing_evidence_${index + 1}`)
+      : makeChecklistRecord(row, `release_evidence_${index + 1}`);
+    const haystack = `${record.category} ${record.title} ${record.claim} ${record.owner}`.toLowerCase();
+    if (haystack.includes('bank') || haystack.includes('sow') || haystack.includes('source of wealth') || haystack.includes('source-of-funds') || haystack.includes('source evidence') || haystack.includes('fallback rail')) {
+      addEvidenceMethodologyRecord(bankingRecords, seenFor('banking'), record);
+    } else if (haystack.includes('family') || haystack.includes('succession') || haystack.includes('g1') || haystack.includes('g2') || haystack.includes('g3') || haystack.includes('authority') || haystack.includes('fairness') || haystack.includes('veto')) {
+      addEvidenceMethodologyRecord(familyGovernanceRecords, seenFor('family'), record);
+    } else if (haystack.includes('tax') || haystack.includes('sdlt') || haystack.includes('residence') || haystack.includes('reporting') || haystack.includes('iht') || haystack.includes('ated')) {
+      addEvidenceMethodologyRecord(legalTaxRecords, seenFor('legal_tax'), record);
+    } else if (haystack.includes('title') || haystack.includes('property') || haystack.includes('seller') || haystack.includes('insurance') || haystack.includes('carry') || haystack.includes('market')) {
+      addEvidenceMethodologyRecord(propertyMarketRecords, seenFor('property_market'), record);
+    } else if (haystack.includes('structure') || haystack.includes('owner') || haystack.includes('beneficial')) {
+      addEvidenceMethodologyRecord(structuresRecords, seenFor('structures'), record);
+    } else {
+      addEvidenceMethodologyRecord(releaseRecords, seenFor('release'), record);
+    }
+  });
+
+  asRecordArray(preview.counsel_operator_question_pack).forEach((row, index) => {
+    addEvidenceMethodologyRecord(adviserRecords, seenFor('adviser'), makeAdviserQuestionRecord(row, `adviser_question_${index + 1}`));
+  });
+
+  [
+    ...asRecordArray(zeroTrust.evidence_records),
+    ...asRecordArray(zeroTrust.adviser_confirmations),
+    ...asRecordArray(zeroTrust.adviser_asks),
+    ...asRecordArray(zeroTrust.records),
+  ].forEach((row, index) => {
+    const record = makeZeroTrustRecord(row, `private_evidence_${index + 1}`);
+    const haystack = `${record.category} ${record.title} ${record.claim} ${record.owner}`.toLowerCase();
+    if (haystack.includes('bank')) {
+      addEvidenceMethodologyRecord(bankingRecords, seenFor('banking'), record);
+    } else if (haystack.includes('tax') || haystack.includes('sdlt')) {
+      addEvidenceMethodologyRecord(legalTaxRecords, seenFor('legal_tax'), record);
+    } else if (haystack.includes('family') || haystack.includes('succession') || haystack.includes('authority')) {
+      addEvidenceMethodologyRecord(familyGovernanceRecords, seenFor('family'), record);
+    } else {
+      addEvidenceMethodologyRecord(releaseRecords, seenFor('release'), record);
+    }
+  });
+
+  sourceRecords.forEach((record, index) => {
+    const payload = record.payload;
+    addEvidenceMethodologyRecord(routeSourceRecords, seenFor('route_sources'), {
+      id: record.id,
+      citationId: record.id,
+      title: sourcePayloadText(payload, ['title', 'brief_title', 'source_title', 'name'], `Source record ${index + 1}`),
+      category: sourcePayloadText(payload, ['industry', 'category'], 'Route Evidence'),
+      claim: sourcePayloadText(
+        payload,
+        ['claim_supported', 'route_relevance', 'source_signal', 'description', 'summary'],
+        'Source record supports route sequencing and release-gate relevance.',
+      ),
+      date: sourcePayloadText(payload, ['date', 'source_date', 'published_at']),
+      institution: sourcePayloadText(payload, ['institution', 'publisher', 'source']),
+      url: sourcePayloadText(payload, ['url', 'source_url']),
+    });
+  });
+
+  const sections: EvidenceMethodologySection[] = [
+    {
+      id: 'legal_tax',
+      eyebrow: 'Legal & Tax Evidence',
+      title: 'SDLT, residence, IHT, ATED, and reporting sources',
+      description: 'Official and adviser-facing evidence used to model the direct-buyer control case, surcharge exposure, structure constraints, and tax-reporting boundary.',
+      records: legalTaxRecords,
+    },
+    {
+      id: 'structures',
+      eyebrow: 'Structures & Ownership',
+      title: 'Entity, trustee, beneficial-owner, and register evidence',
+      description: 'Sources and release records that decide whether a wrapper solves a real non-tax need or adds cost, reporting, bank, and succession drag.',
+      records: structuresRecords,
+    },
+    {
+      id: 'property_market',
+      eyebrow: 'Property, Market & Carry',
+      title: 'Listing, comparable, council-tax, carry, and bid-discipline evidence',
+      description: 'Evidence used to keep guide price, seller timing, all-in exposure, operating cost, and walk-away logic separate from release authority.',
+      records: propertyMarketRecords,
+    },
+    {
+      id: 'banking',
+      eyebrow: 'Banking / SoW / SoF',
+      title: 'Source-bank, receiving-bank, fallback-rail, FX, and transfer evidence',
+      description: 'Evidence that proves the move can actually fund, transfer, clear KYC/SoW/SoF, and survive banking escalation before exchange.',
+      records: bankingRecords,
+    },
+    {
+      id: 'family_governance',
+      eyebrow: 'Family Governance & Succession',
+      title: 'Authority, veto, use-rights, fairness, and G1/G2/G3 evidence',
+      description: 'Family-side evidence that determines who can see, stop, sign, move, retrieve, and explain the decision after the asset hardens.',
+      records: familyGovernanceRecords,
+    },
+    {
+      id: 'release_adviser',
+      eyebrow: 'Adviser & Operator Gates',
+      title: 'Questions and confirmations required before release',
+      description: 'The counsel/operator question pack that turns the memo into a release rule for property, tax, bank, succession, insurance, and operating desks.',
+      records: [...adviserRecords, ...releaseRecords],
+    },
+    {
+      id: 'route_sources',
+      eyebrow: 'Route Source Review',
+      title: 'Source-review records behind route drivers and failure modes',
+      description: 'Clickable route-source records that open in the standard third-column citation panel.',
+      records: routeSourceRecords,
+    },
+  ];
+
+  return sections.filter((section) => section.records.length > 0);
+}
+
 function EvidenceMethodologyView({
-  citations,
   citationMap,
-  sourceRecords,
+  evidenceSections,
   onCitationClick,
 }: {
-  citations: Citation[];
   citationMap: Map<string, number>;
-  sourceRecords: MemoSourceRecord[];
+  evidenceSections: EvidenceMethodologySection[];
   onCitationClick: (citationId: string) => void;
 }) {
-  const citedSourceRecords = sourceRecords
-    .filter((record) => citationMap.has(record.id))
-    .slice(0, 32);
+  const totalEvidenceRows = evidenceSections.reduce((total, section) => total + section.records.length, 0);
+  const legalTaxCount = evidenceSections.find((section) => section.id === 'legal_tax')?.records.length ?? 0;
+  const privateEvidenceCount = evidenceSections
+    .filter((section) => ['banking', 'family_governance', 'release_adviser'].includes(section.id))
+    .reduce((total, section) => total + section.records.length, 0);
 
   return (
     <div className="space-y-8">
@@ -364,19 +667,19 @@ function EvidenceMethodologyView({
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-md border border-border bg-background/60 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Citation records</p>
-            <p className="mt-2 text-3xl font-bold text-foreground">{citations.length}</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">Clickable records in the source panel.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Evidence rows</p>
+            <p className="mt-2 text-3xl font-bold text-foreground">{totalEvidenceRows}</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Legal, tax, banking, family, property, adviser, and route evidence rows.</p>
           </div>
           <div className="rounded-md border border-border bg-background/60 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Visible source rows</p>
-            <p className="mt-2 text-3xl font-bold text-foreground">{citedSourceRecords.length}</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">Source-review rows carried into this memo.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Legal / tax rows</p>
+            <p className="mt-2 text-3xl font-bold text-foreground">{legalTaxCount}</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Official and adviser-facing rows supporting SDLT, residence, IHT, ATED, and reporting boundaries.</p>
           </div>
           <div className="rounded-md border border-border bg-background/60 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Decision boundary</p>
-            <p className="mt-2 text-lg font-semibold text-foreground">Evidence-gated</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">No source record replaces counsel, bank, title, or family proof.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Private gates</p>
+            <p className="mt-2 text-3xl font-bold text-foreground">{privateEvidenceCount}</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Banking, family authority, adviser, and release gates carried into the packet.</p>
           </div>
         </div>
       </section>
@@ -403,54 +706,62 @@ function EvidenceMethodologyView({
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
-        <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Source records</p>
-            <h2 className="mt-2 text-2xl font-bold text-foreground">Clickable evidence register</h2>
+      {evidenceSections.map((section) => (
+        <section key={section.id} className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
+          <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">{section.eyebrow}</p>
+              <h2 className="mt-2 text-2xl font-bold text-foreground">{section.title}</h2>
+            </div>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+              {section.description}
+            </p>
           </div>
-          <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-            Click any bracketed citation to open the standard third-column source panel.
-          </p>
-        </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          {citedSourceRecords.map((record, index) => {
-            const payload = record.payload;
-            const number = citationMap.get(record.id);
-            const title = sourcePayloadText(payload, ['title', 'brief_title', 'source_title', 'name'], `Source record ${index + 1}`);
-            const category = sourcePayloadText(payload, ['industry', 'category'], 'Route Evidence');
-            const date = sourcePayloadText(payload, ['date', 'source_date', 'published_at'], 'Date gated');
-            const claim = sourcePayloadText(
-              payload,
-              ['claim_supported', 'route_relevance', 'source_signal', 'description', 'summary'],
-              'Source record supports route sequencing and release-gate relevance.',
-            );
+          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+            {section.records.map((record, index) => {
+              const number = record.citationId ? citationMap.get(record.citationId) : undefined;
 
-            return (
-              <div key={record.id} className="rounded-md border border-border bg-background/60 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{category}</p>
-                    <h3 className="mt-2 text-base font-semibold leading-6 text-foreground">{title}</h3>
+              return (
+                <div key={`${section.id}_${record.id}_${index}`} className="rounded-md border border-border bg-background/60 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{record.category}</p>
+                      <h3 className="mt-2 text-base font-semibold leading-6 text-foreground">{record.title}</h3>
+                    </div>
+                    {number && record.citationId ? (
+                      <button
+                        type="button"
+                        onClick={() => onCitationClick(record.citationId!)}
+                        className="shrink-0 rounded-md border border-primary/40 px-2.5 py-1 text-sm font-semibold text-primary transition hover:bg-primary/10"
+                      >
+                        [{number}]
+                      </button>
+                    ) : record.url ? (
+                      <a
+                        href={record.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+                      >
+                        Open source
+                      </a>
+                    ) : null}
                   </div>
-                  {number ? (
-                    <button
-                      type="button"
-                      onClick={() => onCitationClick(record.id)}
-                      className="shrink-0 rounded-md border border-primary/40 px-2.5 py-1 text-sm font-semibold text-primary transition hover:bg-primary/10"
-                    >
-                      [{number}]
-                    </button>
-                  ) : null}
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{record.claim}</p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    {record.institution ? <span className="rounded bg-muted/60 px-2 py-1">{record.institution}</span> : null}
+                    {record.owner ? <span className="rounded bg-muted/60 px-2 py-1">{record.owner}</span> : null}
+                    {record.status ? <span className="rounded bg-muted/60 px-2 py-1">{record.status}</span> : null}
+                    {record.date ? <span className="rounded bg-muted/60 px-2 py-1">{record.date}</span> : null}
+                  </div>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">{claim}</p>
-                <p className="mt-3 text-xs font-medium text-muted-foreground">{date}</p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+
     </div>
   );
 }
@@ -645,7 +956,7 @@ export default function DecisionMemoAuditClientPage({
   // SYNCHRONOUS citation extraction using useMemo — available on first render
   // This fixes the timing issue where useEffect fires AFTER render, leaving the citationMap empty
   // when Leaflet popups first render (causing all citations to show [1])
-  const { computedCitations, computedCitationMap, computedPreloadedSources, computedSourceRecords } = useMemo(() => {
+  const { computedCitations, computedCitationMap, computedPreloadedSources, computedEvidenceSections } = useMemo(() => {
     const previewData = resolvedSurfaceData?.memoData?.preview_data ?? backendData?.preview_data;
     const sourceRecords = collectMemoSourceRecords(previewData);
     const opportunities = Array.isArray(previewData?.all_opportunities)
@@ -708,7 +1019,7 @@ export default function DecisionMemoAuditClientPage({
       computedCitations: citationList,
       computedCitationMap: citMap,
       computedPreloadedSources: preloadedSources,
-      computedSourceRecords: sourceRecords,
+      computedEvidenceSections: collectEvidenceMethodologySections(previewData, sourceRecords),
     };
   }, [backendData, resolvedSurfaceData]);
 
@@ -1829,9 +2140,8 @@ export default function DecisionMemoAuditClientPage({
             )
           ) : memoViewMode === 'evidence' ? (
             <EvidenceMethodologyView
-              citations={computedCitations}
               citationMap={computedCitationMap}
-              sourceRecords={computedSourceRecords}
+              evidenceSections={computedEvidenceSections}
               onCitationClick={handleCitationClick}
             />
           ) : (
