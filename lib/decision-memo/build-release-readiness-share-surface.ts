@@ -244,6 +244,15 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bspouse veto\b/gi, "family-home veto position")
     .replace(/\bmemo source file\b/gi, "source register")
     .replace(/\brelease-readiness reviewing\b/gi, "release-readiness review")
+    .replace(
+      /\bas a London family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi,
+      "as a proposed London family-use acquisition with education, residence, succession, and capital-preservation claims treated as separate gates"
+    )
+    .replace(
+      /\bLondon family base,\s*education\/continuity node,\s*and capital-preservation reserve\b/gi,
+      "London family-use, continuity, and capital-preservation claims treated as separate release gates"
+    )
+    .replace(/\bG3 decision memory\b/gi, "next-generation decision memory")
     .replace(/\s+/g, " ")
     .trim();
 }

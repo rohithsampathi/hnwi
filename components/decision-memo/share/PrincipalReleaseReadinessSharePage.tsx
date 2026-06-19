@@ -613,7 +613,7 @@ function MethodologyView({
     ["Route classification", "Direct, wrapper, residence/replacement, rent-first, and stop/reset routes.", "Private family records and raw scoring details."],
     ["Gate standard", "Tax, title, bank, source-of-funds, family authority, bid discipline, and decision memory.", "Private document contents and adviser correspondence."],
     ["Evidence standard", "Public source, private document, counsel confirmation, bank acceptance, and family minute.", "Unredacted bank, title, source, and authority files."],
-    ["Source-review support", "Source records identify failure modes and why a release gate matters.", "Raw source-review rows and proprietary similarity logic."],
+    ["Method records", "Used only to identify failure modes and why a release gate matters. Not legal, tax, title, bank, valuation, or family-authority proof.", "Raw source-review rows and proprietary similarity logic."],
     ["Output rule", "Every insight must become a gate, owner, source, release condition, or stop rule.", "Transformation and weighting internals."],
   ];
 
@@ -622,9 +622,9 @@ function MethodologyView({
       <Section eyebrow="Methodology receipt" title="How the route was reviewed">
         <div className="rounded-md border border-border bg-card/70 p-5">
           <p className="text-base leading-8 text-foreground">
-            This view shows the gate framework used to review the route. It does not expose raw source-review rows,
-            proprietary weighting, scoring logic, or private family records. The purpose is to show how the decision was
-            controlled, not to publish the workroom.
+            This view shows the gate framework used to review the route. Public authorities and private evidence classes
+            sit above method records. Method records are used only to identify failure modes and release-gate relevance;
+            they are not legal, tax, title, bank, valuation, or family-authority proof.
           </p>
         </div>
         <div className="mt-5 overflow-hidden rounded-md border border-border">
@@ -644,7 +644,11 @@ function MethodologyView({
       </Section>
 
       {drivers.length ? (
-        <Section eyebrow="Source-review drivers" title="Why the gate set exists">
+        <Section eyebrow="Method records" title="Used only to identify failure modes">
+          <div className="mb-5 rounded-md border border-border bg-muted/30 p-4 text-sm leading-6 text-muted-foreground">
+            These records explain why a gate matters. They do not prove legal status, tax treatment, title quality,
+            bank acceptance, valuation, or family authority.
+          </div>
           <div className="grid gap-4 lg:grid-cols-2">
             {drivers.map((driver) => (
               <article key={driver.id} className="rounded-md border border-border bg-card/70 p-5">
