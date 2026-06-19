@@ -4,7 +4,11 @@
 "use client"
 
 import React from "react"
-import { normalizeCitationReferences, parseDevCitations } from "@/lib/parse-dev-citations"
+import {
+  CITATION_REFERENCE_PATTERN,
+  normalizeCitationReferences,
+  parseDevCitations,
+} from "@/lib/parse-dev-citations"
 import { sanitizeRichHtml } from "@/lib/security/sanitization"
 
 interface CitationTextProps {
@@ -78,7 +82,7 @@ const protectCitationReferences = (
 ): string => {
   const citations: string[] = []
   const protectedValue = value.replace(
-    /\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]\r\n]+\]/gi,
+    new RegExp(CITATION_REFERENCE_PATTERN, 'gi'),
     (match) => {
       const token = `__HNWI_CITATION_${citations.length}__`
       citations.push(match)
@@ -97,7 +101,7 @@ const convertLineBreaks = (value: string): string => {
   return value
     .replace(/\r\n/g, "\n")
     // CRITICAL FIX: Remove ALL whitespace/newlines before citations BEFORE splitting
-    .replace(/[\s\n\r]+(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
+    .replace(new RegExp(`[\\s\\n\\r]+(${CITATION_REFERENCE_PATTERN})`, 'gi'), ' $1')
     .split("\n")
     .map((line) => line.trim())
     .join("\n")
@@ -139,8 +143,8 @@ const convertLists = (value: string): string => {
 const convertParagraphs = (value: string): string => {
   // CRITICAL FIX: Remove ALL whitespace/newlines/br tags before citations BEFORE splitting into paragraphs
   const cleanedValue = value
-    .replace(/[\s\n\r]+(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
-    .replace(/(<br\s*\/?>\s*)+(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $2')
+    .replace(new RegExp(`[\\s\\n\\r]+(${CITATION_REFERENCE_PATTERN})`, 'gi'), ' $1')
+    .replace(new RegExp(`(<br\\s*\\/?>\\s*)+(${CITATION_REFERENCE_PATTERN})`, 'gi'), ' $2')
 
   const chunks = cleanedValue
     .split(/(?:\n{2,}|<br\/><br\/>)/)
@@ -177,7 +181,7 @@ export function CitationText({
   processedText = normalizeCitationReferences(processedText)
 
   // Initial cleanup: Remove ALL whitespace/newlines before citations (not just 2+)
-  processedText = processedText.replace(/[\s\n\r]+(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
+  processedText = processedText.replace(new RegExp(`[\\s\\n\\r]+(${CITATION_REFERENCE_PATTERN})`, 'gi'), ' $1')
 
   if (stripMarkdownBold) {
     processedText = processedText.replace(/\*\*([^*]+)\*\*/g, "$1")
@@ -201,9 +205,9 @@ export function CitationText({
 
   // Final cleanup: remove any remaining formatting artifacts before citations
   processedText = processedText
-    .replace(/(<br\s*\/?>)+(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $2')
-    .replace(/<p>[\s]*(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, '<p>$1')
-    .replace(/(<\/p>)[\s]*(<p>)?[\s]*(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, '$1 $3')
+    .replace(new RegExp(`(<br\\s*\\/?>)+(${CITATION_REFERENCE_PATTERN})`, 'gi'), ' $2')
+    .replace(new RegExp(`<p>[\\s]*(${CITATION_REFERENCE_PATTERN})`, 'gi'), '<p>$1')
+    .replace(new RegExp(`(<\\/p>)[\\s]*(<p>)?[\\s]*(${CITATION_REFERENCE_PATTERN})`, 'gi'), '$1 $3')
 
   // Parse citations and get formatted text
   // Pass the global citation map so sub-citations use correct numbers

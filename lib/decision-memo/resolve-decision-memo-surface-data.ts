@@ -453,7 +453,7 @@ function normalizeCompactWealthProjection(projection?: RecordLike | null): Recor
               };
             })
             .filter(Boolean)
-        : Array.from({ length: 11 }, (_, year) => {
+        : [0, 1, 5, 10].map((year) => {
             const value = projectScenarioPathValue(startingValue, finalValue, year, key);
             return {
               year,

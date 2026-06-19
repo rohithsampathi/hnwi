@@ -16,6 +16,7 @@ import type { City } from '@/components/interactive-world-map';
 import { useCrisisIntelligence } from '@/contexts/crisis-intelligence-context';
 import { CrisisAlertBox } from '@/components/map/crisis-alert-box';
 import { memoNumberClass } from '@/lib/decision-memo/memo-design-tokens';
+import { CitationText } from '@/components/elite/citation-text';
 import {
   useAnimatedMetric,
   useDecisionMemoRenderContext,
@@ -127,6 +128,7 @@ interface Page3Props {
   // Backend-provided dynamic data (no legacy fallbacks)
   peerCohortStats?: PeerCohortStats;
   capitalFlowData?: CapitalFlowData;
+  driverCitationIds?: string[];
   // Section visibility control for flexible layout
   sections?: ('peer' | 'corridor' | 'geographic' | 'drivers' | 'all')[];
   // Hide section title (for when component is called multiple times)
@@ -178,6 +180,7 @@ export function Page3PeerIntelligence({
   destinationCity,
   peerCohortStats,
   capitalFlowData,
+  driverCitationIds = [],
   sections = ['all'],
   hideSectionTitle = false,
   isRelocating = false,  // Fix #16: Default to false (cross-border acquisition)
@@ -946,22 +949,35 @@ export function Page3PeerIntelligence({
 
             <div className="space-y-5">
               {hasNativeDriverBullets ? (
-                nativeDriverBullets.map((bullet, i) => (
-                  <motion.div
-                    key={bullet}
-                    className="rounded-xl border border-border/20 bg-card/60 px-4 py-4"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={isVisible ? { opacity: 1, x: 0 } : {}}
-                    transition={{ duration: 0.7, delay: 1 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
-                        {i + 1}
-                      </span>
-                      <p className="text-sm text-foreground leading-relaxed">{bullet}</p>
-                    </div>
-                  </motion.div>
-                ))
+                nativeDriverBullets.map((bullet, i) => {
+                  const citationId = driverCitationIds[i];
+                  const bulletWithCitation =
+                    citationId && extractDevIds(bullet).length === 0
+                      ? `${bullet} [Source ID: ${citationId}]`
+                      : bullet;
+
+                  return (
+                    <motion.div
+                      key={bullet}
+                      className="rounded-xl border border-border/20 bg-card/60 px-4 py-4"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={isVisible ? { opacity: 1, x: 0 } : {}}
+                      transition={{ duration: 0.7, delay: 1 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+                          {i + 1}
+                        </span>
+                        <CitationText
+                          text={bulletWithCitation}
+                          onCitationClick={onCitationClick}
+                          citationMap={citationMap}
+                          className="text-sm text-foreground leading-relaxed"
+                        />
+                      </div>
+                    </motion.div>
+                  );
+                })
               ) : hasDriverData ? (
                 [
                   {

@@ -21,6 +21,22 @@ import {
 
 type Development = CitationSourceDevelopment
 
+function uniqueCitations(citations: Citation[]): Citation[] {
+  const seen = new Set<string>()
+  const unique: Citation[] = []
+
+  citations.forEach((citation) => {
+    const id = String(citation.id || '').trim()
+    const normalizedId = id.toLowerCase()
+    if (!normalizedId || seen.has(normalizedId)) return
+
+    seen.add(normalizedId)
+    unique.push({ ...citation, id })
+  })
+
+  return unique
+}
+
 interface EliteCitationPanelProps {
   citations: Citation[]
   selectedCitationId: string | null
@@ -45,14 +61,14 @@ export function EliteCitationPanel({
   const [loading, setLoading] = useState(false)
   const [loadingCitationId, setLoadingCitationId] = useState<string | null>(null)
   const [developments, setDevelopments] = useState<Map<string, Development>>(new Map())
-  const [allCitations, setAllCitations] = useState<Citation[]>(citations)
+  const [allCitations, setAllCitations] = useState<Citation[]>(uniqueCitations(citations))
   const [localCitationMap, setLocalCitationMap] = useState<Map<string, number>>(citationMap || new Map())
   const desktopScrollRef = React.useRef<HTMLDivElement>(null)
   const mobileScrollRef = React.useRef<HTMLDivElement>(null)
 
   // Initialize local state when props change
   useEffect(() => {
-    setAllCitations(citations)
+    setAllCitations(uniqueCitations(citations))
     setLocalCitationMap(citationMap || new Map())
   }, [citations, citationMap])
 
@@ -104,7 +120,7 @@ export function EliteCitationPanel({
         originalText: `[Dev ID: ${normalizedCitationId}]`
       }
 
-      setAllCitations(prev => [...prev, newCitation])
+      setAllCitations(prev => uniqueCitations([...prev, newCitation]))
       setLocalCitationMap(prev => new Map(prev).set(normalizedCitationId, nextNumber))
     }
 
@@ -162,7 +178,7 @@ export function EliteCitationPanel({
               }
             })
 
-            setAllCitations(newCitations)
+            setAllCitations(uniqueCitations(newCitations))
             setLocalCitationMap(newCitationMap)
           }
         } else if (!preloadedSource) {

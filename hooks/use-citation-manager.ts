@@ -6,10 +6,22 @@ const normalizeCitations = (citations: Citation[]): Citation[] => {
     return []
   }
 
-  return citations.map((citation, index) => ({
-    ...citation,
-    number: index + 1
-  }))
+  const seen = new Set<string>()
+  return citations
+    .filter((citation) => {
+      const id = String(citation.id || '').trim()
+      const normalizedId = id.toLowerCase()
+      if (!normalizedId || seen.has(normalizedId)) {
+        return false
+      }
+      seen.add(normalizedId)
+      return true
+    })
+    .map((citation, index) => ({
+      ...citation,
+      id: String(citation.id).trim(),
+      number: index + 1
+    }))
 }
 
 export interface CitationManager {

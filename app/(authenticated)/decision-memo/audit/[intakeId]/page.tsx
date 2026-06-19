@@ -243,7 +243,7 @@ function DecisionMemoServerAuditText({
         <p><strong>Corridor:</strong> {corridor}</p>
         {move ? <p><strong>Live move:</strong> {move}</p> : null}
         <p><strong>Verdict:</strong> {asString(verdict.label || risk.verdict || risk.recommendation || 'Proceed Modified: Release Differently')}</p>
-        <p><strong>Release rule:</strong> {asString(pickSection(data, 'dm64_release_rule') || 'Hold until release evidence clears')}</p>
+        <p><strong>Release rule:</strong> {asString(pickSection(data, 'release_rule') || 'Hold until release evidence clears')}</p>
         {asString(verdict.why) ? <p><strong>Why:</strong> {asString(verdict.why)}</p> : null}
         {asString(verdict.not_a_verdict_for) ? <p><strong>Not a release for:</strong> {asString(verdict.not_a_verdict_for)}</p> : null}
       </header>
