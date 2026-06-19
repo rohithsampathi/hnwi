@@ -354,8 +354,16 @@ function principalSafeMemoText(value?: string | null): string {
     .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
     .replace(/\bDecision EV\b/gi, 'Model output - not release authority')
     .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
+    .replace(/\bOPEN GATES\b/gi, 'Release Gate Status')
+    .replace(/\bOpen Gates\b/gi, 'Release Gate Status')
     .replace(/\bOpen Release Gates\b/gi, 'Release Gate Status')
+    .replace(/\b0\s+to\s+close\b/gi, 'Evidence pending')
+    .replace(/\bDOCUMENTED\b/g, 'Indexed for review')
+    .replace(/\bDocumented\b/g, 'Indexed for review')
     .replace(/\bAll listed release gates have assigned owners\b/gi, 'Gate ownership assigned; release evidence pending')
+    .replace(/\bNo open release boundary recorded\b/gi, 'Release evidence remains open until signed evidence is received')
+    .replace(/\breleased differently\b/gi, 'advanced under signed gates')
+    .replace(/\brelease differently\b/gi, 'advance under signed gates')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -1022,6 +1030,7 @@ function SurfaceCard({
 function StatusPill({ value }: { value?: string }) {
   if (!value) return null;
   const tone = statusTone(value);
+  const label = principalSafeMemoText(value);
   const toneText =
     tone === 'red'
       ? 'border-red-500/25 text-red-500/80 bg-red-500/[0.05]'
@@ -1032,7 +1041,7 @@ function StatusPill({ value }: { value?: string }) {
           : 'border-border/20 text-muted-foreground bg-card/60';
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${toneText}`}>
-      {value}
+      {label}
     </span>
   );
 }

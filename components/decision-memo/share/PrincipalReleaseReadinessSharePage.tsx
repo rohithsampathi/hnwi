@@ -57,8 +57,12 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bHouse Signal Rail\b/gi, "Route Control Summary")
     .replace(/\bDecision EV\b/gi, "Internal model output - not release authority")
     .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")
+    .replace(/\bOPEN GATES\b/gi, "Release Gate Status")
     .replace(/\bOpen Release Gates\b/gi, "Release Gate Status")
+    .replace(/\b0\s+to\s+close\b/gi, "Evidence pending")
     .replace(/\bAll listed release gates have assigned owners\b/gi, "Gate ownership assigned; release evidence pending")
+    .replace(/\bDOCUMENTED\b/g, "Indexed for review")
+    .replace(/\bDocumented\b/g, "Indexed for review")
     .replace(/\bFull Decision Memo\b/gi, "Release Readiness Review")
     .replace(/\bDecision Memo\b/gi, "Release Readiness Review")
     .replace(/\bPressure Test\b/gi, "Release Readiness Review")
@@ -66,6 +70,19 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bpressure-test(?:ed|ing)?\b/gi, "release-readiness reviewed")
     .replace(/\bpressure\b/gi, "readiness")
     .replace(/\bNative Route Drivers\b/gi, "Route Drivers From Source Review")
+    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/g, "founder / named family user / next-generation record")
+    .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/g, "generation-to-generation")
+    .replace(/\bG1 principal\b/gi, "principal")
+    .replace(/\bG2 son\b/gi, "named family user")
+    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
+    .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
+    .replace(/\bdaughter\/fairness\b/gi, "family-fairness")
+    .replace(/\bG3 grandson\b/gi, "next-generation record")
+    .replace(/\bfuture-grandchild\b/gi, "next-generation")
+    .replace(/\bgrandson\b/gi, "next-generation record")
+    .replace(/\bson-use\b/gi, "named family-user")
+    .replace(/\bspouse veto if relevant\b/gi, "family-home veto position where recorded")
+    .replace(/\bspouse if relevant\b/gi, "family-home veto holder where recorded")
     .replace(/\bSIX-BOOK OPENING\b/gi, "Decision Opening")
     .replace(/\bSix-book opening\b/gi, "Decision opening")
     .replace(/\bDM64\b/g, "release-readiness compiler")
@@ -208,7 +225,43 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
         </div>
       </Section>
 
-      <FullReportSections sections={payload.reportSections} />
+      <Section eyebrow="Review handoff" title="Where the full depth now sits">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <article className="rounded-md border border-border bg-card/70 p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Principal View</p>
+            <h3 className="mt-3 text-lg font-semibold leading-7 text-foreground">Decision control only</h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              This page keeps the buyer-side answer visible: what is approved, what cannot release, which route is under review, and which gates must clear.
+            </p>
+          </article>
+          <article className="rounded-md border border-border bg-card/70 p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Route View</p>
+            <h3 className="mt-3 text-lg font-semibold leading-7 text-foreground">Reviewer depth and full memo</h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Projections, crisis resilience, generation-to-generation succession, route drivers, scenario tree, counsel pack, and full route memo stay in the reviewer layer.
+            </p>
+            <a
+              href={`/release-readiness/review/${encodeURIComponent(payload.reference)}?view=route`}
+              className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+            >
+              Open Route View <ArrowUpRight className="h-3.5 w-3.5" />
+            </a>
+          </article>
+          <article className="rounded-md border border-border bg-card/70 p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Evidence & Methodology</p>
+            <h3 className="mt-3 text-lg font-semibold leading-7 text-foreground">Proof ledger and source boundary</h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Legal, tax, property, banking, family governance, structures, adviser, and source-review records are kept separate from the principal decision surface.
+            </p>
+            <a
+              href={`/release-readiness/review/${encodeURIComponent(payload.reference)}?view=evidence`}
+              className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+            >
+              Open Evidence <ArrowUpRight className="h-3.5 w-3.5" />
+            </a>
+          </article>
+        </div>
+      </Section>
     </>
   );
 }

@@ -55,6 +55,13 @@ function routeDisplayText(value: unknown): string {
     .replace(/\bNative Route Drivers\b/gi, 'Route Drivers From Source Review')
     .replace(/\bSIX-BOOK OPENING\b/gi, 'Decision Opening')
     .replace(/\bSix-book opening\b/gi, 'Decision opening')
+    .replace(/\bOPEN GATES\b/gi, 'Release Gate Status')
+    .replace(/\bOpen Gates\b/gi, 'Release Gate Status')
+    .replace(/\b0\s+to\s+close\b/gi, 'Evidence pending')
+    .replace(/\bDOCUMENTED\b/g, 'Indexed for review')
+    .replace(/\bDocumented\b/g, 'Indexed for review')
+    .replace(/\breleased differently\b/gi, 'advanced under signed gates')
+    .replace(/\brelease differently\b/gi, 'advance under signed gates')
     .replace(/\bPressure Variants Tested\b/gi, 'Release Readiness Routes Reviewed')
     .replace(/\bPressure Test\b/gi, 'Release Readiness Review')
     .replace(/\bpressure-test(?:ed|ing)?\b/gi, 'release-readiness reviewed')
@@ -272,11 +279,11 @@ function NativeRouteDriversPanel({
             </p>
           </div>
           <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
-            {intelligence.nativeRouteDriverSubtitle || 'What the route-pattern witnesses actually change in this move.'}
+            {routeDisplayText(intelligence.nativeRouteDriverSubtitle || 'What the route-pattern witnesses actually change in this move.')}
           </h2>
           {intelligence.nativeRouteDriverNote ? (
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              {intelligence.nativeRouteDriverNote}
+              {routeDisplayText(intelligence.nativeRouteDriverNote)}
             </p>
           ) : null}
         </div>
@@ -288,15 +295,15 @@ function NativeRouteDriversPanel({
                 Driver {index + 1}
               </p>
               <h3 className="mt-2 text-sm font-semibold leading-snug text-foreground">
-                {driver.title}
+                {routeDisplayText(driver.title)}
               </h3>
               <p className="mt-3 text-sm font-medium leading-relaxed text-foreground">
-                {driver.driver}
+                {routeDisplayText(driver.driver)}
               </p>
               {driver.releaseRead || driver.evidenceBasis ? (
                 <div className="mt-3 space-y-2 border-t border-border/20 pt-3 text-xs leading-relaxed text-muted-foreground">
-                  {driver.releaseRead ? <p><span className="font-semibold text-foreground/80">Release read:</span> {driver.releaseRead}</p> : null}
-                  {driver.evidenceBasis ? <p><span className="font-semibold text-foreground/80">Evidence boundary:</span> {driver.evidenceBasis}</p> : null}
+                  {driver.releaseRead ? <p><span className="font-semibold text-foreground/80">Release read:</span> {routeDisplayText(driver.releaseRead)}</p> : null}
+                  {driver.evidenceBasis ? <p><span className="font-semibold text-foreground/80">Evidence boundary:</span> {routeDisplayText(driver.evidenceBasis)}</p> : null}
                 </div>
               ) : null}
               {driver.sourceIds.length ? (
@@ -448,22 +455,22 @@ function RouteRead({ route }: { route: RouteIntelligenceOptionV2 }) {
           <ShieldCheck className="h-4 w-4 text-gold/70" />
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Verdict</p>
         </div>
-        <p className="mt-3 text-lg font-semibold text-foreground">{route.verdict}</p>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{route.releaseEffect}</p>
+        <p className="mt-3 text-lg font-semibold text-foreground">{routeDisplayText(route.verdict)}</p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{routeDisplayText(route.releaseEffect)}</p>
       </div>
       <div className="rounded-lg border border-border/25 bg-card/40 p-5">
         <div className="flex items-center gap-2">
           <GitCompare className="h-4 w-4 text-gold/70" />
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Economic Read</p>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-foreground">{route.economicRead}</p>
+        <p className="mt-3 text-sm leading-relaxed text-foreground">{routeDisplayText(route.economicRead)}</p>
       </div>
       <div className="rounded-lg border border-border/25 bg-card/40 p-5">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-gold/70" />
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Failure Mode</p>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-foreground">{route.failureMode}</p>
+        <p className="mt-3 text-sm leading-relaxed text-foreground">{routeDisplayText(route.failureMode)}</p>
       </div>
     </div>
   );
@@ -474,14 +481,14 @@ function BuyerProfileMatrix({ matrix }: { matrix: BuyerProfileRemissionMatrix })
     <div className="rounded-lg border border-border/25 bg-card/40 p-5">
       <div className="grid gap-4 lg:grid-cols-[1fr_1.1fr]">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">{matrix.sourceRead}</p>
-          <h3 className="mt-3 text-lg font-semibold text-foreground">{matrix.title}</h3>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{matrix.dubaiRead}</p>
-          <p className="mt-3 text-sm leading-relaxed text-gold/80">{matrix.ftaRead}</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">{routeDisplayText(matrix.sourceRead)}</p>
+          <h3 className="mt-3 text-lg font-semibold text-foreground">{routeDisplayText(matrix.title)}</h3>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{routeDisplayText(matrix.dubaiRead)}</p>
+          <p className="mt-3 text-sm leading-relaxed text-gold/80">{routeDisplayText(matrix.ftaRead)}</p>
         </div>
         <div className="rounded-md border border-border/20 bg-background/35 p-4">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">Counsel Release Question</p>
-          <p className="mt-3 text-sm leading-relaxed text-foreground">{matrix.counselQuestion}</p>
+          <p className="mt-3 text-sm leading-relaxed text-foreground">{routeDisplayText(matrix.counselQuestion)}</p>
         </div>
       </div>
 
@@ -497,12 +504,12 @@ function BuyerProfileMatrix({ matrix }: { matrix: BuyerProfileRemissionMatrix })
           </div>
           {matrix.matrix.map((row) => (
             <div key={row.profile} className="grid grid-cols-12 gap-3 border-b border-border/10 px-3 py-4 text-sm last:border-b-0">
-              <div className="col-span-2 font-medium text-foreground">{row.profile}</div>
+              <div className="col-span-2 font-medium text-foreground">{routeDisplayText(row.profile)}</div>
               <div className="col-span-1 text-foreground">{row.firstResidential}</div>
               <div className="col-span-1 text-foreground">{row.secondResidential}</div>
               <div className="col-span-1 text-foreground">{row.thirdAndSubsequent}</div>
-              <div className="col-span-4 leading-relaxed text-muted-foreground">{row.releaseRead}</div>
-              <div className="col-span-3 leading-relaxed text-muted-foreground">{row.evidenceRequired}</div>
+              <div className="col-span-4 leading-relaxed text-muted-foreground">{routeDisplayText(row.releaseRead)}</div>
+              <div className="col-span-3 leading-relaxed text-muted-foreground">{routeDisplayText(row.evidenceRequired)}</div>
             </div>
           ))}
         </div>
@@ -521,16 +528,16 @@ function PrincipalValueGatePanel({ gate }: { gate: PrincipalValueGate }) {
             <p className="text-xs uppercase tracking-[0.2em] text-emerald-500/80">Principal Value Gate</p>
           </div>
           <h3 className="mt-3 text-lg font-semibold text-foreground">{gate.status === 'clears' ? 'Clears: release-readiness packet' : 'Evidence-gated release-readiness packet'}</h3>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{gate.test}</p>
-          <p className="mt-3 text-sm leading-relaxed text-foreground">{gate.answer}</p>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{routeDisplayText(gate.test)}</p>
+          <p className="mt-3 text-sm leading-relaxed text-foreground">{routeDisplayText(gate.answer)}</p>
           <p className="mt-4 rounded-md border border-emerald-500/15 bg-background/30 p-3 text-sm leading-relaxed text-emerald-500/90">
-            {gate.releaseStatus}
+            {routeDisplayText(gate.releaseStatus)}
           </p>
         </div>
         <div className="space-y-3">
           {gate.nonRedundantEdges.slice(0, 4).map((edge) => (
             <div key={edge} className="rounded-md border border-border/20 bg-background/35 p-3">
-              <p className="text-sm leading-relaxed text-foreground">{edge}</p>
+              <p className="text-sm leading-relaxed text-foreground">{routeDisplayText(edge)}</p>
             </div>
           ))}
         </div>
@@ -542,8 +549,8 @@ function PrincipalValueGatePanel({ gate }: { gate: PrincipalValueGate }) {
           <div className="mt-4 space-y-3">
             {gate.advisorNonRedundancyTest.slice(0, 4).map((row) => (
               <div key={row.adviserLane} className="border-b border-border/10 pb-3 last:border-b-0 last:pb-0">
-                <p className="text-sm font-medium text-foreground">{row.adviserLane}</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{row.dm64Difference}</p>
+                <p className="text-sm font-medium text-foreground">{routeDisplayText(row.adviserLane)}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{routeDisplayText(row.dm64Difference)}</p>
               </div>
             ))}
           </div>
@@ -553,8 +560,8 @@ function PrincipalValueGatePanel({ gate }: { gate: PrincipalValueGate }) {
           <div className="mt-4 space-y-3">
             {gate.replaceabilityRejectionRegister.slice(0, 4).map((row) => (
               <div key={row.replaceableOutput} className="border-b border-border/10 pb-3 last:border-b-0 last:pb-0">
-                <p className="text-sm font-medium text-foreground">{row.replaceableOutput}</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{row.whyRejected}</p>
+                <p className="text-sm font-medium text-foreground">{routeDisplayText(row.replaceableOutput)}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{routeDisplayText(row.whyRejected)}</p>
               </div>
             ))}
           </div>
@@ -569,9 +576,9 @@ function StressSignals({ route }: { route: RouteIntelligenceOptionV2 }) {
     <div className="grid gap-3 md:grid-cols-3">
       {route.stressSignals.map((signal) => (
         <div key={signal.label} className="rounded-lg border border-border/25 bg-card/40 p-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{signal.label}</p>
-          <p className="mt-2 text-xl font-semibold text-foreground">{signal.value}</p>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{signal.read}</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{routeDisplayText(signal.label)}</p>
+          <p className="mt-2 text-xl font-semibold text-foreground">{routeDisplayText(signal.value)}</p>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{routeDisplayText(signal.read)}</p>
         </div>
       ))}
     </div>
@@ -674,7 +681,7 @@ function ScenarioGraph({ route }: { route: RouteIntelligenceOptionV2 }) {
                 <span className={positive ? 'text-emerald-500' : 'text-red-500'}>{formatUsdCompact(scenario.netOutcomeUsd)}</span>
               </div>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Year 10 value: {formatUsdCompact(scenario.year10ValueUsd)}. {scenario.read}
+                Year 10 value: {formatUsdCompact(scenario.year10ValueUsd)}. {routeDisplayText(scenario.read)}
               </p>
             </div>
           );
@@ -693,8 +700,8 @@ function JurisdictionGrid({ route }: { route: RouteIntelligenceOptionV2 }) {
             <Landmark className="h-4 w-4 text-gold/70" />
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">{item.jurisdiction}</p>
           </div>
-          <p className="mt-3 text-sm font-medium text-foreground">{item.value}</p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.releaseRead}</p>
+          <p className="mt-3 text-sm font-medium text-foreground">{routeDisplayText(item.value)}</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{routeDisplayText(item.releaseRead)}</p>
         </div>
       ))}
     </div>
@@ -713,11 +720,11 @@ function EvidencePack({ route }: { route: RouteIntelligenceOptionV2 }) {
       </div>
       {route.evidenceGates.map((gate) => (
         <div key={`${gate.gate}-${gate.owner}`} className="grid grid-cols-12 gap-3 border-b border-border/10 px-4 py-4 text-sm last:border-b-0">
-          <div className="col-span-12 font-medium text-foreground md:col-span-3">{gate.gate}</div>
-          <div className="col-span-12 text-muted-foreground md:col-span-2">{gate.owner}</div>
-          <div className="col-span-12 text-muted-foreground md:col-span-3">{gate.evidenceRequired}</div>
-          <div className="col-span-12 text-amber-500 md:col-span-2">{gate.releaseStatus}</div>
-          <div className="col-span-12 text-muted-foreground md:col-span-2">{gate.consequenceIfMissing}</div>
+          <div className="col-span-12 font-medium text-foreground md:col-span-3">{routeDisplayText(gate.gate)}</div>
+          <div className="col-span-12 text-muted-foreground md:col-span-2">{routeDisplayText(gate.owner)}</div>
+          <div className="col-span-12 text-muted-foreground md:col-span-3">{routeDisplayText(gate.evidenceRequired)}</div>
+          <div className="col-span-12 text-amber-500 md:col-span-2">{routeDisplayText(gate.releaseStatus)}</div>
+          <div className="col-span-12 text-muted-foreground md:col-span-2">{routeDisplayText(gate.consequenceIfMissing)}</div>
         </div>
       ))}
     </div>
@@ -735,10 +742,10 @@ function ResponsibilityAndRecords({ route }: { route: RouteIntelligenceOptionV2 
         <div className="space-y-4">
           {route.responsibilityTransfer.map((item) => (
             <div key={item.action} className="border-b border-border/10 pb-4 last:border-b-0 last:pb-0">
-              <p className="text-sm font-medium text-foreground">{item.action}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Primary: {item.primaryOwner}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Fallback: {item.fallbackOwner}</p>
-              <p className="mt-2 text-xs leading-relaxed text-gold/80">{item.releaseCondition}</p>
+              <p className="text-sm font-medium text-foreground">{routeDisplayText(item.action)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Primary: {routeDisplayText(item.primaryOwner)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Fallback: {routeDisplayText(item.fallbackOwner)}</p>
+              <p className="mt-2 text-xs leading-relaxed text-gold/80">{routeDisplayText(item.releaseCondition)}</p>
             </div>
           ))}
         </div>
@@ -752,13 +759,13 @@ function ResponsibilityAndRecords({ route }: { route: RouteIntelligenceOptionV2 
           {route.recordMismatchMap.map((item) => (
             <div key={item.record} className="border-b border-border/10 pb-4 last:border-b-0 last:pb-0">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm font-medium text-foreground">{item.record}</p>
+                <p className="text-sm font-medium text-foreground">{routeDisplayText(item.record)}</p>
                 <span className="rounded-full border border-amber-500/20 bg-amber-500/[0.04] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-500">
-                  {item.releaseStatus}
+                  {routeDisplayText(item.releaseStatus)}
                 </span>
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Current: {item.currentRead}</p>
-              <p className="mt-1 text-xs leading-relaxed text-gold/80">Target: {item.targetRead}</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Current: {routeDisplayText(item.currentRead)}</p>
+              <p className="mt-1 text-xs leading-relaxed text-gold/80">Target: {routeDisplayText(item.targetRead)}</p>
             </div>
           ))}
         </div>
@@ -772,8 +779,8 @@ function CounselQuestions({ route }: { route: RouteIntelligenceOptionV2 }) {
     <div className="grid gap-3 md:grid-cols-2">
       {route.counselQuestionPack.map((item) => (
         <div key={`${item.desk}-${item.question}`} className="rounded-lg border border-border/25 bg-card/40 p-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-gold/70">{item.desk}</p>
-          <p className="mt-3 text-sm leading-relaxed text-foreground">{item.question}</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-gold/70">{routeDisplayText(item.desk)}</p>
+          <p className="mt-3 text-sm leading-relaxed text-foreground">{routeDisplayText(item.question)}</p>
         </div>
       ))}
     </div>
@@ -811,7 +818,7 @@ function DecisionOutcomeTrack({
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{outcomeCopy}</p>
             <p className="mt-4 rounded-md border border-border/20 bg-background/35 p-3 text-sm leading-relaxed text-foreground">
-              {route.releaseEffect}
+              {routeDisplayText(route.releaseEffect)}
             </p>
           </div>
           <div className="rounded-md border border-border/20 bg-background/35 p-4">
@@ -842,11 +849,11 @@ function DecisionOutcomeTrack({
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-border/25 bg-card/40 p-5">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Economic Read</p>
-            <p className="mt-3 text-sm leading-relaxed text-foreground">{route.economicRead}</p>
+            <p className="mt-3 text-sm leading-relaxed text-foreground">{routeDisplayText(route.economicRead)}</p>
           </div>
           <div className="rounded-lg border border-border/25 bg-card/40 p-5">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Failure Mode Avoided</p>
-            <p className="mt-3 text-sm leading-relaxed text-foreground">{route.failureMode}</p>
+            <p className="mt-3 text-sm leading-relaxed text-foreground">{routeDisplayText(route.failureMode)}</p>
           </div>
         </div>
       </section>

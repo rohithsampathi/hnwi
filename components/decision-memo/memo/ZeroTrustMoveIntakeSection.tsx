@@ -62,7 +62,7 @@ function titleize(value: string): string {
 function evidenceLabel(value: string): string {
   const normalized = value.toLowerCase().replace(/\s+/g, '_');
   const labels: Record<string, string> = {
-    confirmed: 'Documented',
+    confirmed: 'Indexed for Review',
     claimed_unverified: 'Adviser Confirmation Required',
     assumed: 'Model Assumption',
     missing: 'Missing Evidence',
@@ -153,8 +153,13 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
           </div>
           <div className="border border-border bg-background p-4">
             <AlertTriangle className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Open Gates</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">{openGates.length} to close</p>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Release Gate Status</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {openGates.length ? `${openGates.length} unresolved` : 'Evidence pending'}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Gate ownership complete; release evidence remains open until signed evidence is received.
+            </p>
           </div>
           <div className="border border-border bg-background p-4">
             <CheckCircle2 className="h-5 w-5 text-primary" />
@@ -234,7 +239,10 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
             <h3 className="text-base font-semibold text-foreground">Release Boundary</h3>
           </div>
           <div className="mt-4 space-y-3">
-            {(openGates.length ? openGates.slice(0, 5) : ['No open release boundary recorded.']).map((boundary) => (
+            {(openGates.length
+              ? openGates.slice(0, 5)
+              : ['Gate ownership complete; release evidence remains open until signed evidence is received.']
+            ).map((boundary) => (
               <p key={boundary} className="text-sm leading-relaxed text-muted-foreground">
                 {boundary}
               </p>
