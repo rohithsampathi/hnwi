@@ -33,6 +33,12 @@ const ANALYSIS_HEADING_TITLES = new Set([
   "wealth impact",
   "sentiment tracker",
   "hnwi sentiment",
+  "source summary",
+  "decision posture",
+  "quality read",
+  "source fidelity",
+  "pattern memory",
+  "source record",
 ])
 
 const cleanHeadingTitle = (line: string) =>

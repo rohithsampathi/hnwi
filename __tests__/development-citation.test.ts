@@ -1,15 +1,36 @@
-import { pickCitationAnalysisText, pickCitationDescription } from "@/lib/development-citation";
+import {
+  buildCitationSourceDevelopment,
+  pickCitationAnalysisText,
+  pickCitationDescription,
+} from "@/lib/development-citation";
 
 describe("development citation payload mapping", () => {
-  it("prefers full Castle brief analysis over HByte summary", () => {
+  it("leads v31 source records with HByte while preserving source sections", () => {
     const payload = {
-      summary: "Short HByte summary only.",
-      castle_brief_enriched: "Full Castle brief.\nWhy This Matters\nKey Moves & Market Shifts",
-      description: "Short source description.",
+      hbyte_summary: "The room should read this as route readiness, not a property headline.",
+      summary: "This is the shorter source summary for the same record.",
+      full_text: "Why This Matters\nThis gives the buyer a decision consequence.\nKey Moves & Market Shifts\nThe route should stay gated.",
+      final_verdict: {
+        verdict: "RESTRUCTURE",
+        decision_posture: "WATCH_ONLY_UNTIL_UNDERWRITTEN",
+        confidence: 0.72,
+      },
+      castle_quality_score: 9.35,
+      castle_source_fidelity_score: 0.72,
+      castle_historic_pattern_memory_count: 3,
     };
+    const development = buildCitationSourceDevelopment(payload, "source-id");
 
-    expect(pickCitationAnalysisText(payload)).toBe(payload.castle_brief_enriched);
-    expect(pickCitationDescription(payload, payload.castle_brief_enriched)).toBe(payload.description);
+    expect(development?.summaryLabel).toBe("HByte");
+    expect(development?.summarySourceField).toBe("hbyte_summary");
+    expect(development?.summary).toContain("HByte Summary\nThe room should read this as route readiness");
+    expect(development?.summary).toContain("Source Summary\nThis is the shorter source summary");
+    expect(development?.summary).toContain("Why This Matters");
+    expect(development?.summary).toContain("Decision Posture");
+    expect(development?.summary).toContain("Quality Read");
+    expect(development?.summary).toContain("Source Fidelity");
+    expect(development?.summary).toContain("Pattern Memory");
+    expect(development?.summaryLabel).not.toContain("Castle");
   });
 
   it("keeps current public endpoint behavior where summary already contains the full brief", () => {

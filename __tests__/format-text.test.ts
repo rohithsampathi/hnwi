@@ -29,4 +29,28 @@ HNWI Sentiment: Constructive on the evidence, not the aura.`);
     expect(analysis.losers?.content[0]?.text).toContain("Buyers waiting for surface confirmation");
     expect(analysis.potentialMoves?.content[0]?.text).toContain("Fix the live trade basis");
   });
+
+  it("keeps v31 citation packet sections visible in citation panels", () => {
+    const analysis = formatAnalysis(`HByte Summary
+This is the lead decision read.
+Source Summary
+This is the supporting source read.
+Decision Posture
+Verdict: Watch Only.
+Quality Read
+Quality score: 9.35.
+Source Fidelity
+Fidelity score: 0.72.
+Pattern Memory
+Historic pattern memory: 3.`);
+
+    expect(analysis.summary).toContain("This is the lead decision read.");
+    expect(analysis.sections.map((section) => section.title)).toEqual([
+      "Source Summary",
+      "Decision Posture",
+      "Quality Read",
+      "Source Fidelity",
+      "Pattern Memory",
+    ]);
+  });
 });
