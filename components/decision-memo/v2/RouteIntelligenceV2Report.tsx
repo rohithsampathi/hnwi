@@ -479,7 +479,7 @@ function PrincipalValueGatePanel({ gate }: { gate: PrincipalValueGate }) {
             <ShieldCheck className="h-4 w-4 text-emerald-500" />
             <p className="text-xs uppercase tracking-[0.2em] text-emerald-500/80">Principal Value Gate</p>
           </div>
-          <h3 className="mt-3 text-lg font-semibold text-foreground">{gate.status === 'clears' ? 'Clears: decision-control object' : 'Evidence-gated decision-control object'}</h3>
+          <h3 className="mt-3 text-lg font-semibold text-foreground">{gate.status === 'clears' ? 'Clears: release-readiness packet' : 'Evidence-gated release-readiness packet'}</h3>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{gate.test}</p>
           <p className="mt-3 text-sm leading-relaxed text-foreground">{gate.answer}</p>
           <p className="mt-4 rounded-md border border-emerald-500/15 bg-background/30 p-3 text-sm leading-relaxed text-emerald-500/90">

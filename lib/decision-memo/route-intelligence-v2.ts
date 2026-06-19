@@ -502,7 +502,7 @@ function coercePrincipalValueGate(value: unknown): PrincipalValueGate | undefine
     status: text(record.status, 'evidence-gated'),
     test: text(
       record.test,
-      'Would the family or adviser stack be able to produce this decision-control object from existing notes?',
+      'Would the adviser stack be able to produce the same signed release-readiness packet from existing notes, evidence gates, and owner consequences?',
     ),
     answer: text(
       record.answer,
@@ -1481,7 +1481,7 @@ export function buildRouteIntelligenceV2(
       ) ?? principalValueGateFromResolved(resolvedSurfaceData),
       sourceRead: text(
         nativeRouteIntelligence.sourceRead ?? nativeRouteIntelligence.source_read,
-        'This surface reads the stored decision memo and reviews the proposed move through release variants; it is not a client-side intake or advisory option picker.',
+        'This review applies the stored release-readiness evidence to the selected route and shows what must clear before capital, title, or seller commitments harden.',
       ),
     };
   }
