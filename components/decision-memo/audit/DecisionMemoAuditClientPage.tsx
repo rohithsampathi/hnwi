@@ -43,6 +43,7 @@ import Link from 'next/link';
 
 import HouseDecisionMemoLinearReport from '@/components/decision-memo/memo/DecisionMemoLinearReport';
 import CanonicalDecisionMemoLinearReport from '@/components/decision-memo/memo/legacy/DecisionMemoLinearReport.classic-legacy';
+import ReferencesSection from '@/components/decision-memo/memo/ReferencesSection';
 import RouteIntelligenceV2Report from '@/components/decision-memo/v2/RouteIntelligenceV2Report';
 import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
@@ -642,10 +643,16 @@ function collectEvidenceMethodologySections(
 function EvidenceMethodologyView({
   citationMap,
   evidenceSections,
+  references,
+  developmentsCount,
+  precedentCount,
   onCitationClick,
 }: {
   citationMap: Map<string, number>;
   evidenceSections: EvidenceMethodologySection[];
+  references?: any;
+  developmentsCount?: number;
+  precedentCount?: number;
   onCitationClick: (citationId: string) => void;
 }) {
   const totalEvidenceRows = evidenceSections.reduce((total, section) => total + section.records.length, 0);
@@ -659,11 +666,12 @@ function EvidenceMethodologyView({
       <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Evidence & Methodology</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          Proof rail for the release-readiness review
+          Source register and release evidence ledger
         </h1>
         <p className="mt-4 max-w-4xl text-sm leading-7 text-muted-foreground sm:text-base">
-          This view separates source-review support from release authority. Source records explain why a gate matters.
-          Release still depends on signed title, tax, bank, source-of-funds, family-authority, and adviser evidence.
+          This view restores the memo-style authority ledger first: legal, tax, family, governance, structures,
+          banking, market, and route-source records with source links and decision boundaries. The private
+          release evidence gate appendix follows below.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-md border border-border bg-background/60 p-4">
@@ -684,11 +692,21 @@ function EvidenceMethodologyView({
         </div>
       </section>
 
+      {references ? (
+        <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
+          <ReferencesSection
+            references={references}
+            developmentsCount={developmentsCount ?? 0}
+            precedentCount={precedentCount ?? 0}
+          />
+        </section>
+      ) : null}
+
       <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
         <div className="grid gap-5 lg:grid-cols-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Methodology boundary</p>
-            <h2 className="mt-3 text-2xl font-bold text-foreground">What the memo uses sources for</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Methodology Boundary</p>
+            <h2 className="mt-3 text-2xl font-bold text-foreground">How sources become release gates</h2>
           </div>
           <div className="lg:col-span-2 grid gap-3 sm:grid-cols-2">
             {[
@@ -956,8 +974,25 @@ export default function DecisionMemoAuditClientPage({
   // SYNCHRONOUS citation extraction using useMemo — available on first render
   // This fixes the timing issue where useEffect fires AFTER render, leaving the citationMap empty
   // when Leaflet popups first render (causing all citations to show [1])
-  const { computedCitations, computedCitationMap, computedPreloadedSources, computedEvidenceSections } = useMemo(() => {
+  const {
+    computedCitations,
+    computedCitationMap,
+    computedPreloadedSources,
+    computedEvidenceSections,
+    computedReferences,
+    computedReferencePrecedentCount,
+  } = useMemo(() => {
     const previewData = resolvedSurfaceData?.memoData?.preview_data ?? backendData?.preview_data;
+    const previewRecord = isPlainRecord(previewData) ? previewData : {};
+    const legalReferences = isPlainRecord(previewRecord.legal_references) ? previewRecord.legal_references : undefined;
+    const rawPrecedentCount = Number(
+      previewRecord.precedent_count
+        ?? previewRecord.corridor_signals_count
+        ?? legalReferences?.pattern_count
+        ?? legalReferences?.pattern_witness_count
+        ?? legalReferences?.total_pattern_count
+        ?? 0,
+    );
     const sourceRecords = collectMemoSourceRecords(previewData);
     const opportunities = Array.isArray(previewData?.all_opportunities)
       ? (previewData.all_opportunities as Array<{
@@ -1020,6 +1055,8 @@ export default function DecisionMemoAuditClientPage({
       computedCitationMap: citMap,
       computedPreloadedSources: preloadedSources,
       computedEvidenceSections: collectEvidenceMethodologySections(previewData, sourceRecords),
+      computedReferences: legalReferences,
+      computedReferencePrecedentCount: Number.isFinite(rawPrecedentCount) ? rawPrecedentCount : 0,
     };
   }, [backendData, resolvedSurfaceData]);
 
@@ -2142,6 +2179,9 @@ export default function DecisionMemoAuditClientPage({
             <EvidenceMethodologyView
               citationMap={computedCitationMap}
               evidenceSections={computedEvidenceSections}
+              references={computedReferences}
+              developmentsCount={developmentsCount ?? developmentCount ?? undefined}
+              precedentCount={computedReferencePrecedentCount}
               onCitationClick={handleCitationClick}
             />
           ) : (
