@@ -1521,8 +1521,8 @@ function HouseIntakePanel({
   if (!rows.length) return null;
   return (
     <SurfaceCard
-      title="What The House Needed The Memo To Protect"
-      eyebrow="House Standard Intake"
+      title="What The Memo Must Protect"
+      eyebrow="Decision Scope"
       tone="gold"
     >
       <div className="grid gap-4 xl:grid-cols-2">
@@ -1564,14 +1564,13 @@ function MandateBriefPanel({
 
   return (
     <SurfaceCard
-      title="Why The House Commissioned This Memo"
-      eyebrow="Six-Book Opening"
+      title="Release Decision Opening"
+      eyebrow="Principal Decision Frame"
       tone="gold"
     >
       <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-        This opening keeps the memo tied to the live decision burden in the room: what the house does not yet trust,
-        what story is substituting for proof, what mandate is actually at risk, and what relief has to be earned
-        before approval.
+        The memo is limited to the release question: whether the proposed route can move without tax, banking,
+        title, authority, succession, or operating gaps hardening into the purchase.
       </p>
 
       <div className="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1.08fr),minmax(340px,0.92fr)]">
@@ -1579,7 +1578,7 @@ function MandateBriefPanel({
           <div className="space-y-6 divide-y divide-border/12">
             {liveMove ? (
               <div className="min-w-0 pb-6 first:pt-0">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-gold/70">The Exposed Live Decision</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-gold/70">Live Decision To Release</p>
                 <p className="mt-3 max-w-3xl break-words text-base md:text-[18px] leading-relaxed text-foreground [overflow-wrap:anywhere]">
                   {liveMove}
                 </p>
@@ -1588,7 +1587,7 @@ function MandateBriefPanel({
 
             {substituteStory ? (
               <div className="min-w-0 pt-6">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-gold/70">The Substitute Story Carrying The Room</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-gold/70">Unproven Route Assumption</p>
                 <p className="mt-3 max-w-3xl break-words text-sm md:text-[15px] leading-relaxed text-foreground [overflow-wrap:anywhere]">
                   {substituteStory}
                 </p>
@@ -1597,7 +1596,7 @@ function MandateBriefPanel({
 
             {burdenItems.length ? (
               <div className="min-w-0 pt-6">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-gold/70">The Present Room Burden</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-gold/70">Open Release Burden</p>
                 <div className="mt-3 space-y-3">
                   {burdenItems.slice(0, 4).map((item, index) => (
                     <div key={`burden-brief-${index}`} className="flex gap-3">
@@ -1616,7 +1615,7 @@ function MandateBriefPanel({
         <div className="min-w-0 rounded-[26px] border border-gold/18 bg-gold/[0.05] p-6">
           {(mandateHeadline || mandateItems.length) ? (
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-gold/70">The House Mandate At Risk</p>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-gold/70">Mandate At Risk</p>
               {mandateHeadline ? (
                 <p className="mt-3 break-words text-lg font-semibold tracking-tight text-foreground [overflow-wrap:anywhere]">
                   {mandateHeadline}
@@ -1639,7 +1638,7 @@ function MandateBriefPanel({
 
           {reliefItems.length ? (
             <div className={`${mandateHeadline || mandateItems.length ? 'mt-6 border-t border-border/12 pt-6' : ''} min-w-0`}>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-gold/70">The Relief This Memo Must Earn</p>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-gold/70">Release Conditions To Earn</p>
               <div className="mt-4 space-y-3">
                 {reliefItems.slice(0, 4).map((item, index) => (
                   <div key={`relief-brief-${index}`} className="flex gap-3">
@@ -1675,7 +1674,7 @@ function MandateBriefPanel({
 
           {trustGapItems.length ? (
             <div className="min-w-0 rounded-[24px] border border-amber-500/15 bg-amber-500/[0.04] p-5">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-amber-600/80">Trust Gaps Visible At Intake</p>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-amber-600/80">Evidence Gaps Before Release</p>
               <div className="mt-4 space-y-3">
                 {trustGapItems.slice(0, 4).map((item, index) => (
                   <div key={`trust-gap-${index}`} className="flex gap-3">
@@ -2844,7 +2843,7 @@ export default function HouseGradeMemoSection({
         {sectionHeader(
           'Chapter I',
           'The Governing Correction',
-          `This chapter corrects the room's substitute story. ${corridorLabel} is not approved because the destination feels attractive; it is approved only if tax, banking, title, and succession can be carried as one governable route.`,
+          `${corridorLabel} is not approved because the destination feels attractive. Release is permitted only if tax, banking, title, and succession can be carried as one governable route.`,
           <Target className="h-5 w-5" />,
         )}
         <div className="grid gap-5 2xl:grid-cols-12">
