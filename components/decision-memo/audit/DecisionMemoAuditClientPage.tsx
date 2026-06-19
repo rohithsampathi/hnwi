@@ -106,7 +106,7 @@ interface BackendAuditResponse {
 }
 
 type AuditTier = 'single' | 'annual';
-type MemoViewMode = 'linear' | 'house' | 'route';
+type MemoViewMode = 'linear' | 'house' | 'route' | 'principal' | 'evidence';
 
 const TIER_CONFIG = {
   single: {
@@ -327,6 +327,134 @@ function collectMemoSourceRecords(previewData: unknown): MemoSourceRecord[] {
   return records;
 }
 
+function sourcePayloadText(payload: Record<string, unknown>, fields: string[], fallback = ''): string {
+  for (const field of fields) {
+    const value = payload[field];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return fallback;
+}
+
+function EvidenceMethodologyView({
+  citations,
+  citationMap,
+  sourceRecords,
+  onCitationClick,
+}: {
+  citations: Citation[];
+  citationMap: Map<string, number>;
+  sourceRecords: MemoSourceRecord[];
+  onCitationClick: (citationId: string) => void;
+}) {
+  const citedSourceRecords = sourceRecords
+    .filter((record) => citationMap.has(record.id))
+    .slice(0, 32);
+
+  return (
+    <div className="space-y-8">
+      <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Evidence & Methodology</p>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          Proof rail for the release-readiness review
+        </h1>
+        <p className="mt-4 max-w-4xl text-sm leading-7 text-muted-foreground sm:text-base">
+          This view separates source-review support from release authority. Source records explain why a gate matters.
+          Release still depends on signed title, tax, bank, source-of-funds, family-authority, and adviser evidence.
+        </p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-md border border-border bg-background/60 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Citation records</p>
+            <p className="mt-2 text-3xl font-bold text-foreground">{citations.length}</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Clickable records in the source panel.</p>
+          </div>
+          <div className="rounded-md border border-border bg-background/60 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Visible source rows</p>
+            <p className="mt-2 text-3xl font-bold text-foreground">{citedSourceRecords.length}</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Source-review rows carried into this memo.</p>
+          </div>
+          <div className="rounded-md border border-border bg-background/60 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Decision boundary</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">Evidence-gated</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">No source record replaces counsel, bank, title, or family proof.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
+        <div className="grid gap-5 lg:grid-cols-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Methodology boundary</p>
+            <h2 className="mt-3 text-2xl font-bold text-foreground">What the memo uses sources for</h2>
+          </div>
+          <div className="lg:col-span-2 grid gap-3 sm:grid-cols-2">
+            {[
+              ['Route sequencing', 'Source records help identify known failure modes, sequencing gaps, and when a route usually needs to hold or release differently.'],
+              ['Market discipline', 'Market references sharpen bid discipline, seller timing, carrying cost, and walk-away logic.'],
+              ['Family governance', 'Generational and authority patterns shape the questions the family file must answer before exchange.'],
+              ['Release proof', 'Release authority comes from signed private evidence, not from pattern similarity or public market support.'],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-md border border-border bg-background/60 p-4">
+                <h3 className="font-semibold text-foreground">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
+        <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Source records</p>
+            <h2 className="mt-2 text-2xl font-bold text-foreground">Clickable evidence register</h2>
+          </div>
+          <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+            Click any bracketed citation to open the standard third-column source panel.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          {citedSourceRecords.map((record, index) => {
+            const payload = record.payload;
+            const number = citationMap.get(record.id);
+            const title = sourcePayloadText(payload, ['title', 'brief_title', 'source_title', 'name'], `Source record ${index + 1}`);
+            const category = sourcePayloadText(payload, ['industry', 'category'], 'Route Evidence');
+            const date = sourcePayloadText(payload, ['date', 'source_date', 'published_at'], 'Date gated');
+            const claim = sourcePayloadText(
+              payload,
+              ['claim_supported', 'route_relevance', 'source_signal', 'description', 'summary'],
+              'Source record supports route sequencing and release-gate relevance.',
+            );
+
+            return (
+              <div key={record.id} className="rounded-md border border-border bg-background/60 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{category}</p>
+                    <h3 className="mt-2 text-base font-semibold leading-6 text-foreground">{title}</h3>
+                  </div>
+                  {number ? (
+                    <button
+                      type="button"
+                      onClick={() => onCitationClick(record.id)}
+                      className="shrink-0 rounded-md border border-primary/40 px-2.5 py-1 text-sm font-semibold text-primary transition hover:bg-primary/10"
+                    >
+                      [{number}]
+                    </button>
+                  ) : null}
+                </div>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{claim}</p>
+                <p className="mt-3 text-xs font-medium text-muted-foreground">{date}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function DecisionMemoAuditClientPage({
   initialIntakeId,
   initialSearchParamsString = '',
@@ -342,6 +470,7 @@ export default function DecisionMemoAuditClientPage({
   const pathname = currentPathname?.startsWith('/release-readiness/')
     ? currentPathname
     : canonicalPublicPath;
+  const isReleaseReadinessReviewPath = pathname.startsWith('/release-readiness/review/');
   const searchParams = useMemo(
     () => new URLSearchParams(initialSearchParamsString),
     [initialSearchParamsString],
@@ -355,11 +484,17 @@ export default function DecisionMemoAuditClientPage({
   const usePersonalMode = searchParams.get('personal') === 'true';
   const requestedMemoView = searchParams.get('view');
   const memoViewMode: MemoViewMode =
-    requestedMemoView === 'house'
-      ? 'house'
-      : requestedMemoView === 'route' || requestedMemoView === 'v2'
+    isReleaseReadinessReviewPath
+      ? requestedMemoView === 'route' || requestedMemoView === 'v2'
         ? 'route'
-        : 'linear';
+        : requestedMemoView === 'evidence' || requestedMemoView === 'methodology'
+          ? 'evidence'
+          : 'principal'
+      : requestedMemoView === 'house'
+        ? 'house'
+        : requestedMemoView === 'route' || requestedMemoView === 'v2'
+          ? 'route'
+          : 'linear';
   const canonicalMemoReference = resolveDecisionMemoDisplayReference(intakeId);
 
   useEffect(() => {
@@ -421,7 +556,13 @@ export default function DecisionMemoAuditClientPage({
       params.delete('section');
     }
 
-    if (viewMode === 'house' || viewMode === 'route') {
+    if (isReleaseReadinessReviewPath) {
+      if (viewMode === 'route' || viewMode === 'evidence') {
+        params.set('view', viewMode);
+      } else {
+        params.delete('view');
+      }
+    } else if (viewMode === 'house' || viewMode === 'route') {
       params.set('view', viewMode);
     } else {
       params.delete('view');
@@ -429,7 +570,7 @@ export default function DecisionMemoAuditClientPage({
 
     const query = params.toString();
     return query ? `${pathname}?${query}` : pathname;
-  }, [pathname, searchParams]);
+  }, [isReleaseReadinessReviewPath, pathname, searchParams]);
 
   useTheme();
   const initialDevelopmentCount =
@@ -504,7 +645,7 @@ export default function DecisionMemoAuditClientPage({
   // SYNCHRONOUS citation extraction using useMemo — available on first render
   // This fixes the timing issue where useEffect fires AFTER render, leaving the citationMap empty
   // when Leaflet popups first render (causing all citations to show [1])
-  const { computedCitations, computedCitationMap, computedPreloadedSources } = useMemo(() => {
+  const { computedCitations, computedCitationMap, computedPreloadedSources, computedSourceRecords } = useMemo(() => {
     const previewData = resolvedSurfaceData?.memoData?.preview_data ?? backendData?.preview_data;
     const sourceRecords = collectMemoSourceRecords(previewData);
     const opportunities = Array.isArray(previewData?.all_opportunities)
@@ -563,7 +704,12 @@ export default function DecisionMemoAuditClientPage({
     const citMap = new Map<string, number>();
     citationList.forEach(c => citMap.set(c.id, c.number));
 
-    return { computedCitations: citationList, computedCitationMap: citMap, computedPreloadedSources: preloadedSources };
+    return {
+      computedCitations: citationList,
+      computedCitationMap: citMap,
+      computedPreloadedSources: preloadedSources,
+      computedSourceRecords: sourceRecords,
+    };
   }, [backendData, resolvedSurfaceData]);
 
   // Sync computed citations with useCitationManager (for EliteCitationPanel)
@@ -1387,8 +1533,9 @@ export default function DecisionMemoAuditClientPage({
       openCitation(citationId);
     };
     const isRouteNativeReleaseMemo = Boolean(routeIntelligence);
+    const effectiveMemoViewMode = memoViewMode === 'principal' ? 'house' : memoViewMode;
     const ReportRenderer =
-      memoViewMode === 'house' || isRouteNativeReleaseMemo
+      effectiveMemoViewMode === 'house' || isRouteNativeReleaseMemo
         ? HouseDecisionMemoLinearReport
         : CanonicalDecisionMemoLinearReport;
 
@@ -1478,66 +1625,121 @@ export default function DecisionMemoAuditClientPage({
               </button>
               <div className="w-full min-w-0 xl:w-auto">
                 <div className="flex flex-wrap items-center gap-1 sm:gap-2 xl:justify-end">
-                <button
-                  onClick={() => {
-                    router.push(buildAuditViewHref(false, 'route'));
-                  }}
-                  type="button"
-                  aria-label="Route View"
-                  title="Route View"
-                  className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
-                    memoViewMode === 'route'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border hover:bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <Route className="w-4 h-4" />
-                  <span className="hidden md:inline font-medium">Route View</span>
-                </button>
-                <button
-                  onClick={() => {
-                    router.push(buildAuditViewHref(false, 'linear'));
-                  }}
-                  type="button"
-                  aria-label="Linear View"
-                  title="Linear View"
-                  className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
-                    memoViewMode === 'linear'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border hover:bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <FileText className="w-4 h-4" />
-                  <span className="hidden md:inline font-medium">Linear View</span>
-                </button>
-                <button
-                  onClick={() => {
-                    router.push(buildAuditViewHref(false, 'house'));
-                  }}
-                  type="button"
-                  aria-label="House View"
-                  title="House View"
-                  className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
-                    memoViewMode === 'house'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border hover:bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                  <span className="hidden md:inline font-medium">House View</span>
-                </button>
-                <button
-                  onClick={() => {
-                    router.push(buildAuditViewHref(true));
-                  }}
-                  type="button"
-                  aria-label="War Room Mode"
-                  title="War Room Mode"
-                  className="min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border border-gold bg-gold/5 hover:bg-gold/10 rounded-lg flex items-center justify-center gap-2 transition-colors group"
-                >
-                  <LayoutGrid className="w-4 h-4 text-gold" />
-                  <span className="hidden md:inline text-gold font-medium">War Room Mode</span>
-                </button>
+                {isReleaseReadinessReviewPath ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        router.push(buildAuditViewHref(false, 'principal'));
+                      }}
+                      type="button"
+                      aria-label="Principal View"
+                      title="Principal View"
+                      className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
+                        memoViewMode === 'principal'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      <Shield className="w-4 h-4" />
+                      <span className="hidden md:inline font-medium">Principal View</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        router.push(buildAuditViewHref(false, 'route'));
+                      }}
+                      type="button"
+                      aria-label="Route View"
+                      title="Route View"
+                      className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
+                        memoViewMode === 'route'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      <Route className="w-4 h-4" />
+                      <span className="hidden md:inline font-medium">Route View</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        router.push(buildAuditViewHref(false, 'evidence'));
+                      }}
+                      type="button"
+                      aria-label="Evidence and Methodology"
+                      title="Evidence & Methodology"
+                      className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
+                        memoViewMode === 'evidence'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span className="hidden md:inline font-medium">Evidence & Methodology</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        router.push(buildAuditViewHref(false, 'route'));
+                      }}
+                      type="button"
+                      aria-label="Route View"
+                      title="Route View"
+                      className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
+                        memoViewMode === 'route'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      <Route className="w-4 h-4" />
+                      <span className="hidden md:inline font-medium">Route View</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        router.push(buildAuditViewHref(false, 'linear'));
+                      }}
+                      type="button"
+                      aria-label="Linear View"
+                      title="Linear View"
+                      className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
+                        memoViewMode === 'linear'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span className="hidden md:inline font-medium">Linear View</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        router.push(buildAuditViewHref(false, 'house'));
+                      }}
+                      type="button"
+                      aria-label="House View"
+                      title="House View"
+                      className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
+                        memoViewMode === 'house'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                      <span className="hidden md:inline font-medium">House View</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        router.push(buildAuditViewHref(true));
+                      }}
+                      type="button"
+                      aria-label="War Room Mode"
+                      title="War Room Mode"
+                      className="min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border border-gold bg-gold/5 hover:bg-gold/10 rounded-lg flex items-center justify-center gap-2 transition-colors group"
+                    >
+                      <LayoutGrid className="w-4 h-4 text-gold" />
+                      <span className="hidden md:inline text-gold font-medium">War Room Mode</span>
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={handleShare}
                   aria-label={linkCopied ? 'Link copied' : 'Share'}
@@ -1612,19 +1814,26 @@ export default function DecisionMemoAuditClientPage({
                   <div>
                     <h2 className="text-lg font-semibold">Route intelligence unavailable</h2>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                      The full memo is available in Linear View, but this memo payload does not contain enough route-pressure data for the route view.
+                      The full memo is available in Principal View, but this memo payload does not contain enough route data for the route view.
                     </p>
                     <button
                       type="button"
-                      onClick={() => router.push(buildAuditViewHref(false, 'linear'))}
+                      onClick={() => router.push(buildAuditViewHref(false, 'principal'))}
                       className="mt-5 rounded-md border border-border/40 px-4 py-2 text-sm text-foreground transition hover:border-border"
                     >
-                      Open Linear View
+                      Open Principal View
                     </button>
                   </div>
                 </div>
               </div>
             )
+          ) : memoViewMode === 'evidence' ? (
+            <EvidenceMethodologyView
+              citations={computedCitations}
+              citationMap={computedCitationMap}
+              sourceRecords={computedSourceRecords}
+              onCitationClick={handleCitationClick}
+            />
           ) : (
             <ReportRenderer
               memoData={memoData as any}
