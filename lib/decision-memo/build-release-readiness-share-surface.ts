@@ -181,6 +181,8 @@ function sanitizeShareText(value: unknown): string {
   return text(value)
     .replace(/\bRelease Differently\b/gi, "Gated negotiation only")
     .replace(/\bproceed[-\s]modified\b/gi, "Proceed under signed gates")
+    .replace(/\bremains Proceed under signed gates\b/gi, "remains gated")
+    .replace(/\bShould the family release the purchase route now,\s*Gated negotiation only,\s*hold,\s*or stop\?/gi, "Should the family advance under signed gates, hold, or stop?")
     .replace(/\bHouse Signal Rail\b/gi, "Route Control Summary")
     .replace(/\bDecision EV\b/gi, "Internal model output - not release authority")
     .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")

@@ -52,6 +52,8 @@ function routeDisplayText(value: unknown): string {
   return value
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
     .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bremains Proceed under signed gates\b/gi, 'remains gated')
+    .replace(/\bShould the family release the purchase route now,\s*Gated negotiation only,\s*hold,\s*or stop\?/gi, 'Should the family advance under signed gates, hold, or stop?')
     .replace(/\bNative Route Drivers\b/gi, 'Route Drivers From Source Review')
     .replace(/\bSIX-BOOK OPENING\b/gi, 'Decision Opening')
     .replace(/\bSix-book opening\b/gi, 'Decision opening')
