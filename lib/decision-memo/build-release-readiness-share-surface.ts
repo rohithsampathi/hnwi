@@ -82,6 +82,43 @@ export interface ReleaseReadinessShareCitation {
   originalText: string;
 }
 
+export interface ReleaseReadinessShareCard {
+  label: string;
+  value?: string;
+  title?: string;
+  body?: string;
+  owner?: string;
+  status?: string;
+  releaseCondition?: string;
+}
+
+export interface ReleaseReadinessShareTable {
+  columns: string[];
+  rows: string[][];
+}
+
+export interface ReleaseReadinessShareChartPoint {
+  year: number;
+  value: number;
+}
+
+export interface ReleaseReadinessShareChartSeries {
+  name: string;
+  verdict: string;
+  points: ReleaseReadinessShareChartPoint[];
+}
+
+export interface ReleaseReadinessShareReportSection {
+  id: string;
+  eyebrow: string;
+  title: string;
+  intro?: string;
+  cards?: ReleaseReadinessShareCard[];
+  table?: ReleaseReadinessShareTable;
+  bullets?: string[];
+  chart?: ReleaseReadinessShareChartSeries[];
+}
+
 export interface ReleaseReadinessSharePayload {
   surfaceContract: typeof SHARE_SURFACE_CONTRACT;
   reference: string;
@@ -105,6 +142,7 @@ export interface ReleaseReadinessSharePayload {
   privateEvidence: ReleaseReadinessPrivateEvidence[];
   methodDrivers: ReleaseReadinessMethodDriver[];
   citations: ReleaseReadinessShareCitation[];
+  reportSections: ReleaseReadinessShareReportSection[];
 }
 
 function isRecord(value: unknown): value is RecordLike {
@@ -494,6 +532,756 @@ function releasePacketList(value: unknown, fallback: string[]): string[] {
   return (Array.isArray(value) && value.length ? value : fallback).map(sanitizeShareText).filter(Boolean);
 }
 
+function moneyText(value: unknown, fallback = "Release-gated"): string {
+  const numeric = numberOr(value);
+  if (!numeric) return fallback;
+  return `US$${Math.round(numeric).toLocaleString("en-US")}`;
+}
+
+function percentText(value: unknown, fallback = "Release-gated"): string {
+  const numeric = numberOr(value, Number.NaN);
+  if (!Number.isFinite(numeric)) return fallback;
+  return `${numeric.toFixed(Math.abs(numeric) < 10 ? 2 : 1)}%`;
+}
+
+function safeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(sanitizeShareText).filter(Boolean);
+}
+
+function cleanRows(rows: string[][]): string[][] {
+  return rows
+    .map((row) => row.map((cell) => sanitizeShareText(cell || "Release-gated")))
+    .filter((row) => row.some((cell) => cell && cell !== "Release-gated"));
+}
+
+function reportSection(section: ReleaseReadinessShareReportSection): ReleaseReadinessShareReportSection {
+  return sanitizeObject({
+    ...section,
+    cards: section.cards?.filter((card) => Boolean(card.label || card.title || card.value || card.body)),
+    table: section.table
+      ? {
+          columns: section.table.columns.map(sanitizeShareText),
+          rows: cleanRows(section.table.rows),
+        }
+      : undefined,
+    bullets: section.bullets?.map(sanitizeShareText).filter(Boolean),
+  });
+}
+
+function routeSanitizedParty(value: unknown): string {
+  return sanitizeShareText(value)
+    .replace(/\bSpouse if family-home use or veto rights are relevant\b/gi, "Family-home veto holder where recorded")
+    .replace(/\bSpouse if family-home use is intended\b/gi, "Family-home veto holder where recorded")
+    .replace(/\bSpouse\b/g, "Family-home veto holder")
+    .replace(/\bG2 son\b/gi, "Named family user")
+    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, "Named family-fairness owner")
+    .replace(/\bG3\/grandchild\b/gi, "Next-generation continuity")
+    .replace(/\bG3 grandson\b/gi, "Next-generation continuity")
+    .replace(/\bgrandson\b/gi, "next-generation beneficiary");
+}
+
+function buildInputFrameSection(payload: {
+  move: string;
+  corridor: string;
+  decision: string;
+  releaseRule: string;
+  purpose: string;
+  capitalRule: string;
+}): ReleaseReadinessShareReportSection {
+  return reportSection({
+    id: "input-frame",
+    eyebrow: "What the principal asked the memo to settle",
+    title: "Original input frame",
+    intro:
+      "The review starts with one live route. It does not approve London, Mayfair, or a buyer structure in the abstract; it asks whether this specific move can release without the route hardening before proof.",
+    cards: [
+      {
+        label: "Live move",
+        value: payload.corridor,
+        body: payload.move,
+      },
+      {
+        label: "Approved decision posture",
+        value: payload.decision,
+        body: payload.releaseRule,
+      },
+      {
+        label: "Purpose boundary",
+        value: "Family use and continuity",
+        body: payload.purpose,
+      },
+      {
+        label: "Capital release rule",
+        value: "No capital release",
+        body: payload.capitalRule,
+      },
+    ],
+  });
+}
+
+function buildCapitalSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const audit = asRecord(pickSection(resolved, "cross_border_audit_summary"));
+  const acquisition = asRecord(asRecord(audit.acquisition_audit));
+  const market = asRecord(pickSection(resolved, "current_market_data"));
+  const model = asRecord(market.acquisition_duty_model);
+  const wealth = asRecord(pickSection(resolved, "wealth_projection_data"));
+  const costOfInaction = asRecord(wealth.cost_of_inaction);
+  const annual = asRecord(pickSection(resolved, "annual_wealth_engine"));
+  const carryModel = asRecord(annual.carrying_cost_model);
+  const components = asArray(carryModel.annual_components);
+
+  return reportSection({
+    id: "capital-exposure-proof",
+    eyebrow: "Capital and exposure proof",
+    title: "What the house is really committing before operating costs",
+    intro:
+      "The guide price is not the economic exposure. The room must see purchase price, duty drag, annual carry, FX friction, and opportunity cost before bid release.",
+    cards: [
+      {
+        label: "Transaction value",
+        value: moneyText(acquisition.property_value_usd ?? model.price_usd),
+        body: "Model transaction value converted to USD from the guide-price basis.",
+      },
+      {
+        label: "Base SDLT",
+        value: moneyText(acquisition.bsd_stamp_duty_usd ?? model.primary_fee_usd),
+        body: "Base residential SDLT component for the selected control case.",
+      },
+      {
+        label: "Non-resident + additional-dwelling surcharges",
+        value: moneyText(acquisition.absd_additional_stamp_duty_usd ?? model.secondary_fee_usd),
+        body: "Modeled surcharge exposure before any relief or refund is credited.",
+      },
+      {
+        label: "Total duty drag",
+        value: moneyText(acquisition.total_stamp_duties_usd ?? model.direct_total_duties_usd),
+        body: `${percentText(acquisition.duty_drag_pct ?? model.direct_duty_drag_pct_of_price)} of transaction value in the control case.`,
+      },
+      {
+        label: "All-in before operating costs",
+        value: moneyText(acquisition.total_acquisition_cost_usd ?? model.direct_total_outlay_usd),
+        body: "Purchase price plus modeled day-one duty drag; final exposure changes only after counsel signs the route.",
+      },
+      {
+        label: "Annual carry before opportunity cost",
+        value: moneyText(annual.annual_carrying_cost_before_opportunity_usd ?? model.annual_carrying_cost_before_opportunity_usd),
+        body: sanitizeShareText(carryModel.use_policy_read ?? annual.read),
+      },
+      {
+        label: "FX friction control",
+        value: moneyText(model.one_time_fx_spread_control_usd ?? carryModel.one_time_fx_spread_control_usd),
+        body: "One-time FX spread control estimate; final execution quote remains bank-gated.",
+      },
+      {
+        label: "Every 100 bps of opportunity cost",
+        value: moneyText(model.opportunity_cost_per_100bps_usd ?? asRecord(carryModel.opportunity_cost_sensitivity).per_100bps_on_purchase_price_usd),
+        body: sanitizeShareText(asRecord(carryModel.opportunity_cost_sensitivity).read ?? costOfInaction.primary_driver),
+      },
+    ],
+    table: {
+      columns: ["Carry component", "Annual amount", "Owner", "Release condition"],
+      rows: components.map((component) => [
+        text(component.label),
+        moneyText(component.amount_usd),
+        text(component.owner),
+        text(component.release_condition),
+      ]),
+    },
+  });
+}
+
+function buildTaxSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const market = asRecord(pickSection(resolved, "current_market_data"));
+  const model = asRecord(market.acquisition_duty_model);
+  const audit = asRecord(pickSection(resolved, "cross_border_audit_summary"));
+  const acquisition = asRecord(audit.acquisition_audit);
+  const realAsset = asRecord(pickSection(resolved, "real_asset_audit"));
+  const destination = asRecord(realAsset["London / United Kingdom"]);
+  const strategies = asArray(destination.loophole_strategies);
+
+  return reportSection({
+    id: "tax-legal-route-readiness",
+    eyebrow: "Tax and legal route readiness",
+    title: "The route is tax-modeled, not tax-released",
+    intro: sanitizeShareText(model.basis ?? "The memo uses official tax sources for the model and keeps final treatment counsel-gated."),
+    cards: [
+      {
+        label: "Buyer category",
+        value: text(acquisition.buyer_category ?? model.buyer_category),
+        body: "Control case used until counsel signs a different buyer profile at the trigger date.",
+      },
+      {
+        label: "Main-residence route",
+        value: moneyText(model.main_residence_total_duties_usd),
+        body: "Lower-duty case only if residence and disposal facts are signed; no future intention is credited.",
+      },
+      {
+        label: "Company / non-natural-person route",
+        value: moneyText(model.entity_total_duties_usd),
+        body: "Higher complexity and disclosure route; only valid if a non-tax purpose survives counsel and bank acceptance.",
+      },
+      {
+        label: "Avoided wrapper increment",
+        value: moneyText(model.entity_incremental_duty_vs_direct_usd),
+        body: "Avoided incremental duty versus entity route; this is not framed as a tax-saving thesis.",
+      },
+      {
+        label: "ATED top-band exposure",
+        value: moneyText(model.ated_2026_27_over_20m_usd),
+        body: "Annual exposure before relief review if a company/non-natural-person route is used.",
+      },
+      {
+        label: "Source currency basis",
+        value: text(model.source_currency, "GBP"),
+        body: `USD model rate: ${text(model.source_to_usd_rate ?? acquisition.fx_rate_to_usd)}. Final execution quote remains bank-gated.`,
+      },
+    ],
+    table: {
+      columns: ["Route reviewed", "Mechanism", "Model effect", "Release requirement"],
+      rows: strategies.map((strategy) => [
+        text(strategy.name),
+        text(strategy.mechanism),
+        text(strategy.tax_savings_potential),
+        safeStringArray(strategy.requirements).join("; "),
+      ]),
+    },
+  });
+}
+
+function buildMarketSection(
+  resolved: ResolvedDecisionMemoSurfaceData,
+  methodDrivers: ReleaseReadinessMethodDriver[],
+): ReleaseReadinessShareReportSection {
+  const market = asRecord(pickSection(resolved, "market_validation"));
+  const expected = asRecord(market.expected_vs_reality);
+  const peer = asRecord(pickSection(resolved, "peer_cohort_stats"));
+  const expectations = Object.values(expected).filter(isRecord);
+  const dataSources = safeStringArray(market.data_sources_used);
+
+  return reportSection({
+    id: "market-intelligence",
+    eyebrow: "Market intelligence and peer read",
+    title: "Market attractiveness is not release authority",
+    intro: sanitizeShareText(
+      market.recommendation ??
+        "Market intelligence is used for bid discipline, timing control, and proof of what must be signed before the route can advance.",
+    ),
+    cards: [
+      {
+        label: "Confidence",
+        value: text(market.overall_confidence, "Moderate"),
+        body: sanitizeShareText(market.model_basis),
+      },
+      {
+        label: "Routes compared",
+        value: text(market.route_options_compared, "5"),
+        body: "Direct, main-residence/replacement, wrapper, hold/rent-first, and stop/reset routes are reviewed against release conditions.",
+      },
+      {
+        label: "Public source anchors",
+        value: text(market.source_count, "31"),
+        body: "Public legal, tax, property, market, and FX anchors support the model; private files still govern release.",
+      },
+      {
+        label: "Transaction analogues",
+        value: text(peer.direct_route_precedent_count, "21"),
+        body: sanitizeShareText(peer.data_quality_note),
+      },
+      ...methodDrivers.slice(0, 4).map((driver) => ({
+        label: driver.title,
+        value: "Route driver",
+        body: `${driver.driver} ${driver.releaseRead}`,
+      })),
+    ],
+    table: {
+      columns: ["Expectation", "Market read", "Deviation", "Decision consequence"],
+      rows: expectations.map((row) => [
+        text(row.your_expectation),
+        text(row.market_actual),
+        text(row.deviation),
+        text(row.warning),
+      ]),
+    },
+    bullets: dataSources,
+  });
+}
+
+function buildWealthProjectionSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const wealth = asRecord(pickSection(resolved, "wealth_projection_data"));
+  const scenarios = asRecord(wealth.scenarios);
+  const scenarioEntries = ["base", "stress", "opportunity"]
+    .map((key) => [key, asRecord(scenarios[key])] as const)
+    .filter(([, scenario]) => Object.keys(scenario).length);
+  const chart = scenarioEntries.map(([, scenario]) => ({
+    name: sanitizeShareText(scenario.name),
+    verdict: sanitizeShareText(scenario.verdict),
+    points: asArray(scenario.year_by_year).map((point) => ({
+      year: numberOr(point.year),
+      value: numberOr(point.total_value ?? point.property_value ?? point.net_worth),
+    })),
+  }));
+
+  return reportSection({
+    id: "wealth-projection",
+    eyebrow: "Base / stress / opportunity",
+    title: "The curve must survive duty drag before it becomes a wealth story",
+    intro:
+      "The projection is a route-governance model. It shows whether the route can absorb day-one duty drag, early drawdown, annual carry, and family-control purpose.",
+    cards: [
+      {
+        label: "Capital deployed",
+        value: moneyText(wealth.capital_deployed),
+        body: sanitizeShareText(asRecord(wealth.cost_of_inaction).primary_driver),
+      },
+      {
+        label: "Expected value creation",
+        value: moneyText(asRecord(wealth.probability_weighted).expected_value_creation),
+        body: "Probability-weighted model after base, stress, and opportunity paths.",
+      },
+      {
+        label: "Cost of hardening too early",
+        value: moneyText(asRecord(wealth.cost_of_inaction).estimated_day_one_drag_usd),
+        body: sanitizeShareText(asRecord(wealth.cost_of_inaction).secondary_driver),
+      },
+    ],
+    table: {
+      columns: ["Scenario", "Probability", "Year 10 value", "Net result vs capital", "Memo read"],
+      rows: scenarioEntries.map(([, scenario]) => [
+        text(scenario.name),
+        percentText(numberOr(scenario.probability) * 100),
+        moneyText(scenario.year_10_value ?? asRecord(scenario.ten_year_outcome).final_value),
+        moneyText(asRecord(scenario.ten_year_outcome).net_value_creation),
+        text(scenario.verdict),
+      ]),
+    },
+    chart,
+  });
+}
+
+function buildCrisisSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const crisis = asRecord(pickSection(resolved, "crisis_data"));
+  const overall = asRecord(crisis.overall_resilience);
+  const risks = asArray(crisis.route_risks);
+  const selectedRisks = risks
+    .filter((risk) =>
+      /bank|AI|technology|job|labor|war|geopolitical|sanction|digital|stablecoin|rates|insurance|security|travel/i.test(
+        text(risk.label),
+      ),
+    )
+    .slice(0, 8);
+  const bankSimulation = asArray(crisis.bank_compliance_escalation_simulation).slice(0, 5);
+
+  return reportSection({
+    id: "crisis-resilience",
+    eyebrow: "Crisis resilience",
+    title: "The purchase must survive live crisis regimes before exchange",
+    intro: sanitizeShareText(
+      overall.summary ??
+        "The route cannot release until bank, source, sanctions, insurance, security, travel, technology, labor-income, and absence-readiness controls are evidenced.",
+    ),
+    cards: [
+      {
+        label: "Overall resilience",
+        value: text(overall.rating, "Release-critical"),
+        body: `Score ${text(overall.score, "68")}/100. ${sanitizeShareText(overall.buffer_required)}`,
+      },
+      {
+        label: "Worst-case loss boundary",
+        value: text(overall.worst_case_loss, "Duty drag plus deposit, FX, and adviser slippage"),
+        body: sanitizeShareText(overall.recovery_time),
+      },
+      ...selectedRisks.map((risk) => ({
+        label: text(risk.status, "Release-gated"),
+        title: text(risk.label),
+        body: text(risk.detail),
+        status: `${text(risk.decision_window_days, "7")} day window`,
+        releaseCondition: safeStringArray(risk.impact_channels).join(", "),
+      })),
+    ],
+    table: {
+      columns: ["Bank compliance escalation", "Breakpoint", "Required response"],
+      rows: bankSimulation.map((row) => [
+        text(row.scenario),
+        text(row.breakpoint),
+        text(row.required_response),
+      ]),
+    },
+    bullets: safeStringArray(overall.key_vulnerabilities),
+  });
+}
+
+function buildAntifragilitySection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const stressTests = asArray(pickSection(resolved, "crisis_resilience_stress_test"));
+  const anti = asArray(pickSection(resolved, "antifragile_resilience_test"));
+
+  return reportSection({
+    id: "anti-fragility",
+    eyebrow: "Anti-fragility review",
+    title: "The route must get stronger when challenged, not merely documented",
+    intro:
+      "A Mayfair route is not resilient because advisers agree. It is resilient only if the room can stop, explain, retrieve, and reroute when bank, seller, family, or counsel conditions move against it.",
+    cards: anti.map((row) => ({
+      label: text(row.control),
+      body: text(row.stress_event),
+      releaseCondition: text(row.release_test),
+    })),
+    table: {
+      columns: ["Control", "Stress event", "Release test", "Owner", "Window"],
+      rows: stressTests.map((row) => [
+        text(row.control),
+        text(row.stress_event),
+        text(row.release_test),
+        text(row.owner),
+        `${text(row.decision_window_days, "7")} days`,
+      ]),
+    },
+  });
+}
+
+function buildGenerationSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const heir = asRecord(pickSection(resolved, "heir_management_data"));
+  const g1 = asRecord(heir.g1_position);
+  const g12 = asRecord(heir.g1_to_g2_transfer);
+  const g23 = asRecord(heir.g2_to_g3_transfer);
+  const structured = asRecord(heir.with_structure);
+  const third = asRecord(heir.third_generation_problem);
+  const layerMap = asArray(heir.succession_layer_map);
+
+  return reportSection({
+    id: "g1-g2-g3-continuity",
+    eyebrow: "G1 -> G2 -> G3 wealth transfer",
+    title: "The house should transfer responsibility before it transfers symbolism",
+    intro: sanitizeShareText(
+      heir.read ??
+        "The property must be legible across generations: who can use it, who can stop it, who pays for it, and who can explain it later.",
+    ),
+    cards: [
+      {
+        label: "G1 route control",
+        value: text(g1.asset_value_formatted ?? moneyText(g1.asset_value)),
+        body: text(g1.read),
+        status: `Retention ${text(g1.retention_score, "78")}%`,
+        releaseCondition: text(g1.compatibility),
+      },
+      {
+        label: "G1 -> G2 operating transfer",
+        value: text(g12.net_to_heirs_formatted ?? moneyText(g12.net_to_heirs)),
+        body: text(g12.read),
+        status: `Retention ${text(g12.retention_score, "64")}%`,
+        releaseCondition: text(g12.compatibility),
+      },
+      {
+        label: "G2 -> G3 without governance lock",
+        value: text(g23.without_structure_formatted ?? moneyText(g23.net_to_g3_without_structure)),
+        body: text(g23.read),
+        status: `Retention ${text(g23.retention_score_without_structure, "35")}%`,
+        releaseCondition: text(g23.compatibility),
+      },
+      {
+        label: "With release-readiness governance",
+        value: text(structured.with_structure_formatted ?? moneyText(structured.net_to_g3_with_structure)),
+        body: text(structured.compatibility),
+        status: `Retention ${text(structured.retention_score, "65")}%`,
+        releaseCondition: text(structured.loss_point),
+      },
+    ],
+    table: {
+      columns: ["Succession layer", "Compatibility", "Loss if unfixed", "Release lock"],
+      rows: layerMap.map((row) => [
+        text(row.layer),
+        text(row.compatibility),
+        text(row.loss_if_unfixed),
+        text(row.release_lock),
+      ]),
+    },
+    bullets: safeStringArray(third.causes),
+  });
+}
+
+function buildAuthoritySection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const authority = asRecord(pickSection(resolved, "authority_and_veto_matrix"));
+  const heir = asRecord(pickSection(resolved, "heir_management_data"));
+  const framework = asRecord(heir.governance_framework);
+
+  return reportSection({
+    id: "authority-veto",
+    eyebrow: "Authority, approvers, and veto rights",
+    title: "The route should not depend on one person being present",
+    intro:
+      "Before bid release or exchange, the room must know who can approve, stop, delay, retrieve, explain, and escalate the route.",
+    cards: [
+      {
+        label: "Decision threshold",
+        value: "Signed gates",
+        body: text(framework.decision_threshold),
+      },
+      {
+        label: "Review cadence",
+        value: text(framework.family_council_frequency),
+        body: "Cadence only matters if minutes and gate states are retrievable.",
+      },
+      {
+        label: "Veto power",
+        value: "Recorded before exchange",
+        body: text(framework.veto_power),
+      },
+    ],
+    table: {
+      columns: ["Authority group", "Names or roles"],
+      rows: [
+        ["Decision makers", safeStringArray(authority.decision_makers).map(routeSanitizedParty).join("; ")],
+        ["Family roles", safeStringArray(authority.family_roles).map(routeSanitizedParty).join("; ")],
+        ["Veto holders", safeStringArray(authority.veto_holders).map(routeSanitizedParty).join("; ")],
+        ["Succession triggers", safeStringArray(framework.succession_triggers).join("; ")],
+      ],
+    },
+  });
+}
+
+function buildResponsibilitySection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const matrix = asArray(pickSection(resolved, "responsibility_transfer_matrix"));
+
+  return reportSection({
+    id: "responsibility-transfer",
+    eyebrow: "Responsibility transfer matrix",
+    title: "Who can see, stop, sign, move, retrieve, and explain",
+    intro:
+      "This is the operational-chain test. Wealth is not enough if the right person cannot move, stop, or explain the route under time pressure.",
+    table: {
+      columns: ["Role", "See", "Stop", "Sign", "Move", "Retrieve", "Explain", "Release status"],
+      rows: matrix.map((row) => [
+        routeSanitizedParty(row.party),
+        text(row.can_see),
+        text(row.can_stop),
+        text(row.can_sign),
+        text(row.can_move),
+        text(row.can_retrieve),
+        text(row.can_explain),
+        text(row.release_status),
+      ]),
+    },
+  });
+}
+
+function buildRecordMismatchSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const mismatch = asRecord(pickSection(resolved, "record_mismatch_map"));
+  const matrix = asArray(mismatch.matrix);
+
+  return reportSection({
+    id: "record-mismatch",
+    eyebrow: "Record mismatch map",
+    title: "Cash, title, tax, bank, and family authority must tell one story",
+    intro:
+      "The route holds if the documents describe different buyers, owners, tax positions, signers, accounts, or family authority.",
+    table: {
+      columns: ["Record", "Current record", "Mismatch risk", "Target record", "Owner", "Status"],
+      rows: matrix.map((row) => [
+        text(row.record),
+        routeSanitizedParty(row.current_record),
+        text(row.mismatch_risk),
+        text(row.target_record),
+        text(row.owner),
+        text(row.release_status),
+      ]),
+    },
+    bullets: safeStringArray(mismatch.documents),
+  });
+}
+
+function buildBankingSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const direct = asRecord(pickSection(resolved, "sow_sof_bank_acceptance_readiness"));
+  const operational = asRecord(pickSection(resolved, "operational_chain_readiness"));
+  const custody = asRecord(operational.custody_and_banking_rail_proof);
+
+  return reportSection({
+    id: "banking-sow-sof",
+    eyebrow: "Banking rails and SoW/SoF acceptance",
+    title: "The movement rail has to accept the source file before the seller clock governs",
+    intro: sanitizeShareText(direct.standard ?? custody.source_standard),
+    cards: [
+      {
+        label: "Release status",
+        value: text(direct.release_status, "Required before irrevocable commitment"),
+        body: safeStringArray(direct.evidence).join(" "),
+      },
+      {
+        label: "Source standard",
+        value: "Corroborated, not narrated",
+        body: text(custody.source_standard),
+      },
+    ],
+    table: {
+      columns: ["Rail or proof class", "Requirement"],
+      rows: [
+        ...safeStringArray(custody.rails).map((rail) => ["Bank rail", rail]),
+        ...safeStringArray(custody.proof_required).map((proof) => ["Proof required", proof]),
+      ],
+    },
+  });
+}
+
+function buildCounselQuestionSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const questions = asArray(pickSection(resolved, "counsel_operator_question_pack"));
+
+  return reportSection({
+    id: "counsel-operator-questions",
+    eyebrow: "Counsel and operator question pack",
+    title: "Exact questions that turn adviser input into release evidence",
+    intro:
+      "The memo should help the existing adviser stack, not replace it. Each question names the desk that must convert a claim into written release evidence.",
+    table: {
+      columns: ["Desk", "Question"],
+      rows: questions.map((row) => [text(row.domain), routeSanitizedParty(row.question)]),
+    },
+  });
+}
+
+function buildInformationAndMemorySection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const flow = asArray(pickSection(resolved, "information_flow_dashboard"));
+  const memory = asRecord(pickSection(resolved, "decision_memory_packet"));
+
+  return reportSection({
+    id: "information-flow-decision-memory",
+    eyebrow: "Information flow and decision memory",
+    title: "The route must be retrievable six years later",
+    intro: sanitizeShareText(memory.why_recorded),
+    cards: [
+      {
+        label: "Decision memory owner",
+        value: text(memory.owner, "Family office operator / CFO"),
+        body: safeStringArray(memory.retrieval_keys).join("; "),
+      },
+      {
+        label: "Retrieval rule",
+        value: "No founder-memory dependency",
+        body: "The room must be able to retrieve the release rule, evidence register, stop triggers, final counsel questions, and annual review owner without asking the founder.",
+      },
+    ],
+    table: {
+      columns: ["Report", "Cadence", "Owner", "Recipients", "Release relevance"],
+      rows: flow.map((row) => [
+        text(row.report),
+        text(row.cadence),
+        routeSanitizedParty(row.owner),
+        routeSanitizedParty(row.recipients),
+        text(row.release_relevance),
+      ]),
+    },
+  });
+}
+
+function buildSpecialistReleaseSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const groups = [
+    ...asArray(pickSection(resolved, "education_school_fee_readiness")),
+    ...asArray(pickSection(resolved, "immigration_route_readiness")),
+    ...asArray(pickSection(resolved, "post_2025_tax_residence_trust_iht_review")),
+    ...asArray(pickSection(resolved, "overseas_entity_register_readiness")),
+  ];
+
+  return reportSection({
+    id: "specialist-release-reviews",
+    eyebrow: "Specialist release reviews",
+    title: "Property is only one rail in the family move",
+    intro:
+      "The purchase can be legally plausible and still fail the residence, education, tax, succession, beneficial-owner, or reporting job it is expected to do.",
+    table: {
+      columns: ["Gate", "Answer", "Decision consequence", "Evidence required", "Owner"],
+      rows: groups.map((row) => [
+        text(row.gate),
+        text(row.answer),
+        text(row.decision_consequence),
+        text(row.family_evidence_required),
+        text(row.owner),
+      ]),
+    },
+  });
+}
+
+function buildImplementationSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const sequence = asArray(pickSection(resolved, "execution_sequence"));
+
+  return reportSection({
+    id: "implementation-roadmap",
+    eyebrow: "Implementation roadmap",
+    title: "A route can advance only in this evidence order",
+    intro:
+      "The roadmap prevents the room from treating seller timing as permission. Every step has an owner, sequence, and release gate.",
+    table: {
+      columns: ["Order", "Step", "Action", "Owner", "Timeline", "Release gate"],
+      rows: sequence.map((row) => [
+        text(row.step ?? row.order),
+        text(row.title),
+        routeSanitizedParty(row.action),
+        routeSanitizedParty(row.owner),
+        text(row.timeline),
+        text(row.release_gate),
+      ]),
+    },
+  });
+}
+
+function buildScenarioTreeSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const tree = asRecord(pickSection(resolved, "scenario_tree_data"));
+  const branches = asArray(tree.branches);
+
+  return reportSection({
+    id: "release-rule-scenario-tree",
+    eyebrow: "Release rule scenario tree",
+    title: text(tree.decision_point, "Should the family release, release differently, hold, or stop?"),
+    intro:
+      "The final decision does not turn on whether London is attractive. It turns on whether evidence, authority, banking, title, tax, and family consequence can carry the route.",
+    table: {
+      columns: ["Branch", "Condition", "Consequence", "Verdict"],
+      rows: branches.map((row) => [
+        text(row.branch),
+        text(row.condition),
+        text(row.consequence),
+        text(row.verdict),
+      ]),
+    },
+  });
+}
+
+function buildFullReportSections(
+  resolved: ResolvedDecisionMemoSurfaceData,
+  payloadSeed: {
+    move: string;
+    corridor: string;
+    decision: string;
+    releaseRule: string;
+    purpose: string;
+    capitalRule: string;
+  },
+  methodDrivers: ReleaseReadinessMethodDriver[],
+): ReleaseReadinessShareReportSection[] {
+  return [
+    buildInputFrameSection(payloadSeed),
+    buildCapitalSection(resolved),
+    buildTaxSection(resolved),
+    buildMarketSection(resolved, methodDrivers),
+    buildWealthProjectionSection(resolved),
+    buildScenarioTreeSection(resolved),
+    buildCrisisSection(resolved),
+    buildAntifragilitySection(resolved),
+    buildGenerationSection(resolved),
+    buildAuthoritySection(resolved),
+    buildResponsibilitySection(resolved),
+    buildRecordMismatchSection(resolved),
+    buildBankingSection(resolved),
+    buildCounselQuestionSection(resolved),
+    buildSpecialistReleaseSection(resolved),
+    buildInformationAndMemorySection(resolved),
+    buildImplementationSection(resolved),
+  ].filter((section) => {
+    const hasCards = Boolean(section.cards?.length);
+    const hasRows = Boolean(section.table?.rows?.length);
+    const hasBullets = Boolean(section.bullets?.length);
+    const hasChart = Boolean(section.chart?.some((series) => series.points.length));
+    return hasCards || hasRows || hasBullets || hasChart;
+  });
+}
+
 function toShareRouteOption(option: RouteIntelligenceOptionV2): ReleaseReadinessShareRouteOption {
   const safe = sanitizeRouteOption(option);
   return {
@@ -589,18 +1377,36 @@ export function buildReleaseReadinessSharePayload(
   const publicSources = buildSafePublicSources(resolved);
   const methodDrivers = buildMethodDriversForPayload(route);
   const citations = collectPayloadCitations(methodDrivers, publicSources);
+  const decision = "Gated negotiation only";
+  const releaseRule = "Release differently";
+  const purpose = "London family use and continuity. Not approved as yield, prestige, wrapper planning, or residence planning.";
+  const capitalRule =
+    "No bid without closed comps and walk-away price. No exchange or deposit release without signed title, SDLT, source, bank rail, family authority, and bid discipline.";
+  const corridor = sanitizeShareText(route.corridor);
+  const move = sanitizeShareText(route.move);
+  const reportSections = buildFullReportSections(
+    resolved,
+    {
+      move,
+      corridor,
+      decision,
+      releaseRule,
+      purpose,
+      capitalRule,
+    },
+    methodDrivers,
+  );
 
   return {
     surfaceContract: SHARE_SURFACE_CONTRACT,
     reference,
     title: sanitizeShareText(route.surfaceTitle ?? "Release Readiness Review"),
-    corridor: sanitizeShareText(route.corridor),
-    move: sanitizeShareText(route.move),
-    decision: "Gated negotiation only",
-    releaseRule: "Release differently",
-    purpose: "London family use and continuity. Not approved as yield, prestige, wrapper planning, or residence planning.",
-    capitalRule:
-      "No bid without closed comps and walk-away price. No exchange or deposit release without signed title, SDLT, source, bank rail, family authority, and bid discipline.",
+    corridor,
+    move,
+    decision,
+    releaseRule,
+    purpose,
+    capitalRule,
     rationale: sanitizeShareText(
       releasePacket.rationale ??
         "The route can advance only if authority, evidence, source, bank, title, tax, and family-use gates clear before seller timing hardens.",
@@ -617,6 +1423,7 @@ export function buildReleaseReadinessSharePayload(
     privateEvidence: buildPrivateEvidenceForPayload(),
     methodDrivers,
     citations,
+    reportSections,
   };
 }
 

@@ -15,6 +15,9 @@ import type {
   ReleaseReadinessShareRouteOption,
   ReleaseReadinessShareSource,
   ReleaseReadinessPrivateEvidence,
+  ReleaseReadinessShareReportSection,
+  ReleaseReadinessShareCard,
+  ReleaseReadinessShareChartSeries,
 } from "@/lib/decision-memo/build-release-readiness-share-surface";
 
 type ViewMode = "principal" | "linear" | "evidence" | "methodology";
@@ -197,6 +200,8 @@ function PrincipalRouteView({ payload }: { payload: ReleaseReadinessSharePayload
           ))}
         </div>
       </Section>
+
+      <FullReportSections sections={payload.reportSections} />
     </>
   );
 }
@@ -245,6 +250,171 @@ function RouteOptionCard({ option, selected }: { option: ReleaseReadinessShareRo
         </div>
       </div>
     </div>
+  );
+}
+
+function ReportCard({ card }: { card: ReleaseReadinessShareCard }) {
+  return (
+    <article className="rounded-md border border-border bg-card/70 p-5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {cleanDisplayText(card.label)}
+      </p>
+      {card.value ? <p className="mt-3 text-2xl font-semibold text-foreground">{cleanDisplayText(card.value)}</p> : null}
+      {card.title ? <h3 className="mt-3 text-lg font-semibold leading-7 text-foreground">{cleanDisplayText(card.title)}</h3> : null}
+      {card.body ? <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(card.body)}</p> : null}
+      {card.owner ? <p className="mt-3 text-sm font-semibold text-primary">{cleanDisplayText(card.owner)}</p> : null}
+      {card.status ? <p className="mt-3 text-sm font-semibold text-foreground">{cleanDisplayText(card.status)}</p> : null}
+      {card.releaseCondition ? (
+        <p className="mt-3 border-t border-border pt-3 text-sm leading-6 text-muted-foreground">
+          <span className="font-semibold text-foreground">Release condition:</span>{" "}
+          {cleanDisplayText(card.releaseCondition)}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+function ReportTable({ table }: { table: NonNullable<ReleaseReadinessShareReportSection["table"]> }) {
+  if (!table.rows.length) return null;
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-border">
+      <table className="min-w-full border-collapse text-left text-sm">
+        <thead className="bg-muted/40 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          <tr>
+            {table.columns.map((column) => (
+              <th key={column} className="border-b border-border px-4 py-3 font-semibold">
+                {cleanDisplayText(column)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, rowIndex) => (
+            <tr key={`${row.join("-")}-${rowIndex}`} className="border-b border-border last:border-b-0">
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={`${cell}-${cellIndex}`}
+                  className={`min-w-48 px-4 py-4 align-top leading-6 ${
+                    cellIndex === 0 ? "font-semibold text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  {cleanDisplayText(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ProjectionChart({ series }: { series: ReleaseReadinessShareChartSeries[] }) {
+  const active = series.filter((item) => item.points.length);
+  if (!active.length) return null;
+
+  const allValues = active.flatMap((item) => item.points.map((point) => point.value)).filter((value) => value > 0);
+  const min = Math.min(...allValues);
+  const max = Math.max(...allValues);
+  const width = 860;
+  const height = 260;
+  const left = 64;
+  const right = 24;
+  const top = 22;
+  const bottom = 38;
+  const chartWidth = width - left - right;
+  const chartHeight = height - top - bottom;
+  const colors = ["#111827", "#b91c1c", "#8a6a19", "#64748b"];
+  const xFor = (year: number) => left + (Math.max(0, Math.min(10, year)) / 10) * chartWidth;
+  const yFor = (value: number) => {
+    if (max === min) return top + chartHeight / 2;
+    return top + chartHeight - ((value - min) / (max - min)) * chartHeight;
+  };
+
+  return (
+    <div className="rounded-md border border-border bg-card/70 p-5">
+      <div className="flex flex-wrap gap-4">
+        {active.map((item, index) => (
+          <div key={item.name} className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+            <span className="font-semibold text-foreground">{cleanDisplayText(item.name)}</span>
+            <span>{cleanDisplayText(item.verdict)}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 overflow-x-auto">
+        <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[720px]">
+          {[0, 1, 2, 3].map((tick) => {
+            const y = top + (tick / 3) * chartHeight;
+            const value = max - (tick / 3) * (max - min);
+            return (
+              <g key={tick}>
+                <line x1={left} x2={width - right} y1={y} y2={y} stroke="currentColor" className="text-border" />
+                <text x={0} y={y + 4} className="fill-muted-foreground text-[11px]">
+                  {formatUsdCompact(value)}
+                </text>
+              </g>
+            );
+          })}
+          {[0, 2, 4, 6, 8, 10].map((year) => (
+            <text key={year} x={xFor(year) - 8} y={height - 8} className="fill-muted-foreground text-[11px]">
+              Y{year}
+            </text>
+          ))}
+          {active.map((item, index) => {
+            const points = item.points.map((point) => `${xFor(point.year)},${yFor(point.value)}`).join(" ");
+            return (
+              <polyline
+                key={item.name}
+                points={points}
+                fill="none"
+                stroke={colors[index % colors.length]}
+                strokeWidth="3"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+function FullReportSections({ sections }: { sections: ReleaseReadinessShareReportSection[] }) {
+  if (!sections.length) return null;
+
+  return (
+    <>
+      {sections.map((section) => (
+        <Section key={section.id} eyebrow={section.eyebrow} title={section.title}>
+          <div className="space-y-6">
+            {section.intro ? (
+              <p className="max-w-5xl text-base leading-8 text-muted-foreground">{cleanDisplayText(section.intro)}</p>
+            ) : null}
+            {section.cards?.length ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {section.cards.map((card, index) => (
+                  <ReportCard key={`${section.id}-card-${index}`} card={card} />
+                ))}
+              </div>
+            ) : null}
+            {section.chart?.length ? <ProjectionChart series={section.chart} /> : null}
+            {section.table ? <ReportTable table={section.table} /> : null}
+            {section.bullets?.length ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {section.bullets.map((bullet, index) => (
+                  <p key={`${section.id}-bullet-${index}`} className="rounded-md border border-border bg-card/70 p-4 text-sm leading-6 text-muted-foreground">
+                    {cleanDisplayText(bullet)}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </Section>
+      ))}
+    </>
   );
 }
 
