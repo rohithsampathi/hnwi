@@ -112,7 +112,7 @@ interface BackendAuditResponse {
 }
 
 type AuditTier = 'single' | 'annual';
-type MemoViewMode = 'linear' | 'house' | 'route' | 'principal';
+type MemoViewMode = 'linear' | 'house' | 'route' | 'principal' | 'evidence';
 
 const TIER_CONFIG = {
   single: {
@@ -789,38 +789,6 @@ function EvidenceMethodologyView({
   );
 }
 
-function PrincipalReadinessView({
-  payload,
-  citationMap,
-  evidenceSections,
-  references,
-  developmentsCount,
-  precedentCount,
-  onCitationClick,
-}: {
-  payload: ReleaseReadinessSharePayload;
-  citationMap: Map<string, number>;
-  evidenceSections: EvidenceMethodologySection[];
-  references?: any;
-  developmentsCount?: number;
-  precedentCount?: number;
-  onCitationClick: (citationId: string) => void;
-}) {
-  return (
-    <div className="space-y-10">
-      <PrincipalRouteView payload={payload} />
-      <EvidenceMethodologyView
-        citationMap={citationMap}
-        evidenceSections={evidenceSections}
-        references={references}
-        developmentsCount={developmentsCount}
-        precedentCount={precedentCount}
-        onCitationClick={onCitationClick}
-      />
-    </div>
-  );
-}
-
 export default function DecisionMemoAuditClientPage({
   initialIntakeId,
   initialSearchParamsString = '',
@@ -853,7 +821,9 @@ export default function DecisionMemoAuditClientPage({
     isReleaseReadinessReviewPath
       ? requestedMemoView === 'route' || requestedMemoView === 'v2'
         ? 'route'
-        : 'principal'
+        : requestedMemoView === 'evidence'
+          ? 'evidence'
+          : 'principal'
       : requestedMemoView === 'house'
         ? 'house'
         : requestedMemoView === 'route' || requestedMemoView === 'v2'
@@ -921,7 +891,7 @@ export default function DecisionMemoAuditClientPage({
     }
 
     if (isReleaseReadinessReviewPath) {
-      if (viewMode === 'route') {
+      if (viewMode === 'route' || viewMode === 'evidence') {
         params.set('view', viewMode);
       } else {
         params.delete('view');
@@ -2052,6 +2022,22 @@ export default function DecisionMemoAuditClientPage({
                       <Route className="w-4 h-4" />
                       <span className="hidden md:inline font-medium">Route View</span>
                     </button>
+                    <button
+                      onClick={() => {
+                        router.push(buildAuditViewHref(false, 'evidence'));
+                      }}
+                      type="button"
+                      aria-label="Evidence & Methodology"
+                      title="Evidence & Methodology"
+                      className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
+                        memoViewMode === 'evidence'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span className="hidden md:inline font-medium">Evidence & Methodology</span>
+                    </button>
                   </>
                 ) : (
                   <>
@@ -2204,9 +2190,8 @@ export default function DecisionMemoAuditClientPage({
                 </div>
               </div>
             )
-          ) : isReleaseReadinessReviewPath && principalSharePayload ? (
-            <PrincipalReadinessView
-              payload={principalSharePayload}
+          ) : isReleaseReadinessReviewPath && memoViewMode === 'evidence' ? (
+            <EvidenceMethodologyView
               citationMap={computedCitationMap}
               evidenceSections={computedEvidenceSections}
               references={computedReferences}
@@ -2214,6 +2199,8 @@ export default function DecisionMemoAuditClientPage({
               precedentCount={computedReferencePrecedentCount}
               onCitationClick={handleCitationClick}
             />
+          ) : isReleaseReadinessReviewPath && principalSharePayload ? (
+            <PrincipalRouteView payload={principalSharePayload} />
           ) : (
             <ReportRenderer
               memoData={memoData as any}
