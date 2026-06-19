@@ -52,6 +52,13 @@ function money(value: unknown, fallback = "Release-gated"): string {
 function cleanDisplayText(value: unknown): string {
   if (typeof value !== "string") return "";
   return value
+    .replace(/\bRelease Differently\b/gi, "Gated negotiation only")
+    .replace(/\bProceed Modified\b/gi, "Proceed under signed gates")
+    .replace(/\bHouse Signal Rail\b/gi, "Route Control Summary")
+    .replace(/\bDecision EV\b/gi, "Internal model output - not release authority")
+    .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")
+    .replace(/\bOpen Release Gates\b/gi, "Release Gate Status")
+    .replace(/\bAll listed release gates have assigned owners\b/gi, "Gate ownership assigned; release evidence pending")
     .replace(/\bFull Decision Memo\b/gi, "Release Readiness Review")
     .replace(/\bDecision Memo\b/gi, "Release Readiness Review")
     .replace(/\bPressure Test\b/gi, "Release Readiness Review")
@@ -144,7 +151,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
           <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Corridor</p>
           <p className="mt-2 text-lg font-semibold leading-7 text-foreground">{cleanDisplayText(payload.corridor)}</p>
           <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Release stance</p>
-          <p className="mt-2 text-lg font-semibold text-primary">{payload.decision}</p>
+          <p className="mt-2 text-lg font-semibold text-primary">{cleanDisplayText(payload.decision)}</p>
         </div>
       </section>
 
@@ -171,12 +178,12 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Decision</p>
-            <h3 className="mt-3 text-2xl font-semibold text-foreground">{payload.decision}</h3>
+            <h3 className="mt-3 text-2xl font-semibold text-foreground">{cleanDisplayText(payload.decision)}</h3>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(payload.rationale)}</p>
           </div>
           <div className="rounded-md border border-primary/25 bg-primary/5 p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Release rule</p>
-            <h3 className="mt-3 text-2xl font-semibold text-foreground">{payload.releaseRule}</h3>
+            <h3 className="mt-3 text-2xl font-semibold text-foreground">{cleanDisplayText(payload.releaseRule)}</h3>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(payload.capitalRule)}</p>
           </div>
           <div className="rounded-md border border-amber-500/25 bg-amber-500/5 p-5">

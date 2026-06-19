@@ -81,7 +81,7 @@ export function OverviewSection({
       case 'RESTRUCTURE':
         return {
           label: 'CONDITIONAL',
-          sublabel: 'Proceed Modified',
+          sublabel: 'Proceed under signed gates',
           icon: AlertTriangle,
           color: 'text-verdict-restructure',
           bgColor: 'bg-verdict-restructure/10',
@@ -108,7 +108,7 @@ export function OverviewSection({
       default:
         return {
           label: 'CONDITIONAL',
-          sublabel: 'Proceed Modified',
+          sublabel: 'Proceed under signed gates',
           icon: AlertTriangle,
           color: 'text-verdict-restructure',
           bgColor: 'bg-verdict-restructure/10',

@@ -246,7 +246,7 @@ export function MemoHeader({
   // ─── Title ────────────────────────────────────────────────────────────────
   const verdictDisplay: Record<string, { line1: string; line2: string }> = {
     'PROCEED': { line1: 'Decision Memo', line2: 'Proceed' },
-    'PROCEED_MODIFIED': { line1: 'Decision Memo', line2: 'Proceed Modified' },
+    'PROCEED_MODIFIED': { line1: 'Release Readiness Review', line2: 'Proceed under signed gates' },
     'PROCEED_DIVERSIFICATION_ONLY': { line1: 'Decision Memo', line2: 'Diversification Only' },
     'DO_NOT_PROCEED': { line1: 'Decision Memo', line2: 'Do Not Proceed' },
   };

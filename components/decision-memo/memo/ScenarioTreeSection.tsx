@@ -40,6 +40,17 @@ interface ScenarioTreeSectionProps {
   viaNegativa?: ViaNegativaContext;
 }
 
+function scenarioDisplayText(value?: string | null): string {
+  if (!value) return '';
+  return value
+    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
+    .replace(/\bDecision EV\b/gi, 'model output - not release authority')
+    .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Helper function to parse markdown bold (**text**) and render as bold spans
 function parseMarkdownBold(text: string): React.ReactNode {
   const parts = text.split(/\*\*([^*]+)\*\*/g);
@@ -363,10 +374,10 @@ function buildDm64BranchListScenarioTreeData(
       ]),
     },
     decision_matrix: branches.map((branch) => ({
-      branch: getBranchDisplayName(branch.name),
+      branch: scenarioDisplayText(getBranchDisplayName(branch.name)),
       expected_value: displayBranchMetric(branch, branch.expected_value),
       risk_level: branch.name === 'PROCEED_MODIFIED' ? 'MEDIUM' : branch.name === 'PROCEED_NOW' ? 'HIGH' : 'LOW',
-      recommended_if: branch.verdict_conditions[0] || branch.verdict,
+      recommended_if: scenarioDisplayText(branch.verdict_conditions[0] || branch.verdict),
     })),
   };
 }
@@ -397,7 +408,10 @@ function buildStructuredScenarioTreeData(
   const valueBasisNote = typeof raw.value_basis_note === 'string'
     ? raw.value_basis_note
     : 'Branch values below use one comparable basis: modeled route-outcome value under the corridor benchmark, separate from the dedicated 10-year wealth projection surface.';
-  const decisionEvLabel = typeof raw.decision_ev_label === 'string' ? raw.decision_ev_label : 'Validated Route Decision EV';
+  const decisionEvLabel = (typeof raw.decision_ev_label === 'string' ? raw.decision_ev_label : 'Model output - not release authority')
+    .replace(/\bDecision EV\b/gi, 'model output - not release authority')
+    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only');
   const decisionEvNote = typeof raw.decision_ev_note === 'string'
     ? raw.decision_ev_note
     : 'Weighted across base / stress / opportunity cases using the validated route probabilities.';
@@ -517,7 +531,7 @@ function buildStructuredScenarioTreeData(
     },
     decision_matrix: [
       {
-        branch: 'Proceed Modified',
+        branch: 'Proceed under signed gates',
         expected_value: formatCurrency(proceedModifiedExpected),
         risk_level: 'MEDIUM',
         recommended_if: 'All critical gates clear inside the live decision window.',
@@ -638,7 +652,7 @@ function BranchCard({
             {icons[branch.name] || <GitBranch className="w-4 h-4 text-muted-foreground/60" />}
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm sm:text-base font-medium text-foreground break-words leading-snug">{getBranchDisplayName(branch.name)}</h4>
+            <h4 className="text-sm sm:text-base font-medium text-foreground break-words leading-snug">{scenarioDisplayText(getBranchDisplayName(branch.name))}</h4>
             <div className="mt-1">
               <StrengthIndicator strength={strength} animate />
             </div>
@@ -674,7 +688,7 @@ function BranchCard({
             <div className="flex-shrink-0">
               <ConditionBadge status={condition.status} />
             </div>
-            <span className="text-sm text-muted-foreground/60 flex-1 leading-loose sm:leading-relaxed break-words pt-0.5">{condition.condition}</span>
+            <span className="text-sm text-muted-foreground/60 flex-1 leading-loose sm:leading-relaxed break-words pt-0.5">{scenarioDisplayText(condition.condition)}</span>
           </motion.div>
         ))}
       </div>
@@ -883,7 +897,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
     // Look for BRANCH sections or PROCEED patterns
     const branchPatterns = [
       { regex: /BRANCH\s+1[:\s]+PROCEED\s+NOW|PROCEED\s+(?:NOW|IMMEDIATELY)/i, name: 'PROCEED_NOW' as const, display: 'Proceed Now' },
-      { regex: /BRANCH\s+2[:\s]+PROCEED\s+(?:WITH\s+)?MODIF|PROCEED\s+(?:WITH\s+)?MODIF/i, name: 'PROCEED_MODIFIED' as const, display: 'Proceed Modified' },
+      { regex: /BRANCH\s+2[:\s]+PROCEED\s+(?:WITH\s+)?MODIF|PROCEED\s+(?:WITH\s+)?MODIF/i, name: 'PROCEED_MODIFIED' as const, display: 'Proceed under signed gates' },
       { regex: /BRANCH\s+3[:\s]+DO\s+NOT\s+PROCEED|DO\s+NOT\s+PROCEED|ABORT|REJECT/i, name: 'DO_NOT_PROCEED' as const, display: 'Do Not Proceed' }
     ];
 
@@ -935,7 +949,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
       if (hasModified) {
         branches.push({
           name: 'PROCEED_MODIFIED',
-          displayName: 'Proceed Modified',
+          displayName: 'Proceed under signed gates',
           expectedValue: '+$350K',
           strength: 0.6,
           conditions: ['Address specific conditions', 'Renegotiate terms'],
@@ -1128,7 +1142,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
               {icons[branch.name]}
             </div>
             <div className="min-w-0 flex-1">
-              <h4 className="text-sm sm:text-base font-medium text-foreground break-words leading-snug">{branch.displayName}</h4>
+              <h4 className="text-sm sm:text-base font-medium text-foreground break-words leading-snug">{scenarioDisplayText(branch.displayName)}</h4>
               <div className="mt-1">
                 <StrengthIndicator strength={branch.strength} animate />
               </div>
@@ -1149,7 +1163,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
         {branch.verdict && (
           <div className="pt-3">
             <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-3" />
-            <p className="text-xs sm:text-sm text-foreground/60 font-normal leading-relaxed">{parseMarkdownBold(branch.verdict)}</p>
+            <p className="text-xs sm:text-sm text-foreground/60 font-normal leading-relaxed">{parseMarkdownBold(scenarioDisplayText(branch.verdict))}</p>
           </div>
         )}
       </motion.div>
@@ -1430,7 +1444,10 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
   }
   const recommendedBranch = typedBranches.find(b => b.name === typedData.recommended_branch);
   const branchValueBasisLabel = typedData.value_basis_label || 'Expected Value';
-  const decisionEvLabel = typedData.decision_ev_label || 'Validated Route Decision EV';
+  const decisionEvLabel = (typedData.decision_ev_label || 'Model output - not release authority')
+    .replace(/\bDecision EV\b/gi, 'model output - not release authority')
+    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only');
   const rationale = Array.isArray(typedData.rationale) ? typedData.rationale : [];
   const decisionGates = Array.isArray(typedData.decision_gates) ? typedData.decision_gates : [];
   const decisionMatrix = Array.isArray(typedData.decision_matrix) ? typedData.decision_matrix : [];
@@ -1524,7 +1541,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
 
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-5">
-              Recommendation: {getBranchDisplayName(typedData.recommended_branch)}
+              Recommendation: {scenarioDisplayText(getBranchDisplayName(typedData.recommended_branch))}
             </p>
 
             <div className="space-y-3 mb-5">
@@ -1538,7 +1555,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
             {typedData.decision_ev_usd !== undefined && (
               <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-5 mb-5">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{decisionEvLabel}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{scenarioDisplayText(decisionEvLabel)}</p>
                 <p className={memoNumberClass('metric', 'default')}>
                   {formatScenarioMetricValue(typedData.decision_ev_usd)}
                 </p>
@@ -1620,7 +1637,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
               {decisionMatrix.map((entry, i) => (
                 <div key={i} className="rounded-xl border border-border/20 bg-card/50 p-5 space-y-3">
                   <div className="space-y-2">
-                    <h4 className="text-base font-medium text-foreground break-words leading-snug">{entry.branch}</h4>
+                    <h4 className="text-base font-medium text-foreground break-words leading-snug">{scenarioDisplayText(entry.branch)}</h4>
                     <span className="inline-flex text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1.5 border border-border/20 text-muted-foreground/80">
                       {entry.risk_level}
                     </span>
@@ -1631,7 +1648,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                       {entry.expected_value}
                     </p>
                   </div>
-                  <p className="text-sm text-muted-foreground/60 leading-relaxed pt-2">{entry.recommended_if}</p>
+                  <p className="text-sm text-muted-foreground/60 leading-relaxed pt-2">{scenarioDisplayText(entry.recommended_if)}</p>
                 </div>
               ))}
             </div>
@@ -1649,7 +1666,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                 <tbody>
                   {decisionMatrix.map((entry, i) => (
                     <tr key={i} className="hover:bg-card/30 transition-colors border-t border-border/20">
-                      <td className="px-3 sm:px-10 py-4 text-sm font-normal text-foreground whitespace-nowrap">{entry.branch}</td>
+                      <td className="px-3 sm:px-10 py-4 text-sm font-normal text-foreground whitespace-nowrap">{scenarioDisplayText(entry.branch)}</td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className={memoNumberClass('small', String(entry.expected_value).startsWith('-') ? 'muted' : 'default')}>
                           {entry.expected_value}
@@ -1660,7 +1677,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                           {entry.risk_level}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-sm text-muted-foreground/60 leading-relaxed">{entry.recommended_if}</td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground/60 leading-relaxed">{scenarioDisplayText(entry.recommended_if)}</td>
                     </tr>
                   ))}
                 </tbody>

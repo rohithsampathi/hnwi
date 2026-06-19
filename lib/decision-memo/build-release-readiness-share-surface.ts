@@ -179,6 +179,13 @@ function numberOr(value: unknown, fallback = 0): number {
 
 function sanitizeShareText(value: unknown): string {
   return text(value)
+    .replace(/\bRelease Differently\b/gi, "Gated negotiation only")
+    .replace(/\bProceed Modified\b/gi, "Proceed under signed gates")
+    .replace(/\bHouse Signal Rail\b/gi, "Route Control Summary")
+    .replace(/\bDecision EV\b/gi, "Internal model output - not release authority")
+    .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")
+    .replace(/\bOpen Release Gates\b/gi, "Release Gate Status")
+    .replace(/\bAll listed release gates have assigned owners\b/gi, "Gate ownership assigned; release evidence pending")
     .replace(/\bSIX-BOOK OPENING\b/gi, "Decision Opening")
     .replace(/\bSix-book opening\b/gi, "Decision opening")
     .replace(/\bFull Decision Memo\b/gi, "Release Readiness Review")
@@ -1378,7 +1385,7 @@ export function buildReleaseReadinessSharePayload(
   const methodDrivers = buildMethodDriversForPayload(route);
   const citations = collectPayloadCitations(methodDrivers, publicSources);
   const decision = "Gated negotiation only";
-  const releaseRule = "Release differently";
+  const releaseRule = "Gated negotiation only";
   const purpose = "London family use and continuity. Not approved as yield, prestige, wrapper planning, or residence planning.";
   const capitalRule =
     "No bid without closed comps and walk-away price. No exchange or deposit release without signed title, SDLT, source, bank rail, family authority, and bid discipline.";

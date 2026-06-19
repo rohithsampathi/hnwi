@@ -336,7 +336,28 @@ function normalizeListItems(values: unknown): NormalizedItem[] {
 function formatDecisionCode(value?: string): string {
   const normalized = (value || '').trim();
   if (!normalized) return 'Decision Pending';
-  return normalized.replace(/_/g, ' ');
+  return normalized
+    .replace(/_/g, ' ')
+    .replace(/\bPROCEED MODIFIED\b/gi, 'Proceed under signed gates')
+    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
+    .replace(/\bDecision EV\b/gi, 'Model output - not release authority')
+    .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function principalSafeMemoText(value?: string | null): string {
+  if (!value) return '';
+  return value
+    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
+    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bDecision EV\b/gi, 'Model output - not release authority')
+    .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
+    .replace(/\bOpen Release Gates\b/gi, 'Release Gate Status')
+    .replace(/\bAll listed release gates have assigned owners\b/gi, 'Gate ownership assigned; release evidence pending')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function fallbackDecisionSignal(preview: Record<string, any>, memo: Record<string, any>) {
@@ -1156,7 +1177,7 @@ function CapitalExposurePanel({
             </div>
 
             <div className="min-w-0 rounded-[24px] border border-gold/20 bg-gold/[0.06] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-gold/75">Decision EV</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-gold/75">Model output</p>
               <p className={`${metricValueClass(formatReadableMetric(decisionEv, 'proof'), 'proof')} mt-3`}>
                 {formatReadableMetric(decisionEv, 'proof')}
               </p>
@@ -1496,9 +1517,9 @@ function InputFramePanel({
       <div className="grid gap-4 xl:grid-cols-3">
         {usable.map((row) => (
           <div key={`input-frame-${row.label}`} className="min-w-0 rounded-[24px] border border-border/15 bg-card/55 p-5">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-gold/70">{row.label}</p>
-            {row.value ? <p className="mt-3 break-words text-base md:text-[17px] font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">{row.value}</p> : null}
-            {row.detail ? <p className="mt-3 break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">{row.detail}</p> : null}
+            <p className="text-[11px] uppercase tracking-[0.2em] text-gold/70">{principalSafeMemoText(row.label)}</p>
+            {row.value ? <p className="mt-3 break-words text-base md:text-[17px] font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">{principalSafeMemoText(row.value)}</p> : null}
+            {row.detail ? <p className="mt-3 break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">{principalSafeMemoText(row.detail)}</p> : null}
           </div>
         ))}
       </div>
@@ -2219,13 +2240,13 @@ export default function HouseGradeMemoSection({
       tone: 'red' as Tone,
     },
     {
-      label: 'Decision EV',
+      label: 'Model output',
       value: asText(economics.decision_ev || scenarioTree.decision_ev_label, '—'),
       note: scenarioTree.decision_ev_note || 'Validated route expected value after the gate set clears.',
       tone: 'gold' as Tone,
     },
     {
-      label: 'Route Source Records',
+      label: 'Methodology records',
       value: precedentCount ? `${precedentCount}` : asText(preview.peer_cohort_stats?.total_peers, '—'),
       note: routeEvidenceBasisNote || `${routeWitnessLabel} and governing objects inform why the release gate matters; they do not prove bank, title, tax, or family authority.`,
       tone: 'default' as Tone,
@@ -2797,7 +2818,7 @@ export default function HouseGradeMemoSection({
             </div>
 
             <div className="2xl:col-span-5">
-              <SignalRail title="House Signal Rail" items={witnessCards} tone="gold" />
+              <SignalRail title="Route Control Summary" items={witnessCards} tone="gold" />
             </div>
           </div>
 

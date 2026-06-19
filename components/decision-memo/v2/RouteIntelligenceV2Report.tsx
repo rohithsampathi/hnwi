@@ -47,6 +47,22 @@ function pct(value: number): string {
   return `${value.toFixed(2)}%`;
 }
 
+function routeDisplayText(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
+    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bNative Route Drivers\b/gi, 'Route Drivers From Source Review')
+    .replace(/\bSIX-BOOK OPENING\b/gi, 'Decision Opening')
+    .replace(/\bSix-book opening\b/gi, 'Decision opening')
+    .replace(/\bPressure Variants Tested\b/gi, 'Release Readiness Routes Reviewed')
+    .replace(/\bPressure Test\b/gi, 'Release Readiness Review')
+    .replace(/\bpressure-test(?:ed|ing)?\b/gi, 'release-readiness reviewed')
+    .replace(/\bpressure\b/gi, 'readiness')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function releaseTone(route: RouteIntelligenceOptionV2): string {
   if (route.releaseRule === 'Release Differently') {
     return 'border-emerald-500/25 bg-emerald-500/[0.04] text-emerald-500';
@@ -55,6 +71,13 @@ function releaseTone(route: RouteIntelligenceOptionV2): string {
     return 'border-amber-500/25 bg-amber-500/[0.04] text-amber-500';
   }
   return 'border-red-500/25 bg-red-500/[0.04] text-red-500';
+}
+
+function releaseRuleDisplay(rule: RouteIntelligenceOptionV2['releaseRule'] | string): string {
+  if (rule === 'Release Differently') return 'Gated negotiation only';
+  if (rule === 'Hold') return 'Hold';
+  if (rule === 'Stop') return 'Stop';
+  return String(rule || '');
 }
 
 function isOutcomeOnlyRoute(route: RouteIntelligenceOptionV2): boolean {
@@ -86,8 +109,8 @@ function metricValue(route: RouteIntelligenceOptionV2): string {
 function SectionHeader({ label, title }: { label: string; title: string }) {
   return (
     <div className="mb-5">
-      <p className="text-xs uppercase tracking-[0.22em] text-gold/70">{label}</p>
-      <h2 className="mt-2 text-xl sm:text-2xl font-semibold tracking-tight text-foreground break-words">{title}</h2>
+      <p className="text-xs uppercase tracking-[0.22em] text-gold/70">{routeDisplayText(label)}</p>
+      <h2 className="mt-2 text-xl sm:text-2xl font-semibold tracking-tight text-foreground break-words">{routeDisplayText(title)}</h2>
       <div className="mt-4 h-px bg-border/70" />
     </div>
   );
@@ -146,11 +169,11 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
   const openGateNames = [...missing, ...contradicted].length ? [...missing, ...contradicted] : openRecordNames;
   const openGateCount = openGateNames.length;
   const releaseDomainRead = recordNames.join(' / ') || 'Evidence domains are assigned in the release file';
-  const openGateRead = openGateNames.slice(0, 2).join(' / ') || 'All listed release gates have assigned owners';
+  const openGateRead = openGateNames.slice(0, 2).join(' / ') || 'Owner assignment complete; release remains open until signed evidence is received.';
 
   const metrics = [
     { label: 'Release Domains', value: String(records.length), read: releaseDomainRead },
-    { label: 'Open Release Gates', value: openGateCount ? String(openGateCount) : 'Clear', read: openGateRead },
+    { label: 'Release Gate Status', value: openGateCount ? `${openGateCount} Open` : 'Evidence Pending', read: openGateRead },
     { label: 'Adviser Confirmations', value: String(adviserInputs.length), read: 'Property, tax, bank, succession, insurance, and operator desks' },
   ];
 
@@ -190,7 +213,25 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
 
 function sourceChipLabel(sourceId: string, citationMap?: Map<string, number>, index = 0): string {
   const citationNumber = citationMap?.get(sourceId);
-  return citationNumber ? `Source [${citationNumber}]` : `Source ${index + 1}`;
+  return citationNumber ? `[${citationNumber}]` : `[${index + 1}]`;
+}
+
+function ReviewerLayerNotice() {
+  return (
+    <section className="rounded-lg border border-border/30 bg-card/45 p-4 sm:p-5">
+      <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+        <div>
+          <p className="text-xs uppercase tracking-[0.22em] text-gold/80">Reviewer layer</p>
+          <h2 className="mt-2 text-lg font-semibold tracking-tight text-foreground">Route view keeps the full memo attached to the selected executable route.</h2>
+        </div>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Principal View is the decision surface. Route View is the adviser/reviewer layer where route selection changes tax,
+          jurisdiction, carry, evidence, scenario, and owner reads. Evidence & Methodology is the proof ledger and source
+          boundary, kept separate from the principal decision page.
+        </p>
+      </div>
+    </section>
+  );
 }
 
 function NativeRouteDriversPanel({
@@ -310,7 +351,7 @@ function RouteSelector({
         >
           {routes.map((route) => (
             <option key={route.id} value={route.id}>
-              {route.rank}. {route.routeName}
+              {route.rank}. {routeDisplayText(route.routeName)}
             </option>
           ))}
         </select>
@@ -342,11 +383,11 @@ function RouteComparison({ routes, selectedRouteId, onSelect }: {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Route {route.rank}</p>
               <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${releaseTone(route)}`}>
-                {route.releaseRule}
+                {releaseRuleDisplay(route.releaseRule)}
               </span>
             </div>
-            <h3 className="mt-3 text-sm font-medium leading-snug text-foreground">{route.routeName}</h3>
-            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{route.routeType}</p>
+            <h3 className="mt-3 text-sm font-medium leading-snug text-foreground">{routeDisplayText(route.routeName)}</h3>
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{routeDisplayText(route.routeType)}</p>
             <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
               <div>
                 <p className="uppercase tracking-[0.18em] text-muted-foreground/60">Duties</p>
@@ -375,7 +416,7 @@ function MetricStrip({ route }: { route: RouteIntelligenceOptionV2 }) {
     {
       icon: TimerReset,
       label: 'Mitigation Timeline',
-      value: route.releaseRule === 'Release Differently' ? '72h / 7d' : isOutcomeOnlyRoute(route) ? route.releaseRule : 'Evidence gate',
+      value: route.releaseRule === 'Release Differently' ? '72h / 7d' : isOutcomeOnlyRoute(route) ? releaseRuleDisplay(route.releaseRule) : 'Evidence gate',
       read: route.metrics.dataQuality,
     },
   ];
@@ -766,7 +807,7 @@ function DecisionOutcomeTrack({
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-amber-500/80">Decision Outcome</p>
             <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
-              {route.releaseRule}: option track, not full execution report.
+              {releaseRuleDisplay(route.releaseRule)}: option track, not full execution report.
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{outcomeCopy}</p>
             <p className="mt-4 rounded-md border border-border/20 bg-background/35 p-3 text-sm leading-relaxed text-foreground">
@@ -864,7 +905,7 @@ export default function RouteIntelligenceV2Report({
     );
   }
 
-  const moveSentence = intelligence.move.trim().replace(/[.!?]\s*$/, '');
+  const moveSentence = routeDisplayText(intelligence.move).replace(/[.!?]\s*$/, '');
 
   const reportBody = (
     <div className={embedded ? 'min-w-0 px-0 py-0' : 'mx-auto max-w-7xl min-w-0 px-4 py-6 sm:px-6 lg:px-8'}>
@@ -877,10 +918,10 @@ export default function RouteIntelligenceV2Report({
             </Link>
           ) : null}
           <p className={`${embedded ? 'mt-0' : 'mt-5'} text-xs uppercase tracking-[0.28em] text-gold/70`}>
-            {intelligence.surfaceEyebrow ?? 'Proposed Move Release Readiness'}
+            {routeDisplayText(intelligence.surfaceEyebrow ?? 'Proposed Move Release Readiness')}
           </p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground md:text-4xl xl:text-5xl">
-            {intelligence.surfaceTitle ?? 'Proposed Move Release Readiness Memo'}
+            {routeDisplayText(intelligence.surfaceTitle ?? 'Proposed Move Release Readiness Memo')}
           </h1>
           <p className="mt-4 max-w-4xl text-sm leading-relaxed text-muted-foreground">
             {moveSentence}. This view reviews the route the room is already considering and shows what must change, hold, or stop before release.
@@ -890,7 +931,7 @@ export default function RouteIntelligenceV2Report({
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">Reference</p>
           <p className="mt-2 break-all font-medium text-foreground">{publicMemoId}</p>
           <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground/70">Corridor</p>
-          <p className="mt-2 break-words font-medium text-foreground">{intelligence.corridor}</p>
+          <p className="mt-2 break-words font-medium text-foreground">{routeDisplayText(intelligence.corridor)}</p>
         </div>
       </div>
 
@@ -899,9 +940,11 @@ export default function RouteIntelligenceV2Report({
           routes={routes}
           selectedRouteId={selectedRoute.id}
           onSelect={setSelectedRouteId}
-          label={intelligence.selectorLabel ?? 'Route Being Released'}
-          copy={intelligence.selectorCopy ?? 'Review release-readiness routes against the proposed move. The downstream tax audit, jurisdiction readiness, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.'}
+          label={routeDisplayText(intelligence.selectorLabel ?? 'Route Being Released')}
+          copy={routeDisplayText(intelligence.selectorCopy ?? 'Review release-readiness routes against the proposed move. The downstream tax audit, jurisdiction readiness, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.')}
         />
+
+        <ReviewerLayerNotice />
 
         <ZeroTrustRouteSummary data={zeroTrustMoveIntake} />
 
