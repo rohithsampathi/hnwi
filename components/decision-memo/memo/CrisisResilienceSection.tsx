@@ -193,6 +193,86 @@ function normalizeDetailItems(value: unknown): NormalizedDetailItem[] {
   return normalized.filter((item): item is NormalizedDetailItem => item !== undefined);
 }
 
+function normalizeScenarioRecord(
+  scenario: Record<string, unknown>,
+  index: number,
+  prefix = "scenario",
+): NormalizedScenario {
+  const label = String(
+    scenario.name ||
+      scenario.title ||
+      scenario.label ||
+      scenario.event ||
+      scenario.control ||
+      `${prefix} ${index + 1}`,
+  ).trim();
+  const sourceList = toStringList(scenario.sources).map(canonicalSourceFamily).filter(Boolean);
+  const impactChannels = toStringList(scenario.impact_channels);
+  const blockingConditions = toStringList(scenario.blocking_conditions);
+  const observableSignals = toStringList(scenario.observable_next_signals);
+  const routeConsequence =
+    typeof scenario.route_consequence === "string" ? scenario.route_consequence : undefined;
+  const hardNextMove =
+    typeof scenario.hard_next_move === "string" ? scenario.hard_next_move : undefined;
+  const releaseTest =
+    typeof scenario.release_test === "string" ? scenario.release_test : undefined;
+  const requiredResponse =
+    typeof scenario.required_response === "string" ? scenario.required_response : undefined;
+
+  return {
+    id: String(scenario.id || scenario.event_id || scenario.label || label || `${prefix}_${index + 1}`),
+    name: label || `Scenario ${index + 1}`,
+    position: typeof scenario.position === "string" ? scenario.position : undefined,
+    probability: typeof scenario.probability === "string" ? scenario.probability : undefined,
+    impact:
+      (typeof scenario.impact === "string" ? scenario.impact : undefined) ||
+      routeConsequence ||
+      (typeof scenario.damage === "string" ? scenario.damage : undefined) ||
+      (typeof scenario.portfolio_drawdown === "string" ? scenario.portfolio_drawdown : undefined),
+    recovery:
+      (typeof scenario.recovery === "string" ? scenario.recovery : undefined) ||
+      hardNextMove ||
+      requiredResponse ||
+      (typeof scenario.mitigation === "string" ? scenario.mitigation : undefined),
+    riskLevel: riskLevel(scenario.risk_level || scenario.status || scenario.severity || scenario.severity_score),
+    stressFactor:
+      (typeof scenario.stress_factor === "string" ? scenario.stress_factor : undefined) ||
+      (typeof scenario.mechanism === "string" ? scenario.mechanism : undefined) ||
+      (typeof scenario.impact_on_thesis === "string" ? scenario.impact_on_thesis : undefined) ||
+      (typeof scenario.why_this_matters === "string" ? scenario.why_this_matters : undefined) ||
+      (blockingConditions.length ? `Blocking conditions: ${blockingConditions.slice(0, 3).join("; ")}` : undefined),
+    verdict:
+      (typeof scenario.verdict === "string" ? scenario.verdict : undefined) ||
+      (typeof scenario.memo_branch_impact === "string" ? scenario.memo_branch_impact : undefined) ||
+      releaseTest ||
+      hardNextMove ||
+      (typeof scenario.mitigation === "string" ? scenario.mitigation : undefined),
+    historicalPrecedent:
+      typeof scenario.historical_precedent === "string" ? scenario.historical_precedent : undefined,
+    teciAmplifier:
+      typeof scenario.teci_amplifier === "string" ? scenario.teci_amplifier : undefined,
+    impactChannels,
+    sources: dedupe([
+      ...sourceList,
+      typeof scenario.source_family === "string" ? scenario.source_family : "",
+      typeof scenario.family === "string" ? scenario.family : "",
+      typeof scenario.crisis_type === "string" ? scenario.crisis_type : "",
+      observableSignals.length ? "Observable next signals recorded" : "",
+    ].map(canonicalSourceFamily).filter(Boolean)),
+    decisionWindowDays: toFiniteNumber(scenario.decision_window_days),
+  };
+}
+
+function dedupeScenarios(scenarios: NormalizedScenario[]): NormalizedScenario[] {
+  const seen = new Set<string>();
+  return scenarios.filter((scenario) => {
+    const key = (scenario.id || scenario.name).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function parseEmbeddedJson(content?: string): Record<string, unknown> | undefined {
   if (!content) return undefined;
   const match = content.match(/\{[\s\S]*\}/);
@@ -218,50 +298,20 @@ export function normalizeCrisisData(
   const keyMetrics = (parsed.key_metrics || {}) as Record<string, unknown>;
   const bottomLine = (parsed.bottom_line || {}) as Record<string, unknown>;
 
-  const scenarios = (Array.isArray(parsed.scenarios) ? parsed.scenarios : [])
-    .filter((scenario): scenario is Record<string, unknown> => Boolean(scenario && typeof scenario === "object"))
-    .map((scenario, index) => ({
-      id: String(scenario.id || scenario.event_id || scenario.name || `scenario_${index + 1}`),
-      name: String(scenario.name || scenario.title || scenario.label || `Scenario ${index + 1}`),
-      position: typeof scenario.position === "string" ? scenario.position : undefined,
-      probability: typeof scenario.probability === "string" ? scenario.probability : undefined,
-      impact:
-        typeof scenario.impact === "string"
-          ? scenario.impact
-          : typeof scenario.damage === "string"
-            ? scenario.damage
-            : typeof scenario.portfolio_drawdown === "string"
-              ? scenario.portfolio_drawdown
-              : undefined,
-      recovery:
-        typeof scenario.recovery === "string"
-          ? scenario.recovery
-          : typeof scenario.mitigation === "string"
-            ? scenario.mitigation
-            : undefined,
-      riskLevel: riskLevel(scenario.risk_level || scenario.severity || scenario.status),
-      stressFactor:
-        typeof scenario.stress_factor === "string"
-          ? scenario.stress_factor
-          : typeof scenario.impact_on_thesis === "string"
-            ? scenario.impact_on_thesis
-            : typeof scenario.why_this_matters === "string"
-              ? scenario.why_this_matters
-              : undefined,
-      verdict:
-        typeof scenario.verdict === "string"
-          ? scenario.verdict
-          : typeof scenario.mitigation === "string"
-            ? scenario.mitigation
-            : undefined,
-      historicalPrecedent:
-        typeof scenario.historical_precedent === "string" ? scenario.historical_precedent : undefined,
-      teciAmplifier:
-        typeof scenario.teci_amplifier === "string" ? scenario.teci_amplifier : undefined,
-      impactChannels: toStringList(scenario.impact_channels),
-      sources: dedupe(toStringList(scenario.sources).map(canonicalSourceFamily).filter(Boolean)),
-      decisionWindowDays: toFiniteNumber(scenario.decision_window_days),
-    }));
+  const scenarios = dedupeScenarios([
+    ...(Array.isArray(parsed.scenarios) ? parsed.scenarios : [])
+      .filter((scenario): scenario is Record<string, unknown> => Boolean(scenario && typeof scenario === "object"))
+      .map((scenario, index) => normalizeScenarioRecord(scenario, index, "scenario")),
+    ...(Array.isArray(parsed.standing_crisis_regime_tests) ? parsed.standing_crisis_regime_tests : [])
+      .filter((scenario): scenario is Record<string, unknown> => Boolean(scenario && typeof scenario === "object"))
+      .map((scenario, index) => normalizeScenarioRecord(scenario, index, "standing_regime")),
+    ...(Array.isArray(parsed.nyra_route_pressure_events) ? parsed.nyra_route_pressure_events : [])
+      .filter((scenario): scenario is Record<string, unknown> => Boolean(scenario && typeof scenario === "object"))
+      .map((scenario, index) => normalizeScenarioRecord(scenario, index, "daily_route_pressure")),
+    ...(Array.isArray(parsed.route_pressure_events) ? parsed.route_pressure_events : [])
+      .filter((scenario): scenario is Record<string, unknown> => Boolean(scenario && typeof scenario === "object"))
+      .map((scenario, index) => normalizeScenarioRecord(scenario, index, "route_pressure")),
+  ]);
 
   const recommendations = (Array.isArray(parsed.recommendations) ? parsed.recommendations : [])
     .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
@@ -286,6 +336,9 @@ export function normalizeCrisisData(
     ...toStringList(parsed.source_families).map(canonicalSourceFamily),
     ...toStringList(commanderBrief.source_families).map(canonicalSourceFamily),
     ...scenarios.flatMap((scenario) => scenario.sources),
+    Array.isArray(parsed.nyra_route_pressure_events) || Array.isArray(parsed.route_pressure_events)
+      ? "Daily Crisis Route-Pressure Rail"
+      : "",
   ].filter(Boolean));
   const signalCount = firstPositiveCount(
     parsed.signal_count,
@@ -498,10 +551,10 @@ export function CrisisResilienceSection({
         transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
       >
         <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
-          Bank Compliance Escalation Simulation
+          Crisis Resilience And Bank Readiness Review
         </h2>
         <p className="text-sm text-muted-foreground/70 mb-4">
-          Crisis resilience, banking acceptance, absence, and family-veto pressure before release.
+          Banking acceptance, market shock, AI platform dependency, labor displacement, conflict, sanctions, settlement, and family-office absence readiness before release.
         </p>
         <div className="h-px bg-border" />
       </motion.div>

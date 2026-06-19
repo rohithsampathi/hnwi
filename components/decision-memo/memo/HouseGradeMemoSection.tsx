@@ -936,6 +936,18 @@ function crisisScenarioTitle(scenario: Record<string, any>, index: number): stri
   return `Live Stress Scenario ${index + 1}`;
 }
 
+function uniqueScenarioRecords(records: Array<Record<string, any>>): Array<Record<string, any>> {
+  const seen = new Set<string>();
+  return records.filter((record) => {
+    const key = asText(record.id || record.title || record.name || record.label || record.stress_factor || record.verdict, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-');
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function toneClasses(tone: Tone) {
   if (tone === 'gold') return 'border-gold/25 bg-gradient-to-br from-gold/[0.06] via-card to-card';
   if (tone === 'emerald') return 'border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.05] via-card to-card';
@@ -1922,13 +1934,15 @@ function ScenarioBoard({ branches }: { branches: Array<Record<string, any>> }) {
 function CrisisBoard({
   scenarios,
   footer,
+  title = "Crisis Release Readiness Regimes",
 }: {
   scenarios: Array<Record<string, any>>;
   footer?: ReactNode;
+  title?: string;
 }) {
   if (!scenarios.length) return null;
   return (
-    <SurfaceCard title="Live Crisis Scenarios" tone="amber">
+    <SurfaceCard title={title} tone="amber">
       <div className="space-y-4">
         {scenarios.map((scenario, index) => {
           const impactMetric = extractLeadingMetricToken(scenario.impact);
@@ -2161,6 +2175,9 @@ export default function HouseGradeMemoSection({
   const hasTrends = Boolean(asArray(preview.hnwi_trends).length);
   const hasCrisis = Boolean(
     crisis?.scenarios?.length ||
+      crisis?.standing_crisis_regime_tests?.length ||
+      crisis?.nyra_route_pressure_events?.length ||
+      crisis?.route_pressure_events?.length ||
       crisis?.bank_compliance_escalation_simulation?.length ||
       crisis?.overall_resilience?.score ||
       crisis?.overall_resilience?.rating,
@@ -2373,18 +2390,24 @@ export default function HouseGradeMemoSection({
     stress_factor: scenario.required_response,
     verdict: scenario.breakpoint,
   }));
-  const crisisScenarios = bankEscalationScenarios.length
-    ? bankEscalationScenarios
-    : normalizedCrisis?.scenarios?.length
-      ? normalizedCrisis.scenarios.map((scenario) => ({
+  const normalizedCrisisScenarios = normalizedCrisis?.scenarios?.length
+    ? normalizedCrisis.scenarios.map((scenario) => ({
         title: scenario.name,
         risk_level: scenario.riskLevel,
         stress_factor: scenario.stressFactor,
         impact: scenario.impact,
         recovery: scenario.recovery,
         verdict: scenario.verdict,
+        impact_channels: scenario.impactChannels,
+        sources: scenario.sources,
+        decision_window_days: scenario.decisionWindowDays,
       }))
-      : asArray<Record<string, any>>(crisis.scenarios);
+    : [];
+  const crisisScenarios = uniqueScenarioRecords([
+    ...normalizedCrisisScenarios,
+    ...(normalizedCrisisScenarios.length ? [] : asArray<Record<string, any>>(crisis.scenarios)),
+    ...bankEscalationScenarios,
+  ]);
   const complianceTriggers = normalizeListItems(transparency.reporting_triggers || []);
   const complianceRisks = normalizeListItems(transparency.compliance_risks || []);
   const complianceCalendar = normalizeListItems(transparency.compliance_calendar || []);
@@ -3083,7 +3106,7 @@ export default function HouseGradeMemoSection({
 
         <div className="mt-6">
           <CrisisBoard
-            scenarios={crisisScenarios.slice(0, 3)}
+            scenarios={crisisScenarios.slice(0, 20)}
             footer={
               <WatchChipPanel
                 title="What The War Room Watches Daily"
