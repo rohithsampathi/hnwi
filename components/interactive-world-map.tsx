@@ -756,6 +756,7 @@ export function InteractiveWorldMap({
           const canHoverFlow = !cityFocusActive
           const canInteractWithFlow = !cityFocusActive && isFocusedCorridor
           const shouldShowPermanentRouteLabel = isFocusMode ? isFocusedCorridor : hasAccess
+          const shouldShowHoverRouteLabel = !shouldShowPermanentRouteLabel && !cityFocusActive && isHovered
 
           // Destination marker — black dot with neon arc-color border/glow
           const destinationIcon = flow.midpoint ? L.divIcon({
@@ -1208,9 +1209,9 @@ export function InteractiveWorldMap({
                   </Popup>
                 </Marker>
               )}
-              {/* Airline-style route label at arc midpoint. In focus mode, non-current corridors
-                  remain visible as grey context while only the focused corridor is clickable. */}
-              {shouldShowPermanentRouteLabel && (
+              {/* Airline-style route label at arc midpoint. In focus mode, only the current
+                  corridor stays labeled; non-current corridors get a transient hover label. */}
+              {(shouldShowPermanentRouteLabel || shouldShowHoverRouteLabel) && (
                 <Marker
                   position={arcMid}
                   icon={routeLabel}
