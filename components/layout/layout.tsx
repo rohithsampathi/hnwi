@@ -42,7 +42,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
   const [isPersonalMode, setIsPersonalMode] = useState(false)
 
   // Decision-memo pages need header/sidebar hidden in print for PDF export
-  const isDecisionMemoRoute = pathname?.includes('/decision-memo')
+  const isDecisionMemoRoute = pathname?.includes('/decision-memo') || pathname?.includes('/release-readiness')
 
   // In PERSONAL mode, hide sidebar (War Room sidebar will render instead)
   // But KEEP the header visible

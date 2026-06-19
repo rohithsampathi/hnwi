@@ -73,6 +73,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   const getPageConfig = (pathname: string) => {
     if (pathname.includes('/dashboard')) return { title: '', currentPage: 'dashboard', showBackButton: false }
     if (pathname.includes('/war-room')) return { title: '', currentPage: 'war-room', showBackButton: false }
+    if (pathname.includes('/release-readiness') || pathname.includes('/decision-memo')) return { title: '', currentPage: 'war-room', showBackButton: false }
     if (pathname.includes('/ask-audelle') || pathname.includes('/ask-rohith')) return { title: '', currentPage: 'ask-audelle', showBackButton: true }
     if (pathname.includes('/simulation')) return { title: '', currentPage: 'simulation', showBackButton: true }
     if (pathname.includes('/hnwi-world')) return { title: '', currentPage: 'hnwi-world', showBackButton: true }

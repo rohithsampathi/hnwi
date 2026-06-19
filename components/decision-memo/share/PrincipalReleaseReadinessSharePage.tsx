@@ -693,7 +693,10 @@ export default function PrincipalReleaseReadinessSharePage({
           </p>
         </div>
 
-        <nav className="sticky top-0 z-30 mt-6 border-b border-border bg-background/95 py-3 backdrop-blur">
+        <nav
+          className="sticky z-30 mt-6 border-b border-border bg-background/95 py-3 backdrop-blur"
+          style={{ top: "var(--app-shell-offset-top, 0px)" }}
+        >
           <div className="flex gap-2 overflow-x-auto pb-1">
             {VIEW_LABELS.map((view) => (
               <button
