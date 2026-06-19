@@ -125,7 +125,7 @@ function SourceButton({
   );
 }
 
-function PrincipalRouteView({ payload }: { payload: ReleaseReadinessSharePayload }) {
+export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessSharePayload }) {
   const metrics = payload.selectedRoute.metrics;
 
   return (

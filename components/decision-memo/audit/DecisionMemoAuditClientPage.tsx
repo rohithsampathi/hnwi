@@ -45,6 +45,7 @@ import HouseDecisionMemoLinearReport from '@/components/decision-memo/memo/Decis
 import CanonicalDecisionMemoLinearReport from '@/components/decision-memo/memo/legacy/DecisionMemoLinearReport.classic-legacy';
 import ReferencesSection from '@/components/decision-memo/memo/ReferencesSection';
 import RouteIntelligenceV2Report from '@/components/decision-memo/v2/RouteIntelligenceV2Report';
+import { PrincipalRouteView } from '@/components/decision-memo/share/PrincipalReleaseReadinessSharePage';
 import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import type { Citation } from '@/lib/parse-dev-citations';
@@ -63,6 +64,10 @@ import {
   buildRouteIntelligenceV2,
   buildRouteScopedDecisionMemoSurface,
 } from '@/lib/decision-memo/route-intelligence-v2';
+import {
+  buildReleaseReadinessSharePayload,
+  type ReleaseReadinessSharePayload,
+} from '@/lib/decision-memo/build-release-readiness-share-surface';
 // Personal mode - UHNWI-standard navigation interface
 import { PersonalShell } from '@/components/decision-memo/personal';
 
@@ -107,7 +112,7 @@ interface BackendAuditResponse {
 }
 
 type AuditTier = 'single' | 'annual';
-type MemoViewMode = 'linear' | 'house' | 'route' | 'principal' | 'evidence';
+type MemoViewMode = 'linear' | 'house' | 'route' | 'principal';
 
 const TIER_CONFIG = {
   single: {
@@ -784,6 +789,38 @@ function EvidenceMethodologyView({
   );
 }
 
+function PrincipalReadinessView({
+  payload,
+  citationMap,
+  evidenceSections,
+  references,
+  developmentsCount,
+  precedentCount,
+  onCitationClick,
+}: {
+  payload: ReleaseReadinessSharePayload;
+  citationMap: Map<string, number>;
+  evidenceSections: EvidenceMethodologySection[];
+  references?: any;
+  developmentsCount?: number;
+  precedentCount?: number;
+  onCitationClick: (citationId: string) => void;
+}) {
+  return (
+    <div className="space-y-10">
+      <PrincipalRouteView payload={payload} />
+      <EvidenceMethodologyView
+        citationMap={citationMap}
+        evidenceSections={evidenceSections}
+        references={references}
+        developmentsCount={developmentsCount}
+        precedentCount={precedentCount}
+        onCitationClick={onCitationClick}
+      />
+    </div>
+  );
+}
+
 export default function DecisionMemoAuditClientPage({
   initialIntakeId,
   initialSearchParamsString = '',
@@ -816,9 +853,7 @@ export default function DecisionMemoAuditClientPage({
     isReleaseReadinessReviewPath
       ? requestedMemoView === 'route' || requestedMemoView === 'v2'
         ? 'route'
-        : requestedMemoView === 'evidence' || requestedMemoView === 'methodology'
-          ? 'evidence'
-          : 'principal'
+        : 'principal'
       : requestedMemoView === 'house'
         ? 'house'
         : requestedMemoView === 'route' || requestedMemoView === 'v2'
@@ -886,7 +921,7 @@ export default function DecisionMemoAuditClientPage({
     }
 
     if (isReleaseReadinessReviewPath) {
-      if (viewMode === 'route' || viewMode === 'evidence') {
+      if (viewMode === 'route') {
         params.set('view', viewMode);
       } else {
         params.delete('view');
@@ -930,6 +965,16 @@ export default function DecisionMemoAuditClientPage({
       return null;
     }
   }, [memoViewMode, resolvedSurfaceData]);
+  const principalSharePayload = useMemo(() => {
+    if (!resolvedSurfaceData || !isReleaseReadinessReviewPath) return null;
+
+    try {
+      return buildReleaseReadinessSharePayload(canonicalMemoReference, resolvedSurfaceData);
+    } catch (caught) {
+      console.error('[DecisionMemo] Principal view failed to build', caught);
+      return null;
+    }
+  }, [canonicalMemoReference, isReleaseReadinessReviewPath, resolvedSurfaceData]);
 
   const {
     getPreviewArtifact,
@@ -2007,22 +2052,6 @@ export default function DecisionMemoAuditClientPage({
                       <Route className="w-4 h-4" />
                       <span className="hidden md:inline font-medium">Route View</span>
                     </button>
-                    <button
-                      onClick={() => {
-                        router.push(buildAuditViewHref(false, 'evidence'));
-                      }}
-                      type="button"
-                      aria-label="Evidence and Methodology"
-                      title="Evidence & Methodology"
-                      className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
-                        memoViewMode === 'evidence'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border hover:bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      <FileText className="w-4 h-4" />
-                      <span className="hidden md:inline font-medium">Evidence & Methodology</span>
-                    </button>
                   </>
                 ) : (
                   <>
@@ -2175,8 +2204,9 @@ export default function DecisionMemoAuditClientPage({
                 </div>
               </div>
             )
-          ) : memoViewMode === 'evidence' ? (
-            <EvidenceMethodologyView
+          ) : isReleaseReadinessReviewPath && principalSharePayload ? (
+            <PrincipalReadinessView
+              payload={principalSharePayload}
               citationMap={computedCitationMap}
               evidenceSections={computedEvidenceSections}
               references={computedReferences}
