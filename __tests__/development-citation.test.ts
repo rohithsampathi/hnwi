@@ -9,7 +9,7 @@ describe("development citation payload mapping", () => {
     const payload = {
       hbyte_summary: "The room should read this as route readiness, not a property headline.",
       summary: "This is the shorter source summary for the same record.",
-      full_text: "Why This Matters\nThis gives the buyer a decision consequence.\nKey Moves & Market Shifts\nThe route should stay gated.",
+      castle_original_brief: "Why This Matters\nThis gives the buyer a decision consequence.\nKey Moves & Market Shifts\nThe route should stay gated.",
       final_verdict: {
         verdict: "RESTRUCTURE",
         decision_posture: "WATCH_ONLY_UNTIL_UNDERWRITTEN",
@@ -24,13 +24,39 @@ describe("development citation payload mapping", () => {
     expect(development?.summaryLabel).toBe("HByte");
     expect(development?.summarySourceField).toBe("hbyte_summary");
     expect(development?.summary).toContain("HByte Summary\nThe room should read this as route readiness");
-    expect(development?.summary).toContain("Source Summary\nThis is the shorter source summary");
     expect(development?.summary).toContain("Why This Matters");
-    expect(development?.summary).toContain("Decision Posture");
-    expect(development?.summary).toContain("Quality Read");
-    expect(development?.summary).toContain("Source Fidelity");
-    expect(development?.summary).toContain("Pattern Memory");
+    expect(development?.summary).not.toContain("Source Summary");
+    expect(development?.summary).not.toContain("Decision Posture");
+    expect(development?.summary).not.toContain("Quality Read");
+    expect(development?.summary).not.toContain("Source Fidelity");
+    expect(development?.summary).not.toContain("Pattern Memory");
     expect(development?.summaryLabel).not.toContain("Castle");
+  });
+
+  it("does not fall back to public summary or full_text for v31 source records", () => {
+    const payload = {
+      hbyte_summary: "This is the central HByte.",
+      summary: "Why This Matters\nThis public summary should not become the citation body.",
+      full_text: "This legacy full_text field should not be used for v31 click content.",
+      castle_quality_score: 9.1,
+    };
+    const development = buildCitationSourceDevelopment(payload, "source-id");
+
+    expect(development?.summaryLabel).toBe("HByte");
+    expect(development?.summary).toBe("HByte Summary\nThis is the central HByte.");
+    expect(development?.summary).not.toContain("public summary");
+    expect(development?.summary).not.toContain("legacy full_text");
+  });
+
+  it("fails closed when a v31 source record has no HByte or real v31 brief body", () => {
+    const payload = {
+      title: "Thin v31 source",
+      summary: "Generic public summary.",
+      description: "Generic public description.",
+      castle_quality_score: 8.4,
+    };
+
+    expect(buildCitationSourceDevelopment(payload, "source-id")).toBeNull();
   });
 
   it("keeps current public endpoint behavior where summary already contains the full brief", () => {
