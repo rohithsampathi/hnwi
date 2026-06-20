@@ -2,13 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, Share2, Check, Loader2, LayoutGrid, ArrowLeft, Shield } from 'lucide-react';
+import { Share2, Check, LayoutGrid, ArrowLeft, Shield } from 'lucide-react';
 import { useTheme } from '@/contexts/theme-context';
 
 interface PersonalStickyControlsProps {
   intakeId: string;
-  onExportPDF?: () => void;
-  isExportingPDF?: boolean;
   onSwitchToReportView?: () => void;
 }
 
@@ -23,8 +21,6 @@ function formatMemoReference(intakeId: string): string {
 
 export default function PersonalStickyControls({
   intakeId,
-  onExportPDF,
-  isExportingPDF = false,
   onSwitchToReportView,
 }: PersonalStickyControlsProps) {
   const router = useRouter();
@@ -105,14 +101,6 @@ export default function PersonalStickyControls({
               >
                 {linkCopied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
                 <span className="hidden sm:inline">{linkCopied ? 'Copied!' : 'Share'}</span>
-              </button>
-              <button
-                onClick={onExportPDF}
-                disabled={isExportingPDF}
-                className="min-h-[44px] px-2 sm:px-3 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isExportingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isExportingPDF ? 'Exporting...' : 'Export PDF'}</span>
               </button>
             </div>
           </div>

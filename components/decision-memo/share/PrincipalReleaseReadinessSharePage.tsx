@@ -20,7 +20,7 @@ import type {
   ReleaseReadinessShareChartSeries,
 } from "@/lib/decision-memo/build-release-readiness-share-surface";
 
-type ViewMode = "principal" | "linear" | "route" | "evidence" | "methodology";
+type ViewMode = "principal" | "route" | "evidence" | "methodology";
 
 interface PrincipalReleaseReadinessSharePageProps {
   reference: string;
@@ -30,14 +30,12 @@ interface PrincipalReleaseReadinessSharePageProps {
 
 const VIEW_LABELS: Array<{ id: ViewMode; label: string; description: string }> = [
   { id: "principal", label: "Principal View", description: "Family decision, capital rule, gates, and consequences." },
-  { id: "linear", label: "Linear Brief", description: "Readable memo path with decision, economics, and advance/hold/stop." },
   { id: "route", label: "Route View", description: "Full route memo with scenario, crisis, succession, and execution depth." },
   { id: "evidence", label: "Evidence Vault", description: "Public source register and private evidence index." },
   { id: "methodology", label: "Methodology", description: "Controlled method receipt, not raw process output." },
 ];
 
 function normalizeViewMode(value: string | null): ViewMode {
-  if (value === "linear") return "linear";
   if (value === "route") return "route";
   if (value === "evidence") return "evidence";
   if (value === "methodology") return "methodology";
@@ -1114,38 +1112,6 @@ function FullReportSections({ sections }: { sections: ReleaseReadinessShareRepor
   );
 }
 
-function LinearBriefView({ payload }: { payload: ReleaseReadinessSharePayload }) {
-  const metrics = payload.selectedRoute.metrics;
-  const sections = [
-    {
-      title: "Recommendation",
-      body:
-        `Gated negotiation only. The approved purpose is London family use. Not yield, prestige, wrapper planning, or residence planning. Public guide price is GBP 49.5M; modeled all-in exposure is ${formatUsdCompact(metrics.totalAcquisitionCostUsd)} before operating costs, including ${formatUsdCompact(metrics.totalDutiesUsd)} modeled SDLT drag. No bid without closed comps and walk-away price. No exchange or deposit release without signed title, SDLT, SoW/SoF, bank rail, family authority, and bid discipline.`,
-    },
-    {
-      title: "Control Case",
-      body:
-        "Direct individual buyer route. No wrapper, residence-planning, relief, refund, or future-status benefit is credited before counsel signs the facts at the transaction trigger.",
-    },
-    { title: "Advance Conditions", body: payload.advanceConditions.join(" ") },
-    { title: "Hold Conditions", body: payload.holdConditions.join(" ") },
-    { title: "Stop Conditions", body: payload.stopConditions.join(" ") },
-  ].filter((section) => section.body.trim());
-
-  return (
-    <Section eyebrow="Linear brief" title="The shareable memo path">
-      <div className="space-y-5">
-        {sections.map((section) => (
-          <div key={section.title} className="rounded-md border border-border bg-card/70 p-5">
-            <h3 className="text-xl font-semibold text-foreground">{section.title}</h3>
-            <p className="mt-3 text-base leading-8 text-muted-foreground">{cleanDisplayText(section.body)}</p>
-          </div>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
 function EvidenceVaultView({
   publicSources,
   privateEvidence,
@@ -1420,7 +1386,6 @@ export default function PrincipalReleaseReadinessSharePage({
         </nav>
 
         {activeView === "principal" ? <PrincipalRouteView payload={payload} /> : null}
-        {activeView === "linear" ? <LinearBriefView payload={payload} /> : null}
         {activeView === "route" ? <FullReportSections sections={payload.reportSections} /> : null}
         {activeView === "evidence" ? (
           <EvidenceVaultView publicSources={payload.publicSources} privateEvidence={payload.privateEvidence} />

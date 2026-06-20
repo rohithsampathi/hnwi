@@ -14,7 +14,6 @@ import {
   Lock,
   CheckCircle,
   Share2,
-  Download,
   ArrowRight,
   ArrowLeft,
   Shield,
@@ -858,7 +857,6 @@ export default function DecisionMemoAuditClientPage({
     initialResolvedSurfaceData,
   );
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [selectedTier, setSelectedTier] = useState<AuditTier>('single');
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
@@ -875,10 +873,6 @@ export default function DecisionMemoAuditClientPage({
   // live behind a server route that still enforces environment and audit rules.
   const isMfaBypassed = false;
   const [showReportAuth, setShowReportAuth] = useState(false);
-
-  const buildPdfExportHeaders = useCallback((): HeadersInit | undefined => {
-    return undefined;
-  }, []);
 
   const buildAuditViewHref = useCallback((personalMode: boolean, viewMode: MemoViewMode = 'linear') => {
     const params = new URLSearchParams(searchParams.toString());
@@ -1178,43 +1172,6 @@ export default function DecisionMemoAuditClientPage({
     fetchData();
   }, [fetchData]);
 
-  // Retry pending PDF export after Fast Refresh reload
-  // (Dev-mode first-compile of print route triggers full page reload, killing in-flight fetch)
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('pdf-export-pending');
-      if (!raw) return;
-      sessionStorage.removeItem('pdf-export-pending');
-      const { id, ts } = JSON.parse(raw);
-      if (id === intakeId && Date.now() - ts < 60000) {
-        // Routes are now compiled — retry will succeed
-        const doRetry = async () => {
-          try {
-            setIsExportingPDF(true);
-            const response = await fetch(`/api/decision-memo/pdf/${intakeId}`, {
-              headers: buildPdfExportHeaders(),
-            });
-            if (!response.ok) throw new Error(`PDF generation failed: ${response.status}`);
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `HNWI-Release-Readiness-${(intakeId.slice(10, 22) || intakeId.slice(0, 12)).toUpperCase()}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          } catch {
-            // Silent — user can click again
-          } finally {
-            setIsExportingPDF(false);
-          }
-        };
-        doRetry();
-      }
-    } catch { /* ignore */ }
-  }, [buildPdfExportHeaders, intakeId]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // When SSE signals preview is ready, fetch from backend
   // Always fetch to ensure proper snake_case → camelCase transformation
   // IMPORTANT: Only set isWaitingForPreview(false) AFTER preview is fetched successfully
@@ -1405,44 +1362,6 @@ export default function DecisionMemoAuditClientPage({
     }
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
-  };
-
-  // Export PDF via native @react-pdf/renderer (server-side)
-  const handleExportPDF = async () => {
-    try {
-      setIsExportingPDF(true);
-
-      // Save intent — if Fast Refresh reloads the page (first-time route compile),
-      // the useEffect above will auto-retry after reload
-      sessionStorage.setItem('pdf-export-pending', JSON.stringify({ id: intakeId, ts: Date.now() }));
-
-      const response = await fetch(`/api/decision-memo/pdf/${intakeId}`, {
-        headers: buildPdfExportHeaders(),
-      });
-      sessionStorage.removeItem('pdf-export-pending');
-
-      if (!response.ok) {
-        throw new Error(`PDF generation failed: ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `HNWI-Release-Readiness-${(intakeId.slice(10, 22) || intakeId.slice(0, 12)).toUpperCase()}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch {
-      // If the page didn't reload (real error), clear the pending flag and alert
-      if (sessionStorage.getItem('pdf-export-pending')) {
-        sessionStorage.removeItem('pdf-export-pending');
-        alert('Failed to export PDF. Please try again.');
-      }
-    } finally {
-      setIsExportingPDF(false);
-    }
   };
 
   // Share
@@ -1914,17 +1833,6 @@ export default function DecisionMemoAuditClientPage({
     if (usePersonalMode) {
       return (
         <>
-          {/* PDF Export Loading Overlay */}
-          {isExportingPDF && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-              <CrownLoader
-                size="lg"
-                text="Generating PDF"
-                subtext="Creating institutional-grade document..."
-              />
-            </div>
-          )}
-
           {/* Personal Shell - Clean navigation interface */}
           <PersonalShell
             memoData={memoData as any}
@@ -1932,8 +1840,6 @@ export default function DecisionMemoAuditClientPage({
             intakeId={intakeId}
             onCitationClick={handleCitationClick}
             citationMap={computedCitationMap}
-            onExportPDF={handleExportPDF}
-            isExportingPDF={isExportingPDF}
             onSwitchToReportView={() => router.push(buildAuditViewHref(false))}
           />
         </>
@@ -1944,18 +1850,7 @@ export default function DecisionMemoAuditClientPage({
     return (
       <>
       <div className="min-h-screen bg-background text-foreground">
-        {/* PDF Export Loading Overlay */}
-        {isExportingPDF && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-            <CrownLoader
-              size="lg"
-              text="Generating PDF"
-              subtext="Creating institutional-grade document..."
-            />
-          </div>
-        )}
-
-        {/* Premium Sticky Header - Hidden in PDF export */}
+        {/* Premium Sticky Header */}
         {/* Back button + Page Title */}
         <div className="bg-background border-b border-border print:hidden">
           <div className="max-w-6xl mx-auto px-3 sm:px-6 py-3">
@@ -2067,22 +1962,6 @@ export default function DecisionMemoAuditClientPage({
                     </button>
                     <button
                       onClick={() => {
-                        router.push(buildAuditViewHref(false, 'linear'));
-                      }}
-                      type="button"
-                      aria-label="Linear View"
-                      title="Linear View"
-                      className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors group ${
-                        memoViewMode === 'linear'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border hover:bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      <FileText className="w-4 h-4" />
-                      <span className="hidden md:inline font-medium">Linear View</span>
-                    </button>
-                    <button
-                      onClick={() => {
                         router.push(buildAuditViewHref(false, 'house'));
                       }}
                       type="button"
@@ -2124,17 +2003,6 @@ export default function DecisionMemoAuditClientPage({
                   {linkCopied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
                   <span className="hidden md:inline">{linkCopied ? 'Copied!' : 'Share'}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={handleExportPDF}
-                  disabled={isExportingPDF}
-                  aria-label={isExportingPDF ? 'Exporting PDF' : 'Export PDF'}
-                  title={isExportingPDF ? 'Exporting PDF' : 'Export PDF'}
-                  className="min-h-[44px] px-2 sm:px-3 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isExportingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  <span className="hidden md:inline">{isExportingPDF ? 'Exporting...' : 'Export PDF'}</span>
-                </button>
                 </div>
               </div>
             </div>
@@ -2147,7 +2015,7 @@ export default function DecisionMemoAuditClientPage({
               <RouteIntelligenceV2Report
                 intelligence={routeIntelligence}
                 publicMemoId={canonicalMemoReference}
-                v1Href={buildAuditViewHref(false, 'linear')}
+                v1Href={buildAuditViewHref(false, 'principal')}
                 embedded
                 onCitationClick={handleCitationClick}
                 citationMap={computedCitationMap}

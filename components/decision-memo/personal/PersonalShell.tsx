@@ -16,8 +16,6 @@ interface PersonalShellProps {
   intakeId: string;
   onCitationClick?: (citationId: string) => void;
   citationMap?: Map<string, number> | Record<string, any>;
-  onExportPDF?: () => void;
-  isExportingPDF?: boolean;
   onSwitchToReportView?: () => void;
 }
 
@@ -27,8 +25,6 @@ export default function PersonalShell({
   intakeId,
   onCitationClick,
   citationMap,
-  onExportPDF,
-  isExportingPDF,
   onSwitchToReportView,
 }: PersonalShellProps) {
   const router = useRouter();
@@ -138,8 +134,6 @@ export default function PersonalShell({
       <div className="flex-shrink-0">
         <PersonalStickyControls
           intakeId={intakeId}
-          onExportPDF={onExportPDF}
-          isExportingPDF={isExportingPDF}
           onSwitchToReportView={onSwitchToReportView}
         />
       </div>

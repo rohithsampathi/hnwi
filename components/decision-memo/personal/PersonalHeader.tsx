@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Menu, X, LayoutGrid, FileText, Download } from 'lucide-react';
+import { Menu, X, LayoutGrid, FileText } from 'lucide-react';
 import { PdfMemoData } from '@/lib/pdf/pdf-types';
 import { RiskLevel, getRiskTheme, PersonalAI } from '@/lib/decision-memo/personal-ai-intelligence';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
@@ -126,19 +126,6 @@ export default function PersonalHeader({
               Standard View
             </span>
           </button>
-
-          {/* Export PDF - hidden on mobile */}
-          <button
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:border-border/80 transition-colors group"
-          >
-            <Download className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors hidden sm:inline">
-              Export
-            </span>
-          </button>
-
-          {/* Divider - hidden on mobile */}
-          <div className="hidden sm:block w-px h-8 bg-border" />
 
           {/* Risk indicator - compact on mobile */}
           <div
