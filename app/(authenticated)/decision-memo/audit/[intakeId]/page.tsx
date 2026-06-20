@@ -108,6 +108,7 @@ function asArray(value: unknown): RecordLike[] {
 function cleanTranscriptText(value: string): string {
   return value
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
+    .replace(/\bGated negotiation only only\b/gi, 'Gated negotiation only')
     .replace(/\brelease differently\b/gi, 'gated negotiation only')
     .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
     .replace(/\bproceed modified\b/gi, 'proceed under signed gates')
@@ -139,6 +140,12 @@ function cleanTranscriptText(value: string): string {
     .replace(/\bfounder authority\b/gi, 'principal authority')
     .replace(/\bFounder\b/g, 'Principal')
     .replace(/\bfounder\b/g, 'principal')
+    .replace(/\bPrincipal\s*\/\s*principal\b/gi, 'Principal')
+    .replace(/\bprincipal\s*\/\s*principal\b/gi, 'Principal')
+    .replace(
+      /\bnamed family user\s*\/\s*named family user\s+named family-fairness owner\b/gi,
+      'Named family user / named family-fairness owner',
+    )
     .replace(/\bfamily-home veto position\b/gi, 'family-use veto position')
     .replace(/\bfamily-home veto holder\b/gi, 'family-use veto holder')
     .replace(/\bspouse veto if relevant\b/gi, 'family-use veto position where recorded')
