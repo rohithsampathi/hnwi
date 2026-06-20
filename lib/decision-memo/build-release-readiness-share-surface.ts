@@ -248,6 +248,11 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bfamily-home veto holder\b/gi, "family-use veto holder")
     .replace(/\bFounder authority\b/gi, "Principal authority")
     .replace(/\bfounder authority\b/gi, "principal authority")
+    .replace(/\bFounder\b/g, "Principal")
+    .replace(/\bfounder\b/g, "principal")
+    .replace(/\bG2 fairness owner\b/gi, "family-fairness owner")
+    .replace(/\bG3 memory\b/gi, "next-generation decision record")
+    .replace(/\bsix years later\b/gi, "later")
     .replace(/\bmemo source file\b/gi, "source register")
     .replace(/\brelease-readiness reviewing\b/gi, "release-readiness review")
     .replace(
