@@ -61,10 +61,74 @@ function asArray(value: unknown): RecordLike[] {
   return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 
+function cleanTranscriptText(value: string): string {
+  return value
+    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
+    .replace(/\brelease differently\b/gi, 'gated negotiation only')
+    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bproceed modified\b/gi, 'proceed under signed gates')
+    .replace(/\bHigh until release gates clear\b/gi, 'Evidence pending; no capital release')
+    .replace(/\bRisk level\b/gi, 'Release status')
+    .replace(/\bData quality\b/gi, 'Evidence status')
+    .replace(/\brelease-read sprint\b/gi, 'release-readiness sprint')
+    .replace(
+      /\bas a London family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi,
+      'as a proposed London family-use acquisition with education, residence, succession, and capital-preservation claims treated as separate gates',
+    )
+    .replace(/\bLondon family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi, 'proposed London family-use acquisition with education, residence, succession, and capital-preservation claims treated as separate gates')
+    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/g, 'principal / named family user / next-generation record')
+    .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/g, 'generation-to-generation')
+    .replace(/\bG1 principal\b/gi, 'principal')
+    .replace(/\bG2 son\b/gi, 'named family user')
+    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, 'named family-fairness owner')
+    .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, 'named family-fairness owner')
+    .replace(/\bdaughter\/fairness\b/gi, 'family-fairness')
+    .replace(/\bG3 grandson\b/gi, 'next-generation record')
+    .replace(/\bG3 memory rules\b/gi, 'next-generation decision record rules')
+    .replace(/\bG3 memory\b/gi, 'next-generation decision record')
+    .replace(/\bG3 decision memory\b/gi, 'next-generation decision record')
+    .replace(/\bG3\b/g, 'next-generation record')
+    .replace(/\bG2 fairness owner\b/gi, 'family-fairness owner')
+    .replace(/\bG2\b/g, 'named family user')
+    .replace(/\bFounder authority\b/gi, 'Principal authority')
+    .replace(/\bfounder authority\b/gi, 'principal authority')
+    .replace(/\bFounder\b/g, 'Principal')
+    .replace(/\bfounder\b/g, 'principal')
+    .replace(/\bfamily-home veto position\b/gi, 'family-use veto position')
+    .replace(/\bfamily-home veto holder\b/gi, 'family-use veto holder')
+    .replace(/\bspouse veto if relevant\b/gi, 'family-use veto position where recorded')
+    .replace(/\bspouse if relevant\b/gi, 'family-use veto holder where recorded')
+    .replace(/\bspouse veto\b/gi, 'family-use veto position')
+    .replace(/\bThe route must be retrievable six years later\b/gi, 'The route must be retrievable years later')
+    .replace(/\bsix years later\b/gi, 'later')
+    .replace(
+      /\bLooks like prime London capital preservation even though the economics are control\/use-led after duty drag\.?/gi,
+      'Appears like a capital-preservation purchase, but economics are family-use and control-led after duty drag.',
+    )
+    .replace(
+      /\bCapital should not move while the transfer path is only narrated\.?/gi,
+      'Capital remains blocked until the transfer path is bank-accepted in writing.',
+    )
+    .replace(
+      /\bThe asset cannot become a silent family promise or future conflict point\.?/gi,
+      'Use rights, carry, and veto must be written so the property does not become an implied future entitlement.',
+    )
+    .replace(
+      /\bThe purchase must remain legible later without relying on principal memory\.?/gi,
+      'The purchase must remain explainable later without relying on memory or informal understandings.',
+    )
+    .replace(
+      /\bThe purchase must remain legible six years later without relying on founder memory\.?/gi,
+      'The purchase must remain explainable later without relying on memory or informal understandings.',
+    )
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function asString(value: unknown, fallback = ''): string {
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return cleanTranscriptText(value);
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
-  return fallback;
+  return cleanTranscriptText(fallback);
 }
 
 function textList(value: unknown, limit = 8): string[] {
@@ -249,9 +313,9 @@ function DecisionMemoServerAuditText({
       </header>
 
       <section>
-        <h2>Principal Risk Snapshot</h2>
+        <h2>Principal Release Snapshot</h2>
         <dl>
-          <div><dt>Risk level</dt><dd>{asString(risk.risk_level, 'High until release gates clear')}</dd></div>
+          <div><dt>Release status</dt><dd>{asString(risk.risk_level, 'High until release gates clear')}</dd></div>
           <div><dt>Critical items</dt><dd>{asString(risk.critical_items, '-')}</dd></div>
           <div><dt>High items</dt><dd>{asString(risk.high_items, '-')}</dd></div>
           <div><dt>Mitigation timeline</dt><dd>{asString(risk.mitigation_timeline || pickSection(data, 'mitigationTimeline'), '0-7 days release-read sprint; 30-day counsel/bank/title/authority close; 90-day carry rhythm.')}</dd></div>
@@ -343,7 +407,7 @@ function DecisionMemoServerAuditText({
       />
 
       <section>
-        <h2>G1 / G2 / G3 Authority And Family Consequence</h2>
+        <h2>Generation Authority And Family Consequence</h2>
         <ul>
           {textList(familyAuthority.family_roles, 10).map((line, index) => <li key={`family-role-${index}`}>{line}</li>)}
           {textList(familyAuthority.successor_roles, 10).map((line, index) => <li key={`successor-role-${index}`}>{line}</li>)}
