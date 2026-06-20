@@ -1290,6 +1290,7 @@ export default function PrincipalReleaseReadinessSharePage({
           onClose={closePanel}
           onCitationSelect={setSelectedCitationId}
           citationMap={citationMap}
+          shareId={payload.reference}
           preferRemoteSources
         />
       ) : null}

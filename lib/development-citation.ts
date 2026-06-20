@@ -79,17 +79,24 @@ function cleanText(value: unknown): string {
 }
 
 function pickFirstText(payload: DevelopmentPayload, fields: readonly string[]): string {
+  return pickFirstTextWithField(payload, fields).text
+}
+
+function pickFirstTextWithField(
+  payload: DevelopmentPayload,
+  fields: readonly string[]
+): { field: string; text: string } {
   for (const field of fields) {
     const value = payload[field]
     const text = cleanText(value)
-    if (text) return text
+    if (text) return { field, text }
     if (value && typeof value === "object" && "$date" in value) {
       const dateText = cleanText((value as Record<string, unknown>).$date)
-      if (dateText) return dateText
+      if (dateText) return { field, text: dateText }
     }
   }
 
-  return ""
+  return { field: "", text: "" }
 }
 
 function stripSummaryHeading(text: string): string {
@@ -239,8 +246,8 @@ function buildV31CitationAnalysis(
     parts.push(`HByte Summary\n${hbyteSummary}`)
   }
 
-  const bodyText = pickFirstText(payload, V31_BODY_FIELDS)
-  const bodyWithoutDuplicateLead = stripDuplicateLeadBlock(bodyText, [
+  const body = pickFirstTextWithField(payload, V31_BODY_FIELDS)
+  const bodyWithoutDuplicateLead = stripDuplicateLeadBlock(body.text, [
     hbyteSummary,
     descriptionText,
   ])
@@ -281,11 +288,12 @@ function pickCitationAnalysis(payload: DevelopmentPayload): {
   const descriptionText = cleanText(payload.description)
 
   if (isV31CitationPayload(payload)) {
+    const v31Body = pickFirstTextWithField(payload, V31_BODY_FIELDS)
     const v31Text = buildV31CitationAnalysis(payload, fullHByteSummary, descriptionText)
     return {
       text: v31Text,
-      sourceField: fullHByteSummary ? "hbyte_summary" : (v31Text ? "source_record" : ""),
-      label: fullHByteSummary ? "HByte" : "Source Record",
+      sourceField: v31Body.field || (fullHByteSummary ? "hbyte_summary" : (v31Text ? "source_record" : "")),
+      label: v31Body.text ? "Source Brief" : (fullHByteSummary ? "HByte" : "Source Record"),
     }
   }
 
