@@ -74,6 +74,26 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bAll listed release gates have assigned owners\b/gi, "Gate ownership assigned; release evidence pending")
     .replace(/\bDOCUMENTED\b/g, "Indexed for review")
     .replace(/\bDocumented\b/g, "Indexed for review")
+    .replace(/\bRisk level\b/gi, "Release status")
+    .replace(/\bHigh until release gates clear\b/gi, "Evidence pending; no capital release")
+    .replace(/\bData quality\b/gi, "Evidence status")
+    .replace(/\bRelease-gated\b/gi, "Public claims source-backed; private claims gate-controlled")
+    .replace(
+      /\bLooks like prime London capital preservation even though the economics are control\/use-led after duty drag\.?/gi,
+      "Appears like a capital-preservation purchase, but economics are family-use and control-led after duty drag."
+    )
+    .replace(
+      /\bCapital should not move while the transfer path is only narrated\.?/gi,
+      "Capital remains blocked until the transfer path is bank-accepted in writing."
+    )
+    .replace(
+      /\bThe asset cannot become a silent family promise or future conflict point\.?/gi,
+      "Use rights, carry, and veto must be written so the property does not become an implied future entitlement."
+    )
+    .replace(
+      /\bThe purchase must remain legible six years later without relying on founder memory\.?/gi,
+      "The purchase must remain explainable later without relying on memory or informal understandings."
+    )
     .replace(/\bFull Decision Memo\b/gi, "Release Readiness Review")
     .replace(/\bDecision Memo\b/gi, "Release Readiness Review")
     .replace(/\bPressure Test\b/gi, "Release Readiness Review")
@@ -84,6 +104,8 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/g, "founder / named family user / next-generation record")
     .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/g, "generation-to-generation")
     .replace(/\bG1 principal\b/gi, "principal")
+    .replace(/\bFounder authority\b/gi, "Principal authority")
+    .replace(/\bfounder authority\b/gi, "principal authority")
     .replace(/\bG2 son\b/gi, "named family user")
     .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
     .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
@@ -94,9 +116,13 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bson-use\b/gi, "named family-user")
     .replace(/\bson use\b/gi, "named family-user")
     .replace(/\bnamed family user-use\b/gi, "named family-user use")
-    .replace(/\bspouse veto if relevant\b/gi, "family-home veto position where recorded")
-    .replace(/\bspouse if relevant\b/gi, "family-home veto holder where recorded")
-    .replace(/\bspouse veto\b/gi, "family-home veto position")
+    .replace(/\bspouse veto if relevant\b/gi, "family-use veto position where recorded")
+    .replace(/\bspouse if relevant\b/gi, "family-use veto holder where recorded")
+    .replace(/\bspouse veto\b/gi, "family-use veto position")
+    .replace(/\bfamily-home veto position\b/gi, "family-use veto position")
+    .replace(/\bfamily-home veto holder\b/gi, "family-use veto holder")
+    .replace(/\bG3 decision memory\b/gi, "next-generation decision record")
+    .replace(/\bnext-generation decision memory\b/gi, "next-generation decision record")
     .replace(/\brelease-read sprint\b/gi, "release-readiness sprint")
     .replace(/\bSIX-BOOK OPENING\b/gi, "Decision Opening")
     .replace(/\bSix-book opening\b/gi, "Decision opening")
@@ -351,6 +377,61 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
     ["All-in before operating costs", cardValue(capital, "all-in", money(metrics.totalAcquisitionCostUsd))],
     ["Annual carry", money(metrics.annualCarryingCostUsd)],
   ];
+  const principalReadoutRows = [
+    [
+      "Current instruction",
+      "No capital release. Proceed under gated negotiation only.",
+      "The family can keep negotiation alive without letting bid, deposit, exchange, or seller timing harden before signed gates.",
+    ],
+    [
+      "What changed",
+      "The property discussion becomes one release decision.",
+      "Seller ask, family purpose, tax posture, title, bank movement, source evidence, and family authority now sit under one release rule.",
+    ],
+    [
+      "Capital blocked",
+      "No bid without closed comparables, failed-sale history, first-offer range, and walk-away price.",
+      "No exchange or deposit until title, SDLT, source, bank rail, family authority, fairness, and decision record are signed.",
+    ],
+    [
+      "Economic reality",
+      `${money(metrics.totalAcquisitionCostUsd)} all-in exposure, ${money(metrics.totalDutiesUsd)} duty drag, and ${money(metrics.annualCarryingCostUsd)} estimated annual carry before final operating files.`,
+      "The guide price is subordinate to the real capital commitment and the release gates that control it.",
+    ],
+    [
+      "Evidence posture",
+      "Public legal, tax, property, market, and FX claims are source-backed.",
+      "Private title, seller, bank, source, and family-authority claims remain gate-controlled until signed or indexed.",
+    ],
+  ];
+  const trustLedgerRows = [
+    [
+      `${payload.publicSources.length}`,
+      `${payload.privateEvidence.length}`,
+      `${payload.methodDrivers.length}`,
+      `${payload.citations.length}`,
+    ],
+  ];
+  const advisorConversionRows = [
+    ["UK tax counsel", "Signed SDLT route, relief exclusions, surcharge posture, and residence boundary"],
+    ["UK property counsel", "Title, seller authority, deposit mechanics, searches, survey, restrictions, and exchange conditions"],
+    ["Banks", "SoW / SoF acceptance, signer authority, FX controls, primary rail, and fallback rail"],
+    ["Buying agent", "Bid discipline, comparables, seller motivation, first-offer range, and walk-away price"],
+    ["Family office and principals", "Authority, use boundary, fairness, stop rights, carry owner, and decision record"],
+  ];
+  const nextSevenDayRows = [
+    ["Day 0-1", "Confirm no bid, no deposit, and no seller commitment without signed gates", "Principal + family-office operator"],
+    ["Day 1-2", "Produce closed comparables, failed-sale history, seller motivation, first-offer range, and walk-away price", "Buying agent"],
+    ["Day 1-3", "Sign buyer profile, SDLT treatment, surcharge position, and relief exclusions", "UK tax counsel"],
+    ["Day 2-4", "Confirm title, searches, survey, seller authority, deposit mechanics, and completion conditions", "UK property counsel"],
+    ["Day 2-5", "Confirm SoW / SoF acceptance, signer authority, FX controls, primary rail, and fallback rail", "Source bank + receiving bank"],
+    ["Day 4-7", "Sign family-use boundary, fairness minute, stop rights, carry owner, and decision record location", "Family office + succession counsel"],
+  ];
+  const viewBoundaryRows = [
+    ["Principal View", "Decision surface", "What may advance, what capital remains blocked, what the route commits, and which gates must clear."],
+    ["Route View", "Full route memo", "Route options, scenario tree, crisis, resilience, succession, banking, tax/legal, and execution depth."],
+    ["Evidence & Methodology", "Proof boundary", "Public sources, private evidence classes, method drivers, and citation handles are separated."],
+  ];
   const whatChangesRows = [
     [
       "Property interest",
@@ -461,6 +542,43 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
         <MetricCard label="Mitigation clock" value="72h / 7d" note={cleanDisplayText(payload.mitigation)} />
       </div>
 
+      <Section eyebrow="Principal readout" title="No capital release; gated negotiation only">
+        <PrincipalTable
+          columns={["Control point", "Principal read", "Decision consequence"]}
+          rows={principalReadoutRows}
+        />
+      </Section>
+
+      <Section eyebrow="What we caught" title="Six failure modes the room should not discover after exchange">
+        <PrincipalTable columns={["Issue caught", "Why it matters", "Release response"]} rows={caughtRows} />
+      </Section>
+
+      <Section eyebrow="Why this is not a memo" title="Adviser inputs are converted into one release rule">
+        <p className="mb-5 max-w-4xl text-base leading-8 text-muted-foreground">
+          This review does not replace advisers. It converts adviser inputs into one capital-release rule.
+        </p>
+        <PrincipalTable columns={["Adviser lane", "Converted into"]} rows={advisorConversionRows} />
+        <p className="mt-5 text-base font-semibold text-foreground">Output: proceed under signed gates, hold, or stop.</p>
+      </Section>
+
+      <Section eyebrow="Trust ledger" title="The proof boundary is explicit">
+        <PrincipalTable
+          columns={["Public source rows", "Private evidence classes", "Method drivers", "Citation handles"]}
+          rows={trustLedgerRows}
+        />
+        <p className="mt-5 max-w-4xl text-sm leading-6 text-muted-foreground">
+          Public claims are source-backed. Private claims remain gate-controlled until signed or indexed. Method drivers explain why a gate matters; they do not prove legal status, bank acceptance, title, tax treatment, valuation, or family authority.
+        </p>
+      </Section>
+
+      <Section eyebrow="Next seven days" title="The only lawful order of movement">
+        <PrincipalTable columns={["Window", "Action", "Owner"]} rows={nextSevenDayRows} />
+      </Section>
+
+      <Section eyebrow="View boundary" title="Each view has one job">
+        <PrincipalTable columns={["View", "Role", "What it should answer"]} rows={viewBoundaryRows} />
+      </Section>
+
       <Section eyebrow="Decision answer" title="What is approved, blocked, and required">
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-5">
@@ -520,10 +638,6 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
 
       <Section eyebrow="What changes before capital moves" title="The family gets a release rule, not just diligence">
         <PrincipalTable columns={["Before", "After this memo", "Family consequence"]} rows={whatChangesRows} />
-      </Section>
-
-      <Section eyebrow="What this catches" title="Six failure modes the room should not discover after exchange">
-        <PrincipalTable columns={["Failure mode", "Why it matters", "Release response"]} rows={caughtRows} />
       </Section>
 
       <Section eyebrow={market?.eyebrow} title="Negotiation authority is separate from market attractiveness">

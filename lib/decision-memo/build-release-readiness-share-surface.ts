@@ -242,6 +242,12 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bspouse veto if relevant\b/gi, "family-home veto position where recorded")
     .replace(/\bspouse if relevant\b/gi, "family-home veto holder where recorded")
     .replace(/\bspouse veto\b/gi, "family-home veto position")
+    .replace(/\bFamily-home veto position\b/gi, "Family-use veto position")
+    .replace(/\bfamily-home veto position\b/gi, "family-use veto position")
+    .replace(/\bFamily-home veto holder\b/gi, "Family-use veto holder")
+    .replace(/\bfamily-home veto holder\b/gi, "family-use veto holder")
+    .replace(/\bFounder authority\b/gi, "Principal authority")
+    .replace(/\bfounder authority\b/gi, "principal authority")
     .replace(/\bmemo source file\b/gi, "source register")
     .replace(/\brelease-readiness reviewing\b/gi, "release-readiness review")
     .replace(
@@ -252,7 +258,24 @@ function sanitizeShareText(value: unknown): string {
       /\bLondon family base,\s*education\/continuity node,\s*and capital-preservation reserve\b/gi,
       "London family-use, continuity, and capital-preservation claims treated as separate release gates"
     )
-    .replace(/\bG3 decision memory\b/gi, "next-generation decision memory")
+    .replace(/\bG3 decision memory\b/gi, "next-generation decision record")
+    .replace(/\bnext-generation decision memory\b/gi, "next-generation decision record")
+    .replace(
+      /\bLooks like prime London capital preservation even though the economics are control\/use-led after duty drag\.?/gi,
+      "Appears like a capital-preservation purchase, but economics are family-use and control-led after duty drag."
+    )
+    .replace(
+      /\bCapital should not move while the transfer path is only narrated\.?/gi,
+      "Capital remains blocked until the transfer path is bank-accepted in writing."
+    )
+    .replace(
+      /\bThe asset cannot become a silent family promise or future conflict point\.?/gi,
+      "Use rights, carry, and veto must be written so the property does not become an implied future entitlement."
+    )
+    .replace(
+      /\bThe purchase must remain legible six years later without relying on founder memory\.?/gi,
+      "The purchase must remain explainable later without relying on memory or informal understandings."
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -498,19 +521,19 @@ function buildSafeGates() {
         gate: "SoW / SoF and bank rails",
         state: "Required before exchange",
         evidence: "Source bank, receiving bank, fallback bank rail, KYC, sanctions/adverse-media clearance, FX authority, transfer limits, and timetable.",
-        why_it_matters: "Capital should not move while the transfer path is only narrated.",
+        why_it_matters: "Capital remains blocked until the transfer path is bank-accepted in writing.",
       },
       {
         gate: "Authority and veto map",
         state: "Required before bid or exchange",
-        evidence: "Founder authority, named family-user boundary, family-home veto position where recorded, sale/refinance rights, and carry owner.",
-        why_it_matters: "The asset cannot become a silent family promise or future conflict point.",
+        evidence: "Principal authority, named family-user boundary, family-use veto position where recorded, sale/refinance rights, and carry owner.",
+        why_it_matters: "Use rights, carry, and veto must be written so the property does not become an implied future entitlement.",
       },
       {
         gate: "Family fairness and next-generation record",
         state: "Required before bid or exchange",
         evidence: "Named family-fairness owner, notice minute, beneficiary treatment, and decision record location.",
-        why_it_matters: "The purchase must remain legible six years later without relying on founder memory.",
+        why_it_matters: "The purchase must remain explainable later without relying on memory or informal understandings.",
       },
       {
         gate: "Bid discipline",
@@ -1179,7 +1202,7 @@ function buildInformationAndMemorySection(resolved: ResolvedDecisionMemoSurfaceD
   return reportSection({
     id: "information-flow-decision-memory",
     eyebrow: "Information flow and decision memory",
-    title: "The route must be retrievable six years later",
+    title: "The route must be retrievable years later",
     intro: sanitizeShareText(memory.why_recorded),
     cards: [
       {
