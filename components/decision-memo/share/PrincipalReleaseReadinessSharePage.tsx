@@ -20,7 +20,7 @@ import type {
   ReleaseReadinessShareChartSeries,
 } from "@/lib/decision-memo/build-release-readiness-share-surface";
 
-type ViewMode = "principal" | "linear" | "evidence" | "methodology";
+type ViewMode = "principal" | "route" | "evidence" | "methodology";
 
 interface PrincipalReleaseReadinessSharePageProps {
   reference: string;
@@ -29,11 +29,18 @@ interface PrincipalReleaseReadinessSharePageProps {
 }
 
 const VIEW_LABELS: Array<{ id: ViewMode; label: string; description: string }> = [
-  { id: "principal", label: "Principal Route View", description: "Decision, capital rule, gates, and stop conditions." },
-  { id: "linear", label: "Linear Brief", description: "Readable memo path without workroom machinery." },
+  { id: "principal", label: "Principal View", description: "Family decision, capital rule, gates, and consequences." },
+  { id: "route", label: "Route View", description: "Full route memo with scenario, crisis, succession, and execution depth." },
   { id: "evidence", label: "Evidence Vault", description: "Public source register and private evidence index." },
   { id: "methodology", label: "Methodology", description: "Controlled method receipt, not raw process output." },
 ];
+
+function normalizeViewMode(value: string | null): ViewMode {
+  if (value === "route" || value === "linear") return "route";
+  if (value === "evidence") return "evidence";
+  if (value === "methodology") return "methodology";
+  return "principal";
+}
 
 function numberValue(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -90,6 +97,7 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bspouse veto if relevant\b/gi, "family-home veto position where recorded")
     .replace(/\bspouse if relevant\b/gi, "family-home veto holder where recorded")
     .replace(/\bspouse veto\b/gi, "family-home veto position")
+    .replace(/\brelease-read sprint\b/gi, "release-readiness sprint")
     .replace(/\bSIX-BOOK OPENING\b/gi, "Decision Opening")
     .replace(/\bSix-book opening\b/gi, "Decision opening")
     .replace(/\bDM64\b/g, "release-readiness compiler")
@@ -105,12 +113,174 @@ function citationNumber(citationMap: Map<string, number>, id: string): number | 
   return citationMap.get(id) ?? citationMap.get(id.toLowerCase()) ?? null;
 }
 
+function reportSection(
+  payload: ReleaseReadinessSharePayload,
+  id: string,
+): ReleaseReadinessShareReportSection | undefined {
+  return payload.reportSections.find((section) => section.id === id);
+}
+
+function reportCard(
+  section: ReleaseReadinessShareReportSection | undefined,
+  labelNeedle: string,
+): ReleaseReadinessShareCard | undefined {
+  const needle = labelNeedle.toLowerCase();
+  return section?.cards?.find((card) => cleanDisplayText(card.label).toLowerCase().includes(needle));
+}
+
+function reportRows(section: ReleaseReadinessShareReportSection | undefined, limit?: number): string[][] {
+  const rows = section?.table?.rows ?? [];
+  return typeof limit === "number" ? rows.slice(0, limit) : rows;
+}
+
+function cardValue(
+  section: ReleaseReadinessShareReportSection | undefined,
+  labelNeedle: string,
+  fallback = "Release-gated",
+): string {
+  const card = reportCard(section, labelNeedle);
+  return cleanDisplayText(card?.value || card?.title || fallback);
+}
+
+function uniqueRows(rows: string[][], limit?: number): string[][] {
+  const seen = new Set<string>();
+  const output: string[][] = [];
+  for (const row of rows) {
+    const key = row.map((cell) => cleanDisplayText(cell)).join("|");
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    output.push(row);
+    if (limit && output.length >= limit) break;
+  }
+  return output;
+}
+
 function MetricCard({ label, value, note }: { label: string; value: string; note: string }) {
   return (
     <div className="rounded-md border border-border bg-card/80 p-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className="mt-3 text-2xl font-semibold tracking-normal text-foreground">{value}</p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{note}</p>
+    </div>
+  );
+}
+
+function PrincipalInfoCard({
+  label,
+  title,
+  body,
+  tone = "default",
+}: {
+  label: string;
+  title: string;
+  body: string;
+  tone?: "default" | "primary" | "success" | "warning" | "danger";
+}) {
+  const toneClass =
+    tone === "primary"
+      ? "border-primary/30 bg-primary/5"
+      : tone === "success"
+        ? "border-emerald-500/25 bg-emerald-500/5"
+        : tone === "warning"
+          ? "border-amber-500/25 bg-amber-500/5"
+          : tone === "danger"
+            ? "border-red-500/25 bg-red-500/5"
+            : "border-border bg-card/70";
+
+  return (
+    <article className={`min-w-0 rounded-md border p-5 ${toneClass}`}>
+      <p className="break-words text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {cleanDisplayText(label)}
+      </p>
+      <h3 className="mt-3 break-words text-xl font-semibold leading-7 text-foreground">{cleanDisplayText(title)}</h3>
+      <p className="mt-3 break-words text-sm leading-6 text-muted-foreground">{cleanDisplayText(body)}</p>
+    </article>
+  );
+}
+
+function PrincipalTable({
+  columns,
+  rows,
+}: {
+  columns: string[];
+  rows: string[][];
+}) {
+  if (!rows.length) return null;
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-border">
+      <table className="min-w-full border-collapse text-left text-sm">
+        <thead className="bg-muted/40 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          <tr>
+            {columns.map((column) => (
+              <th key={column} className="border-b border-border px-4 py-3 font-semibold">
+                {cleanDisplayText(column)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={`${row.join("-")}-${rowIndex}`} className="border-b border-border last:border-b-0">
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={`${cell}-${cellIndex}`}
+                  className={`min-w-52 px-4 py-4 align-top leading-6 ${
+                    cellIndex === 0 ? "font-semibold text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  <span className="block max-w-[34rem] break-words">{cleanDisplayText(cell)}</span>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PrincipalConditionGrid({
+  advance,
+  hold,
+  stop,
+}: {
+  advance: string[];
+  hold: string[];
+  stop: string[];
+}) {
+  const columns = [
+    { label: "Advance only if", items: advance, tone: "success" as const },
+    { label: "Hold if", items: hold, tone: "warning" as const },
+    { label: "Stop if", items: stop, tone: "danger" as const },
+  ];
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      {columns.map((column) => (
+        <article
+          key={column.label}
+          className={`rounded-md border p-5 ${
+            column.tone === "success"
+              ? "border-emerald-500/25 bg-emerald-500/5"
+              : column.tone === "warning"
+                ? "border-amber-500/25 bg-amber-500/5"
+                : "border-red-500/25 bg-red-500/5"
+          }`}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {column.label}
+          </p>
+          <div className="mt-4 space-y-3">
+            {column.items.map((item, index) => (
+              <p key={`${column.label}-${index}`} className="text-sm leading-6 text-muted-foreground">
+                <span className="mr-2 font-semibold text-foreground">{index + 1}.</span>
+                {cleanDisplayText(item)}
+              </p>
+            ))}
+          </div>
+        </article>
+      ))}
     </div>
   );
 }
@@ -158,16 +328,105 @@ function SourceButton({
 
 export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessSharePayload }) {
   const metrics = payload.selectedRoute.metrics;
+  const inputFrame = reportSection(payload, "input-frame");
+  const capital = reportSection(payload, "capital-exposure-proof");
+  const taxLegal = reportSection(payload, "tax-legal-route-readiness");
+  const market = reportSection(payload, "market-intelligence");
+  const wealth = reportSection(payload, "wealth-projection");
+  const scenario = reportSection(payload, "release-rule-scenario-tree");
+  const crisis = reportSection(payload, "crisis-resilience");
+  const antiFragility = reportSection(payload, "anti-fragility");
+  const continuity = reportSection(payload, "g1-g2-g3-continuity");
+  const authority = reportSection(payload, "authority-veto");
+  const responsibility = reportSection(payload, "responsibility-transfer");
+  const recordMismatch = reportSection(payload, "record-mismatch");
+  const banking = reportSection(payload, "banking-sow-sof");
+  const specialist = reportSection(payload, "specialist-release-reviews");
+  const decisionMemory = reportSection(payload, "information-flow-decision-memory");
+  const roadmap = reportSection(payload, "implementation-roadmap");
+  const selectedRoute = payload.selectedRoute;
+  const capitalCards = [
+    ["Transaction value", cardValue(capital, "transaction value", money(metrics.propertyValueUsd))],
+    ["Duty drag", cardValue(capital, "total duty drag", money(metrics.totalDutiesUsd))],
+    ["All-in before operating costs", cardValue(capital, "all-in", money(metrics.totalAcquisitionCostUsd))],
+    ["Annual carry", money(metrics.annualCarryingCostUsd)],
+  ];
+  const whatChangesRows = [
+    [
+      "Property interest",
+      "Release decision",
+      "The family can negotiate, but capital cannot move until signed gates clear.",
+    ],
+    [
+      "Guide price",
+      "Bid authority",
+      "Guide price is not approval. Closed comps, failed-sale history, capex adjustment, first offer, and walk-away price control the bid.",
+    ],
+    [
+      "Family use claim",
+      "Written family-use boundary",
+      "Use, guest access, security, carry, sale/refinance rights, veto position, and future explanation are recorded before bid or exchange.",
+    ],
+    [
+      "Source narrative",
+      "Bank-accepted source file",
+      "Source of wealth and source of funds must be corroborated by records accepted by the source and receiving rails.",
+    ],
+    [
+      "London presence",
+      "Separate release gates",
+      "Education, residence, tax, succession, and capital-preservation claims are treated as separate approvals, not one property story.",
+    ],
+  ];
+  const caughtRows = [
+    [
+      "Guide price is not bid authority",
+      "Without bid discipline the family can convert an attractive address into an overpaid commitment.",
+      "Buying agent must produce comps, failed-sale history, seller motivation, capex adjustment, first-offer range, and walk-away price.",
+    ],
+    [
+      "Duty drag changes the asset purpose",
+      "The direct route carries a material day-one duty drag, so the asset must be approved as controlled family use, not a yield trade.",
+      "Family purpose and carry owner must be minuted before capital moves.",
+    ],
+    [
+      "Ownership does not solve residence or education",
+      "A house can be bought while school, guardian, day-count, and family-presence routes remain unfinished.",
+      "Specialist reviews clear each purpose claim separately before release.",
+    ],
+    [
+      "Structure is not a shortcut",
+      "A company, trust, or wrapper can add cost, disclosure, ATED, bank friction, and beneficial-owner scrutiny.",
+      "Use structure only if counsel signs a non-tax governance, security, succession, or operating purpose.",
+    ],
+    [
+      "Bank rails are execution risk",
+      "Capital can exist and still fail to move when source evidence, signer authority, FX limits, receiving rail, or fallback rail is not accepted.",
+      "No exchange until source bank, receiving bank, fallback rail, and FX authority are accepted.",
+    ],
+    [
+      "Family use can become entitlement",
+      "Repeated use can become implied ownership or fairness conflict if the family file is silent.",
+      "Named family-user boundaries, fairness owner, veto position, and next-generation memory must be signed.",
+    ],
+  ];
 
   return (
     <>
       <section className="grid gap-6 border-t border-border py-10 lg:grid-cols-[1.2fr_0.8fr]">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Principal route view</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Principal release decision</p>
           <h1 className="mt-4 max-w-5xl text-4xl font-semibold tracking-normal text-foreground md:text-6xl">
             {cleanDisplayText(payload.title)}
           </h1>
-          <p className="mt-5 max-w-4xl text-lg leading-8 text-muted-foreground">{cleanDisplayText(payload.move)}</p>
+          <p className="mt-5 max-w-4xl text-lg leading-8 text-muted-foreground">
+            {cleanDisplayText(payload.move)}
+          </p>
+          <p className="mt-5 max-w-4xl text-base leading-8 text-foreground">
+            {cleanDisplayText(
+              "This view gives the family the decision answer: what may advance today, what capital remains blocked, what the purchase really commits, and which signed gates must clear before the route can release.",
+            )}
+          </p>
         </div>
         <div className="rounded-md border border-border bg-card/90 p-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Reference</p>
@@ -176,6 +435,10 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
           <p className="mt-2 text-lg font-semibold leading-7 text-foreground">{cleanDisplayText(payload.corridor)}</p>
           <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Release stance</p>
           <p className="mt-2 text-lg font-semibold text-primary">{cleanDisplayText(payload.decision)}</p>
+          <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Selected route</p>
+          <p className="mt-2 text-base font-semibold leading-7 text-foreground">
+            {cleanDisplayText(selectedRoute.routeName)}
+          </p>
         </div>
       </section>
 
@@ -198,7 +461,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
         <MetricCard label="Mitigation clock" value="72h / 7d" note={cleanDisplayText(payload.mitigation)} />
       </div>
 
-      <Section eyebrow="Decision packet" title="What is approved, blocked, and required">
+      <Section eyebrow="Decision answer" title="What is approved, blocked, and required">
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Decision</p>
@@ -218,56 +481,280 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
         </div>
       </Section>
 
-      <ReleaseGateTable gateRows={payload.gateRows} />
-
-      <Section eyebrow="Route options" title="Routes reviewed against the proposed move">
-        <div className="grid gap-4 lg:grid-cols-5">
-          {payload.routeOptions.map((option) => (
-            <RouteOptionCard
-              key={option.id}
-              option={option}
-              selected={option.id === payload.selectedRoute.id}
+      <Section eyebrow={inputFrame?.eyebrow} title="The live family decision">
+        <div className="grid gap-4 lg:grid-cols-4">
+          {(inputFrame?.cards ?? []).slice(0, 4).map((card, index) => (
+            <PrincipalInfoCard
+              key={`${card.label}-${index}`}
+              label={card.label}
+              title={card.value || card.title || card.label}
+              body={card.body || ""}
+              tone={index === 1 ? "success" : index === 3 ? "warning" : "default"}
             />
           ))}
         </div>
       </Section>
 
-      <Section eyebrow="Review handoff" title="Where the full depth now sits">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <article className="rounded-md border border-border bg-card/70 p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Principal View</p>
-            <h3 className="mt-3 text-lg font-semibold leading-7 text-foreground">Decision control only</h3>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              This page keeps the buyer-side answer visible: what is approved, what cannot release, which route is under review, and which gates must clear.
-            </p>
-          </article>
-          <article className="rounded-md border border-border bg-card/70 p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Route View</p>
-            <h3 className="mt-3 text-lg font-semibold leading-7 text-foreground">Reviewer depth and full memo</h3>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Projections, crisis resilience, generation-to-generation succession, route drivers, scenario tree, counsel pack, and full route memo stay in the reviewer layer.
-            </p>
-            <a
-              href={`/release-readiness/review/${encodeURIComponent(payload.reference)}?view=route`}
-              className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
-            >
-              Open Route View <ArrowUpRight className="h-3.5 w-3.5" />
-            </a>
-          </article>
-          <article className="rounded-md border border-border bg-card/70 p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Evidence & Methodology</p>
-            <h3 className="mt-3 text-lg font-semibold leading-7 text-foreground">Proof ledger and source boundary</h3>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Legal, tax, property, banking, family governance, structures, adviser, and source-review records are kept separate from the principal decision surface.
-            </p>
-            <a
-              href={`/release-readiness/review/${encodeURIComponent(payload.reference)}?view=evidence`}
-              className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
-            >
-              Open Evidence <ArrowUpRight className="h-3.5 w-3.5" />
-            </a>
-          </article>
+      <Section eyebrow="Capital consequence" title="The house is not committing only the guide price">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {capitalCards.map(([label, value]) => (
+            <MetricCard
+              key={label}
+              label={label}
+              value={value}
+              note={
+                label === "Annual carry"
+                  ? "Annual operating exposure before the family approves carry owner, reporting cadence, and use policy."
+                  : "This amount becomes decision-relevant before the route has permission to harden."
+              }
+            />
+          ))}
         </div>
+        <div className="mt-6">
+          <PrincipalTable
+            columns={["Carry component", "Annual amount", "Owner", "Release condition"]}
+            rows={uniqueRows(reportRows(capital, 5), 5)}
+          />
+        </div>
+      </Section>
+
+      <Section eyebrow="What changes before capital moves" title="The family gets a release rule, not just diligence">
+        <PrincipalTable columns={["Before", "After this memo", "Family consequence"]} rows={whatChangesRows} />
+      </Section>
+
+      <Section eyebrow="What this catches" title="Six failure modes the room should not discover after exchange">
+        <PrincipalTable columns={["Failure mode", "Why it matters", "Release response"]} rows={caughtRows} />
+      </Section>
+
+      <Section eyebrow={market?.eyebrow} title="Negotiation authority is separate from market attractiveness">
+        <div className="grid gap-4 lg:grid-cols-4">
+          <MetricCard
+            label="Routes compared"
+            value={cardValue(market, "routes compared", `${payload.routeOptions.length}`)}
+            note="Direct, structure, status, rent-first, and stop/reset routes are reviewed against release conditions."
+          />
+          <MetricCard
+            label="Public source anchors"
+            value={cardValue(market, "public source anchors", `${payload.publicSources.length}`)}
+            note="Legal, tax, market, FX, property, and public authority anchors support the model."
+          />
+          <MetricCard
+            label="Transaction analogues"
+            value={cardValue(market, "transaction analogues", "Release-gated")}
+            note="Comparable movement context informs failure modes and route discipline."
+          />
+          <MetricCard
+            label="Bid posture"
+            value="Guide price is not authority"
+            note="No bid release without closed comps, failed-sale history, seller motivation, capex adjustment, and walk-away price."
+          />
+        </div>
+        <div className="mt-6">
+          <PrincipalTable
+            columns={market?.table?.columns ?? ["Expectation", "Market read", "Deviation", "Decision consequence"]}
+            rows={uniqueRows(reportRows(market), 4)}
+          />
+        </div>
+      </Section>
+
+      <Section eyebrow="Route alternatives" title="The family is choosing a release path, not a property wrapper">
+        <div className="grid gap-4 lg:grid-cols-5">
+          {payload.routeOptions.map((option) => (
+            <RouteOptionCard key={option.id} option={option} selected={option.id === selectedRoute.id} />
+          ))}
+        </div>
+      </Section>
+
+      <ReleaseGateTable gateRows={payload.gateRows} />
+
+      <Section eyebrow="Advance / hold / stop" title="The family should know exactly what changes the decision">
+        <PrincipalConditionGrid
+          advance={payload.advanceConditions}
+          hold={payload.holdConditions}
+          stop={payload.stopConditions}
+        />
+      </Section>
+
+      <Section eyebrow={taxLegal?.eyebrow} title="Tax and legal posture: modeled, not released">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {(taxLegal?.cards ?? []).slice(0, 4).map((card, index) => (
+            <PrincipalInfoCard
+              key={`${card.label}-${index}`}
+              label={card.label}
+              title={card.value || card.title || card.label}
+              body={card.body || ""}
+              tone={index === 0 ? "primary" : "default"}
+            />
+          ))}
+        </div>
+        <div className="mt-6">
+          <PrincipalTable
+            columns={taxLegal?.table?.columns ?? ["Route reviewed", "Mechanism", "Model effect", "Release requirement"]}
+            rows={uniqueRows(reportRows(taxLegal), 4)}
+          />
+        </div>
+      </Section>
+
+      <Section eyebrow={banking?.eyebrow} title="Banking and source movement must be accepted, not narrated">
+        <div className="grid gap-4 md:grid-cols-2">
+          {(banking?.cards ?? []).map((card, index) => (
+            <PrincipalInfoCard
+              key={`${card.label}-${index}`}
+              label={card.label}
+              title={card.value || card.title || card.label}
+              body={card.body || ""}
+              tone={index === 0 ? "warning" : "primary"}
+            />
+          ))}
+        </div>
+        <div className="mt-6">
+          <PrincipalTable
+            columns={banking?.table?.columns ?? ["Rail or proof class", "Requirement"]}
+            rows={uniqueRows(reportRows(banking), 7)}
+          />
+        </div>
+      </Section>
+
+      <Section eyebrow={recordMismatch?.eyebrow} title="Records must tell one route story">
+        <PrincipalTable
+          columns={recordMismatch?.table?.columns ?? ["Record", "Current record", "Mismatch risk", "Target record", "Owner", "Status"]}
+          rows={uniqueRows(reportRows(recordMismatch), 6)}
+        />
+      </Section>
+
+      <Section eyebrow={responsibility?.eyebrow} title="Responsibility must transfer before capital does">
+        <PrincipalTable
+          columns={responsibility?.table?.columns ?? ["Role", "See", "Stop", "Sign", "Move", "Retrieve", "Explain", "Release status"]}
+          rows={uniqueRows(reportRows(responsibility), 9)}
+        />
+      </Section>
+
+      <Section eyebrow={authority?.eyebrow} title="Authority, veto, and escalation must be written">
+        <div className="grid gap-4 md:grid-cols-3">
+          {(authority?.cards ?? []).map((card, index) => (
+            <PrincipalInfoCard
+              key={`${card.label}-${index}`}
+              label={card.label}
+              title={card.value || card.title || card.label}
+              body={card.body || ""}
+              tone={index === 2 ? "warning" : "default"}
+            />
+          ))}
+        </div>
+        <div className="mt-6">
+          <PrincipalTable
+            columns={authority?.table?.columns ?? ["Authority group", "Names or roles"]}
+            rows={uniqueRows(reportRows(authority), 4)}
+          />
+        </div>
+      </Section>
+
+      <Section eyebrow="Family continuity" title="The house should transfer responsibility, not just symbolism">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {(continuity?.cards ?? []).map((card, index) => (
+            <PrincipalInfoCard
+              key={`${card.label}-${index}`}
+              label={card.label}
+              title={card.value || card.title || card.label}
+              body={`${card.body || ""} ${card.releaseCondition || ""}`}
+              tone={index === 2 ? "warning" : index === 3 ? "success" : "default"}
+            />
+          ))}
+        </div>
+        <div className="mt-6">
+          <PrincipalTable
+            columns={continuity?.table?.columns ?? ["Succession layer", "Compatibility", "Loss if unfixed", "Release lock"]}
+            rows={uniqueRows(reportRows(continuity), 3)}
+          />
+        </div>
+      </Section>
+
+      <Section eyebrow={specialist?.eyebrow} title="Specialist desks that can change the release decision">
+        <PrincipalTable
+          columns={specialist?.table?.columns ?? ["Gate", "Answer", "Decision consequence", "Evidence required", "Owner"]}
+          rows={uniqueRows(reportRows(specialist), 4)}
+        />
+      </Section>
+
+      <Section eyebrow="Crisis resilience" title="The move must survive crisis before it survives presentation">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {(crisis?.cards ?? []).slice(0, 10).map((card, index) => (
+            <PrincipalInfoCard
+              key={`${card.label}-${index}`}
+              label={card.label}
+              title={card.value || card.title || card.label}
+              body={`${card.body || ""} ${card.releaseCondition ? `Release condition: ${card.releaseCondition}.` : ""}`}
+              tone={card.label?.toLowerCase().includes("critical") ? "danger" : index < 2 ? "warning" : "default"}
+            />
+          ))}
+        </div>
+        <div className="mt-6">
+          <PrincipalTable
+            columns={crisis?.table?.columns ?? ["Bank compliance escalation", "Breakpoint", "Required response"]}
+            rows={uniqueRows(reportRows(crisis), 5)}
+          />
+        </div>
+      </Section>
+
+      <Section eyebrow={antiFragility?.eyebrow} title="The route should get stronger when challenged">
+        <PrincipalTable
+          columns={antiFragility?.table?.columns ?? ["Control", "Stress event", "Release test", "Owner", "Window"]}
+          rows={uniqueRows(reportRows(antiFragility), 7)}
+        />
+      </Section>
+
+      <Section eyebrow={wealth?.eyebrow} title="Base, stress, and opportunity cases are release consequences">
+        <div className="grid gap-4 md:grid-cols-3">
+          {(wealth?.cards ?? []).map((card, index) => (
+            <PrincipalInfoCard
+              key={`${card.label}-${index}`}
+              label={card.label}
+              title={card.value || card.title || card.label}
+              body={card.body || ""}
+              tone={index === 2 ? "warning" : "default"}
+            />
+          ))}
+        </div>
+        <div className="mt-6">
+          <PrincipalTable
+            columns={wealth?.table?.columns ?? ["Scenario", "Probability", "Year 10 value", "Net result vs capital", "Memo read"]}
+            rows={uniqueRows(reportRows(wealth), 3)}
+          />
+        </div>
+      </Section>
+
+      <Section eyebrow={scenario?.eyebrow} title="The final decision tree is binary at the gate">
+        <PrincipalTable
+          columns={scenario?.table?.columns ?? ["Branch", "Condition", "Consequence", "Verdict"]}
+          rows={uniqueRows(reportRows(scenario), 3)}
+        />
+      </Section>
+
+      <Section eyebrow={decisionMemory?.eyebrow} title="The decision must be retrievable years later">
+        <div className="grid gap-4 md:grid-cols-2">
+          {(decisionMemory?.cards ?? []).map((card, index) => (
+            <PrincipalInfoCard
+              key={`${card.label}-${index}`}
+              label={card.label}
+              title={card.value || card.title || card.label}
+              body={card.body || ""}
+              tone={index === 0 ? "primary" : "default"}
+            />
+          ))}
+        </div>
+        <div className="mt-6">
+          <PrincipalTable
+            columns={decisionMemory?.table?.columns ?? ["Report", "Cadence", "Owner", "Recipients", "Release relevance"]}
+            rows={uniqueRows(reportRows(decisionMemory), 3)}
+          />
+        </div>
+      </Section>
+
+      <Section eyebrow={roadmap?.eyebrow} title="Next seven days: the only lawful order of movement">
+        <PrincipalTable
+          columns={roadmap?.table?.columns ?? ["Order", "Step", "Action", "Owner", "Timeline", "Release gate"]}
+          rows={uniqueRows(reportRows(roadmap), 9)}
+        />
       </Section>
     </>
   );
@@ -688,10 +1175,9 @@ export default function PrincipalReleaseReadinessSharePage({
 }: PrincipalReleaseReadinessSharePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedView = searchParams.get("view") as ViewMode | null;
-  const [activeView, setActiveView] = useState<ViewMode>(
-    requestedView && VIEW_LABELS.some((view) => view.id === requestedView) ? requestedView : "principal",
-  );
+  const requestedView = searchParams.get("view");
+  const normalizedRequestedView = normalizeViewMode(requestedView);
+  const [activeView, setActiveView] = useState<ViewMode>(normalizedRequestedView);
   const citationSeeds = useMemo(() => payload?.citations ?? [], [payload]);
   const {
     citations,
@@ -709,10 +1195,8 @@ export default function PrincipalReleaseReadinessSharePage({
   }, [citationSeeds, setCitations]);
 
   useEffect(() => {
-    if (requestedView && VIEW_LABELS.some((view) => view.id === requestedView)) {
-      setActiveView(requestedView);
-    }
-  }, [requestedView]);
+    setActiveView(normalizedRequestedView);
+  }, [normalizedRequestedView]);
 
   const changeView = (view: ViewMode) => {
     setActiveView(view);
@@ -755,14 +1239,16 @@ export default function PrincipalReleaseReadinessSharePage({
           </button>
         </header>
 
-        <div className="mt-6 rounded-md border border-primary/30 bg-primary/5 p-4">
-          <p className="text-sm leading-6 text-foreground">
-            <span className="font-semibold">Evidence boundary:</span> Public claims are source-backed in the Evidence Vault.
-            Private bank, title, seller, source-of-funds, and family-authority claims remain release gates until signed or indexed.
-            Source-review records explain gate relevance; they do not prove legal status, bank acceptance, title, valuation,
-            tax treatment, or family authority.
-          </p>
-        </div>
+        {activeView !== "principal" ? (
+          <div className="mt-6 rounded-md border border-primary/30 bg-primary/5 p-4">
+            <p className="text-sm leading-6 text-foreground">
+              <span className="font-semibold">Evidence boundary:</span> Public claims are source-backed in the Evidence Vault.
+              Private bank, title, seller, source-of-funds, and family-authority claims remain release gates until signed or indexed.
+              Source-review records explain gate relevance; they do not prove legal status, bank acceptance, title, valuation,
+              tax treatment, or family authority.
+            </p>
+          </div>
+        ) : null}
 
         <nav
           className="sticky z-30 mt-6 border-b border-border bg-background/95 py-3 backdrop-blur"
@@ -788,7 +1274,7 @@ export default function PrincipalReleaseReadinessSharePage({
         </nav>
 
         {activeView === "principal" ? <PrincipalRouteView payload={payload} /> : null}
-        {activeView === "linear" ? <LinearBriefView payload={payload} /> : null}
+        {activeView === "route" ? <FullReportSections sections={payload.reportSections} /> : null}
         {activeView === "evidence" ? (
           <EvidenceVaultView publicSources={payload.publicSources} privateEvidence={payload.privateEvidence} />
         ) : null}
