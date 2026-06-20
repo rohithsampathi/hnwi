@@ -786,7 +786,7 @@ function buildInputFrameSection(payload: {
       {
         label: "Approved decision posture",
         value: payload.decision,
-        body: payload.releaseRule,
+        body: payload.capitalRule,
       },
       {
         label: "Purpose boundary",

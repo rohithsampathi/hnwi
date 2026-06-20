@@ -135,8 +135,9 @@ function isOutcomeOnlyRoute(route: RouteIntelligenceOptionV2): boolean {
 }
 
 function metricLabel(route: RouteIntelligenceOptionV2): string {
-  if (isOutcomeOnlyRoute(route) && route.releaseRule === 'Stop') return 'Capital Protected';
-  if (isOutcomeOnlyRoute(route) && route.releaseRule === 'Hold') return 'Duty Exposure Preserved';
+  const releaseRule = releaseRuleDisplay(route.releaseRule);
+  if (isOutcomeOnlyRoute(route) && releaseRule === 'Stop') return 'Capital Protected';
+  if (isOutcomeOnlyRoute(route) && releaseRule === 'Hold') return 'Duty Exposure Preserved';
   return 'All-In Outlay';
 }
 
@@ -450,6 +451,7 @@ function MetricStrip({ route }: { route: RouteIntelligenceOptionV2 }) {
   const acquisitionAudit = (route.taxAudit?.acquisition_audit ?? {}) as Record<string, unknown>;
   const primaryFeeLabel = typeof acquisitionAudit.primary_fee_label === 'string' ? acquisitionAudit.primary_fee_label : 'Primary duty';
   const secondaryFeeLabel = typeof acquisitionAudit.secondary_fee_label === 'string' ? acquisitionAudit.secondary_fee_label : 'secondary duty';
+  const releaseRule = releaseRuleDisplay(route.releaseRule);
   const metrics = [
     { icon: Calculator, label: metricLabel(route), value: metricValue(route), read: route.metrics.mitigationTimeline },
     { icon: Banknote, label: 'Total Duties', value: formatUsdCompact(route.metrics.totalDutiesUsd), read: `${primaryFeeLabel} + ${secondaryFeeLabel} impact for the selected buyer route.` },
@@ -457,7 +459,7 @@ function MetricStrip({ route }: { route: RouteIntelligenceOptionV2 }) {
     {
       icon: TimerReset,
       label: 'Mitigation Timeline',
-      value: route.releaseRule === 'Release Differently' ? '72h / 7d' : isOutcomeOnlyRoute(route) ? releaseRuleDisplay(route.releaseRule) : 'Evidence gate',
+      value: releaseRule === 'Gated negotiation only' ? '72h / 7d' : isOutcomeOnlyRoute(route) ? releaseRule : 'Evidence gate',
       read: route.metrics.dataQuality,
     },
   ];
@@ -830,17 +832,10 @@ function DecisionOutcomeTrack({
   recommendedRoute?: RouteIntelligenceOptionV2;
   onSelectRecommended: () => void;
 }) {
-  const isStop = route.releaseRule === 'Stop';
+  const isStop = releaseRuleDisplay(route.releaseRule) === 'Stop';
   const outcomeCopy = isStop
     ? 'This option records why the proposed purchase should not be released. It is not an execution memo because no acquisition route should harden under this track.'
     : 'This option records why the room should wait. It is not a full execution memo until the reopen evidence is complete and an executable route is selected.';
-  const evidenceTitle = isStop
-    ? 'Proof required to support the stop decision and protect capital.'
-    : 'Evidence required before this route can reopen.';
-  const counselTitle = isStop
-    ? 'Questions before reversing the stop decision.'
-    : 'Questions before moving from hold to release.';
-
   return (
     <div className="space-y-8">
       <section className="rounded-lg border border-amber-500/25 bg-amber-500/[0.035] p-5">
@@ -892,15 +887,6 @@ function DecisionOutcomeTrack({
         </div>
       </section>
 
-      <section>
-        <SectionHeader label={isStop ? 'Stop Evidence' : 'Reopen Evidence'} title={evidenceTitle} />
-        <EvidencePack route={route} />
-      </section>
-
-      <section>
-        <SectionHeader label="Counsel Pack" title={counselTitle} />
-        <CounselQuestions route={route} />
-      </section>
     </div>
   );
 }
@@ -1015,7 +1001,13 @@ export default function RouteIntelligenceV2Report({
           </div>
         </section>
 
-        {!isOutcomeOnlyTrack ? (
+        {isOutcomeOnlyTrack ? (
+          <DecisionOutcomeTrack
+            route={selectedRoute}
+            recommendedRoute={recommendedRoute}
+            onSelectRecommended={() => setSelectedRouteId(recommendedRoute?.id || intelligence.recommendedRouteId || routes[0]?.id || selectedRoute.id)}
+          />
+        ) : (
           <>
             <section>
               <SectionHeader label="Buyer Profile Test" title={intelligence.buyerProfileMatrix.title} />
@@ -1028,53 +1020,47 @@ export default function RouteIntelligenceV2Report({
                 <PrincipalValueGatePanel gate={intelligence.principalValueGate} />
               </section>
             ) : null}
-
-            <section>
-              <SectionHeader label="Stress Signals" title="What changes when this route is selected." />
-              <StressSignals route={selectedRoute} />
-            </section>
-
-            <section>
-              <SectionHeader label="Tax Audit" title="Cross-border tax and duty read for the selected route." />
-              <CrossBorderTaxAudit
-                audit={selectedRoute.taxAudit as any}
-                sourceJurisdiction={sourceJurisdiction}
-                destinationJurisdiction={destinationJurisdiction}
-              />
-            </section>
-
-            <section>
-              <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
-              <JurisdictionGrid route={selectedRoute} />
-            </section>
-
-            <section>
-              <SectionHeader label="Projection" title="Base, stress, and opportunity outcomes for the selected route." />
-              <ScenarioGraph route={selectedRoute} />
-            </section>
-
-            <section>
-              <SectionHeader label="Release Evidence" title="Evidence pack required before this route can move." />
-              <EvidencePack route={selectedRoute} />
-            </section>
-
-            <section>
-              <SectionHeader label="Operator Control" title="Responsibility transfer and record mismatch release-readiness review." />
-              <ResponsibilityAndRecords route={selectedRoute} />
-            </section>
-
-            <section>
-              <SectionHeader label="Counsel Pack" title="Questions that make existing advisors useful instead of bypassed." />
-              <CounselQuestions route={selectedRoute} />
-            </section>
           </>
-        ) : (
-          <DecisionOutcomeTrack
-            route={selectedRoute}
-            recommendedRoute={recommendedRoute}
-            onSelectRecommended={() => setSelectedRouteId(recommendedRoute?.id || intelligence.recommendedRouteId || routes[0]?.id || selectedRoute.id)}
-          />
         )}
+
+        <section>
+          <SectionHeader label="Stress Signals" title="What changes when this route is selected." />
+          <StressSignals route={selectedRoute} />
+        </section>
+
+        <section>
+          <SectionHeader label="Tax Audit" title="Cross-border tax and duty read for the selected route." />
+          <CrossBorderTaxAudit
+            audit={selectedRoute.taxAudit as any}
+            sourceJurisdiction={sourceJurisdiction}
+            destinationJurisdiction={destinationJurisdiction}
+          />
+        </section>
+
+        <section>
+          <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
+          <JurisdictionGrid route={selectedRoute} />
+        </section>
+
+        <section>
+          <SectionHeader label="Projection" title="Base, stress, and opportunity outcomes for the selected route." />
+          <ScenarioGraph route={selectedRoute} />
+        </section>
+
+        <section>
+          <SectionHeader label="Release Evidence" title="Evidence pack required before this route can move." />
+          <EvidencePack route={selectedRoute} />
+        </section>
+
+        <section>
+          <SectionHeader label="Operator Control" title="Responsibility transfer and record mismatch release-readiness review." />
+          <ResponsibilityAndRecords route={selectedRoute} />
+        </section>
+
+        <section>
+          <SectionHeader label="Counsel Pack" title="Questions that make existing advisors useful instead of bypassed." />
+          <CounselQuestions route={selectedRoute} />
+        </section>
 
         <section className="rounded-lg border border-border/25 bg-card/40 p-5">
           <div className="flex items-start gap-3">

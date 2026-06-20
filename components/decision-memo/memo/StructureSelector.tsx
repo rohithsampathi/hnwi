@@ -73,7 +73,8 @@ export const StructureSelector: React.FC<StructureSelectorProps> = ({
 }) => {
   const selectedStructure = structures.find(s => s.name === selectedStructureName);
   const isOptimal = selectedStructureName === optimalStructureName;
-  const isViable = selectedStructure?.viable ?? false;
+  const verdictText = `${selectedStructure?.verdict || ''} ${selectedStructure?.net_benefit_label || ''}`.toLowerCase();
+  const isViable = isOptimal || selectedStructure?.viable === true || verdictText.includes('proceed') || verdictText.includes('gated');
   const benefitPositive = (selectedStructure?.net_benefit_10yr ?? 0) >= 0;
 
   return (

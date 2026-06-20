@@ -820,7 +820,7 @@ export default function DecisionMemoAuditClientPage({
     isReleaseReadinessReviewPath
       ? requestedMemoView === 'route' || requestedMemoView === 'v2'
         ? 'route'
-        : requestedMemoView === 'evidence'
+        : requestedMemoView === 'evidence' || requestedMemoView === 'methodology'
           ? 'evidence'
           : 'principal'
       : requestedMemoView === 'house'
@@ -1073,7 +1073,9 @@ export default function DecisionMemoAuditClientPage({
       computedPreloadedSources: preloadedSources,
       computedEvidenceSections: collectEvidenceMethodologySections(previewData, sourceRecords),
       computedReferences: legalReferences,
-      computedReferencePrecedentCount: Number.isFinite(rawPrecedentCount) ? rawPrecedentCount : 0,
+      computedReferencePrecedentCount: Number.isFinite(rawPrecedentCount) && rawPrecedentCount > 0
+        ? rawPrecedentCount
+        : sourceRecords.length,
     };
   }, [backendData, resolvedSurfaceData]);
 

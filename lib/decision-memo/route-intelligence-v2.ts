@@ -626,15 +626,29 @@ function buildAcquisitionAudit(
 }
 
 function routeVerdictCode(route: RouteIntelligenceOptionV2): 'PROCEED_MODIFIED' | 'HOLD' | 'DO_NOT_PROCEED' {
-  if (route.releaseRule === 'Release Differently') return 'PROCEED_MODIFIED';
-  if (route.releaseRule === 'Hold') return 'HOLD';
+  const rule = text(route.releaseRule).toLowerCase();
+  if (route.releaseRule === 'Release Differently' || rule.includes('gated negotiation') || rule.includes('release differently')) return 'PROCEED_MODIFIED';
+  if (route.releaseRule === 'Hold' || rule.includes('hold')) return 'HOLD';
   return 'DO_NOT_PROCEED';
 }
 
 function routeRiskLevel(route: RouteIntelligenceOptionV2): 'MODERATE-HIGH' | 'HIGH' | 'CRITICAL' {
-  if (route.releaseRule === 'Stop') return 'CRITICAL';
-  if (route.releaseRule === 'Hold') return 'HIGH';
+  const rule = text(route.releaseRule).toLowerCase();
+  if (route.releaseRule === 'Stop' || rule.includes('stop')) return 'CRITICAL';
+  if (route.releaseRule === 'Hold' || rule.includes('hold')) return 'HIGH';
   return 'MODERATE-HIGH';
+}
+
+function isReleaseRoute(route: RouteIntelligenceOptionV2): boolean {
+  const rule = text(route.releaseRule).toLowerCase();
+  const verdict = text(route.verdict).toLowerCase();
+  return (
+    route.releaseRule === 'Release Differently' ||
+    rule.includes('gated negotiation') ||
+    rule.includes('release differently') ||
+    verdict.includes('preferred direct') ||
+    verdict.includes('proceed under signed gates')
+  );
 }
 
 function routeStructure(route: RouteIntelligenceOptionV2, selectedRouteId: string): RecordLike {
@@ -645,8 +659,8 @@ function routeStructure(route: RouteIntelligenceOptionV2, selectedRouteId: strin
     name: route.routeName,
     type: route.routeType,
     verdict: routeVerdictCode(route),
-    viable: route.releaseRule === 'Release Differently',
-    net_benefit_10yr: route.releaseRule === 'Release Differently' ? 0 : -incrementalDuty,
+    viable: isReleaseRoute(route),
+    net_benefit_10yr: isReleaseRoute(route) ? 0 : -incrementalDuty,
     net_benefit_display: selected
       ? formatUsdCompact(route.metrics.totalAcquisitionCostUsd)
       : incrementalDuty
@@ -695,16 +709,18 @@ function buildRouteExecutionSequence(route: RouteIntelligenceOptionV2): RecordLi
 
 function buildRouteScenarioTree(route: RouteIntelligenceOptionV2): RecordLike {
   const verdictCode = routeVerdictCode(route);
+  const releaseRoute = isReleaseRoute(route);
+  const holdRoute = text(route.releaseRule).toLowerCase().includes('hold');
   const weightedNetOutcome = route.scenarios.reduce((sum, scenario, index) => {
     const weight = index === 0 ? 0.6 : index === 1 ? 0.25 : 0.15;
     return sum + (scenario.netOutcomeUsd * weight);
   }, 0);
   return {
     recommended_branch: verdictCode,
-    recommendation_strength: route.releaseRule === 'Release Differently' ? 78 : route.releaseRule === 'Hold' ? 68 : 84,
+    recommendation_strength: releaseRoute ? 78 : holdRoute ? 68 : 84,
     decision_ev_usd: roundCurrency(weightedNetOutcome),
     expected_value_usd: roundCurrency(weightedNetOutcome),
-    decision_ev_label: route.releaseRule === 'Release Differently'
+    decision_ev_label: releaseRoute
       ? 'Weighted route outcome after release conditions'
       : 'Weighted consequence if this route is forced',
     recommended_route: route.routeName,
@@ -713,7 +729,7 @@ function buildRouteScenarioTree(route: RouteIntelligenceOptionV2): RecordLike {
     doctrine_metadata: {
       failure_mode_count: route.evidenceGates.length,
       risk_flags_total: route.evidenceGates.length + route.recordMismatchMap.length,
-      antifragility_assessment: route.releaseRule === 'Release Differently'
+      antifragility_assessment: releaseRoute
         ? 'Conditional resilience: route can strengthen the family system only if authority, banking, source, and succession records match before release.'
         : 'Fragile route state: the selected route converts uncertainty into capital drag unless the blocking evidence changes.',
       failure_modes: route.evidenceGates.map((gate) => ({
@@ -893,7 +909,7 @@ export function buildRouteScopedDecisionMemoSurface({
   preview.executive_summary = {
     ...asRecord(preview.executive_summary),
     headline_metric: {
-      label: route.releaseRule === 'Release Differently' ? 'Route all-in outlay' : 'Route exposure under review',
+      label: isReleaseRoute(route) ? 'Route all-in outlay' : 'Route exposure under review',
       value: formatUsdCompact(route.metrics.totalAcquisitionCostUsd || Math.abs(route.metrics.incrementalDutyVsRecommendedUsd)),
       description: route.economicRead,
     },
@@ -924,6 +940,24 @@ export function buildRouteScopedDecisionMemoSurface({
   preview.crisis_resilience_stress_test =
     preview.crisis_resilience_stress_test ??
     asRecord(scopedFullArtifact.preview_data).crisis_resilience_stress_test;
+  preview.antifragile_resilience_test =
+    preview.antifragile_resilience_test ??
+    asRecord(scopedFullArtifact.preview_data).antifragile_resilience_test;
+  preview.heir_management_data =
+    preview.heir_management_data ??
+    asRecord(scopedFullArtifact.preview_data).heir_management_data;
+  preview.heir_management_analysis =
+    preview.heir_management_analysis ??
+    asRecord(scopedFullArtifact.preview_data).heir_management_analysis;
+  preview.generational_view =
+    preview.generational_view ??
+    asRecord(scopedFullArtifact.preview_data).generational_view;
+  preview.wealth_projection_analysis =
+    preview.wealth_projection_analysis ??
+    asRecord(scopedFullArtifact.preview_data).wealth_projection_analysis;
+  preview.scenario_tree_analysis =
+    preview.scenario_tree_analysis ??
+    asRecord(scopedFullArtifact.preview_data).scenario_tree_analysis;
   preview.all_mistakes = route.evidenceGates.map((gate, index) => ({
     id: `${route.id}-gate-${index + 1}`,
     title: gate.gate,
@@ -1565,7 +1599,7 @@ export function buildRouteIntelligenceV2(
 
   const recommendedRoute =
     routes.find((route) => route.id === 'direct_foreign_individual') ??
-    routes.find((route) => route.releaseRule === 'Release Differently') ??
+    routes.find((route) => isReleaseRoute(route)) ??
     routes[0];
 
   return {

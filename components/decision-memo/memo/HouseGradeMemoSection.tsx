@@ -2217,6 +2217,10 @@ export default function HouseGradeMemoSection({
       crisis?.nyra_route_pressure_events?.length ||
       crisis?.route_pressure_events?.length ||
       crisis?.bank_compliance_escalation_simulation?.length ||
+      normalizedCrisis?.scenarios?.length ||
+      normalizedCrisis?.priorityEvents?.length ||
+      preview.crisis_resilience_stress_test ||
+      preview.antifragile_resilience_test ||
       crisis?.overall_resilience?.score ||
       crisis?.overall_resilience?.rating,
   );
@@ -2235,12 +2239,25 @@ export default function HouseGradeMemoSection({
         heirManagement.third_generation_risk ||
         heirManagement.third_generation_problem ||
         heirManagement.estate_tax_by_heir_type ||
-        heirManagement.heir_education_plan
+        heirManagement.heir_education_plan ||
+        asArray(continuity.items).length ||
+        asArray(continuity.succession_layer_map).length ||
+        continuity.top_trigger?.trigger ||
+        continuity.third_generation_problem
       ),
   );
   const dayOneLossLabel = asText(economics.day_one_loss, 'the day-one drag');
   const drawdownFloorLabel = asText(economics.drawdown_floor || crisis.stress_drawdown_floor, 'the modeled stress floor');
-  const routeWitnessLabel = precedentCount ? `${precedentCount} route-pattern source records` : 'the route-pattern source set';
+  const routePatternSourceCount = [
+    precedentCount,
+    asArray(preview.legal_references?.pattern_witnesses).length,
+    asArray(preview.legal_references?.pattern_evidence_records).length,
+    asArray(preview.pattern_evidence_records).length,
+    toFiniteValue(preview.peer_cohort_stats?.total_peers),
+  ]
+    .map((value) => typeof value === 'number' && Number.isFinite(value) ? value : 0)
+    .find((value) => value > 0) ?? 0;
+  const routeWitnessLabel = routePatternSourceCount ? `${routePatternSourceCount} route-pattern source records` : 'the route-pattern source set';
   const decisionWindow = deriveDecisionWindow(preview, gates);
 
   const witnessCards = [
@@ -2264,7 +2281,7 @@ export default function HouseGradeMemoSection({
     },
     {
       label: 'Methodology records',
-      value: precedentCount ? `${precedentCount}` : asText(preview.peer_cohort_stats?.total_peers, '—'),
+      value: routePatternSourceCount ? `${routePatternSourceCount}` : 'Evidence gated',
       note: routeEvidenceBasisNote || `${routeWitnessLabel} and governing objects inform why the release gate matters; they do not prove bank, title, tax, or family authority.`,
       tone: 'default' as Tone,
     },
@@ -2653,8 +2670,8 @@ export default function HouseGradeMemoSection({
   const marketSignalRows = [
     {
       label: 'Route-Pattern Source Records',
-      value: precedentCount ? `${precedentCount}` : asText(preview.peer_cohort_stats?.total_peers, '—'),
-      displayValue: precedentCount ? `${precedentCount.toLocaleString()}` : asText(preview.peer_cohort_stats?.total_peers, '—'),
+      value: routePatternSourceCount ? `${routePatternSourceCount}` : 'Evidence gated',
+      displayValue: routePatternSourceCount ? `${routePatternSourceCount.toLocaleString()}` : 'Evidence gated',
       detail: `${corridorLabel} route-pattern source records and corridor-adjacent purchase cases informing why each release gate matters.`,
     },
     {

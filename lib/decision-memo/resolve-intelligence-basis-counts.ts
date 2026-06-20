@@ -48,6 +48,25 @@ function firstDefinedNumber(...values: unknown[]): number | undefined {
   return undefined;
 }
 
+function countRecords(value: unknown): number | undefined {
+  return Array.isArray(value) && value.length > 0 ? value.length : undefined;
+}
+
+function countRouteDriverSources(value: unknown): number | undefined {
+  const routeIntelligence = asRecord(value);
+  const register =
+    asRecord(routeIntelligence?.routeDriverRegister) ??
+    asRecord(routeIntelligence?.route_driver_register);
+  const items = Array.isArray(register?.items) ? register.items : [];
+  const count = items.reduce((total, item) => {
+    const record = asRecord(item);
+    const sources = Array.isArray(record?.sources) ? record.sources : [];
+    const sourceIds = Array.isArray(record?.sourceIds) ? record.sourceIds : Array.isArray(record?.source_ids) ? record.source_ids : [];
+    return total + Math.max(sources.length, sourceIds.length);
+  }, 0);
+  return count > 0 ? count : undefined;
+}
+
 export function resolveIntelligenceBasisCounts({
   memoData,
   backendData,
@@ -96,6 +115,14 @@ export function resolveIntelligenceBasisCounts({
       asRecord(backendPreview?.peer_cohort_stats)?.direct_route_precedent_count,
       previewData?.precedent_count,
       backendPreview?.precedent_count,
+      countRouteDriverSources(previewData?.route_intelligence_v2),
+      countRouteDriverSources(backendPreview?.route_intelligence_v2),
+      countRecords(asRecord(previewData?.legal_references)?.pattern_witnesses),
+      countRecords(asRecord(backendPreview?.legal_references)?.pattern_witnesses),
+      countRecords(asRecord(previewData?.legal_references)?.pattern_evidence_records),
+      countRecords(asRecord(backendPreview?.legal_references)?.pattern_evidence_records),
+      countRecords(previewData?.pattern_evidence_records),
+      countRecords(backendPreview?.pattern_evidence_records),
       memoKg?.precedents,
       intelligenceSources?.developmentsMatched,
       backendRecord?.precedentCount,
