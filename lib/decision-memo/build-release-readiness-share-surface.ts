@@ -498,7 +498,7 @@ function buildSafeRouteIntelligence(route: RouteIntelligenceV2, reference: strin
     memoReference: reference,
     generatedAt: route.generatedAt,
     corridor: sanitizeShareText(route.corridor),
-    move: sanitizeShareText(route.move),
+    move: normalizeMoveStatement(route.move),
     recommendedRouteId: text(route.recommendedRouteId, selectedRoute?.id),
     selectedLiveOption: selectedRoute,
     proposedRoute: selectedRoute,
@@ -1599,9 +1599,11 @@ export function buildReleaseReadinessShareSurfaceData(
   reference: string,
   resolved: ResolvedDecisionMemoSurfaceData,
 ): ResolvedDecisionMemoSurfaceData {
+  const sharePayload = buildReleaseReadinessSharePayload(reference, resolved);
   const route = buildRouteIntelligenceV2(resolved);
   const safeRouteIntelligence = buildSafeRouteIntelligence(route, reference);
   const safePreview = sanitizeObject({
+    release_readiness_share_payload: sharePayload,
     route_intelligence_v2: safeRouteIntelligence,
     release_decision_packet: buildSafeReleasePacket(resolved),
     risk_assessment: buildSafeRisk(resolved, route),
@@ -1628,6 +1630,7 @@ export function buildReleaseReadinessShareSurfaceData(
       surface_contract: SHARE_SURFACE_CONTRACT,
       intake_id: reference,
       preview_data: safePreview,
+      release_readiness_share_payload: sharePayload,
     },
     fullArtifact: null,
     developmentsCount: resolved.developmentsCount,

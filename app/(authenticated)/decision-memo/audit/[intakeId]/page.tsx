@@ -12,7 +12,10 @@ import {
   DecisionMemoMissingError,
   fetchDecisionMemoSurfaceData,
 } from '@/lib/decision-memo/fetch-decision-memo-surface-data';
-import { buildReleaseReadinessSharePayload } from '@/lib/decision-memo/build-release-readiness-share-surface';
+import {
+  buildReleaseReadinessSharePayload,
+  buildReleaseReadinessShareSurfaceData,
+} from '@/lib/decision-memo/build-release-readiness-share-surface';
 import type { ResolvedDecisionMemoSurfaceData } from '@/lib/decision-memo/resolve-decision-memo-surface-data';
 import { resolvePublicDecisionMemoId } from '@/lib/decision-memo/memo-id-aliases';
 
@@ -63,7 +66,17 @@ function buildPrincipalOnlySurfaceData(
   reference: string,
   data: ResolvedDecisionMemoSurfaceData,
 ): ResolvedDecisionMemoSurfaceData {
-  const payload = buildReleaseReadinessSharePayload(reference, data);
+  const backendPayload = isRecord(data.backendData)
+    ? (data.backendData as RecordLike).release_readiness_share_payload
+    : null;
+  const previewDataSource = isRecord((data.memoData as RecordLike | undefined)?.preview_data)
+    ? ((data.memoData as RecordLike).preview_data as RecordLike)
+    : {};
+  const payload = isRecord(backendPayload)
+    ? (backendPayload as ReturnType<typeof buildReleaseReadinessSharePayload>)
+    : isRecord(previewDataSource.release_readiness_share_payload)
+      ? (previewDataSource.release_readiness_share_payload as ReturnType<typeof buildReleaseReadinessSharePayload>)
+      : buildReleaseReadinessSharePayload(reference, data);
   const previewData = {
     release_readiness_share_payload: payload,
     route_intelligence_v2: {
@@ -638,15 +651,18 @@ export default async function DecisionMemoAuditPage({
   }
 
   const requestedView = requestedViewMode(resolvedSearchParams);
+  const releaseSurfaceData = initialSurfaceData
+    ? buildReleaseReadinessShareSurfaceData(publicId, initialSurfaceData)
+    : null;
   const clientInitialSurfaceData =
-    initialSurfaceData && (!requestedView || requestedView === 'principal')
-      ? buildPrincipalOnlySurfaceData(publicId, initialSurfaceData)
-      : initialSurfaceData;
+    releaseSurfaceData && (!requestedView || requestedView === 'principal')
+      ? buildPrincipalOnlySurfaceData(publicId, releaseSurfaceData)
+      : releaseSurfaceData;
 
   return (
     <>
       <DecisionMemoServerAuditText
-        data={initialSurfaceData}
+        data={releaseSurfaceData}
         error={initialSurfaceError}
         reference={publicId}
       />
