@@ -225,12 +225,27 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bAquarium\b/g, "source-review memory")
     .replace(/\bAI banking crisis simulation\b/gi, "Bank compliance escalation simulation")
     .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/g, "generation-to-generation")
+    .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/g, "generation-to-generation")
+    .replace(/\bG1\s*→\s*G2\s*→\s*G3\b/g, "generation-to-generation")
+    .replace(/\bG1 route control\b/gi, "current-owner route control")
+    .replace(/\bG1\s*->\s*G2 operating transfer\b/gi, "operating transfer to named family user")
+    .replace(/\bG2\s*->\s*G3 without governance lock\b/gi, "next-generation record without governance lock")
+    .replace(/\bG2\s*->\s*G3 with governance lock\b/gi, "next-generation record with governance lock")
     .replace(/\bG1 principal\b/gi, "principal")
+    .replace(/\bG1 founder\s*\/\s*principal\b/gi, "principal")
+    .replace(/\bG1\b/g, "principal")
     .replace(/\bG2 son\b/gi, "named family user")
     .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
+    .replace(/\bG2 fairness owner\b/gi, "family-fairness owner")
+    .replace(/\bG2\b/g, "named family user")
     .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
     .replace(/\bdaughter fairness\b/gi, "family-fairness")
+    .replace(/\bG3\/grandchild\b/gi, "next-generation continuity")
     .replace(/\bG3 grandson\b/gi, "next-generation continuity")
+    .replace(/\bG3 memory rules\b/gi, "next-generation decision record rules")
+    .replace(/\bG3 decision memory\b/gi, "next-generation decision record")
+    .replace(/\bG3 memory\b/gi, "next-generation decision record")
+    .replace(/\bG3\b/g, "next-generation record")
     .replace(/\bfuture-grandchild\b/gi, "next-generation")
     .replace(/\bgrandson\b/gi, "next-generation record")
     .replace(/\bson\b/gi, "named family user")
@@ -239,9 +254,9 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bson use\b/gi, "named family-user")
     .replace(/\bnamed family user-use\b/gi, "named family-user use")
     .replace(/\bdaughter\/fairness\b/gi, "family-fairness")
-    .replace(/\bspouse veto if relevant\b/gi, "family-home veto position where recorded")
-    .replace(/\bspouse if relevant\b/gi, "family-home veto holder where recorded")
-    .replace(/\bspouse veto\b/gi, "family-home veto position")
+    .replace(/\bspouse veto if relevant\b/gi, "family-use veto position where recorded")
+    .replace(/\bspouse if relevant\b/gi, "family-use veto holder where recorded")
+    .replace(/\bspouse veto\b/gi, "family-use veto position")
     .replace(/\bFamily-home veto position\b/gi, "Family-use veto position")
     .replace(/\bfamily-home veto position\b/gi, "family-use veto position")
     .replace(/\bFamily-home veto holder\b/gi, "Family-use veto holder")
@@ -250,8 +265,6 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bfounder authority\b/gi, "principal authority")
     .replace(/\bFounder\b/g, "Principal")
     .replace(/\bfounder\b/g, "principal")
-    .replace(/\bG2 fairness owner\b/gi, "family-fairness owner")
-    .replace(/\bG3 memory\b/gi, "next-generation decision record")
     .replace(/\bsix years later\b/gi, "later")
     .replace(/\bmemo source file\b/gi, "source register")
     .replace(/\brelease-readiness reviewing\b/gi, "release-readiness review")
@@ -263,7 +276,6 @@ function sanitizeShareText(value: unknown): string {
       /\bLondon family base,\s*education\/continuity node,\s*and capital-preservation reserve\b/gi,
       "London family-use, continuity, and capital-preservation claims treated as separate release gates"
     )
-    .replace(/\bG3 decision memory\b/gi, "next-generation decision record")
     .replace(/\bnext-generation decision memory\b/gi, "next-generation decision record")
     .replace(
       /\bLooks like prime London capital preservation even though the economics are control\/use-led after duty drag\.?/gi,
@@ -1013,7 +1025,7 @@ function buildGenerationSection(resolved: ResolvedDecisionMemoSurfaceData): Rele
 
   return reportSection({
     id: "g1-g2-g3-continuity",
-    eyebrow: "G1 -> G2 -> G3 wealth transfer",
+    eyebrow: "Generation-to-generation continuity",
     title: "The house should transfer responsibility before it transfers symbolism",
     intro: sanitizeShareText(
       heir.read ??
@@ -1021,21 +1033,21 @@ function buildGenerationSection(resolved: ResolvedDecisionMemoSurfaceData): Rele
     ),
     cards: [
       {
-        label: "G1 route control",
+        label: "Current-owner route control",
         value: text(g1.asset_value_formatted ?? moneyText(g1.asset_value)),
         body: text(g1.read),
         status: `Retention ${text(g1.retention_score, "78")}%`,
         releaseCondition: text(g1.compatibility),
       },
       {
-        label: "G1 -> G2 operating transfer",
+        label: "Operating transfer to named family user",
         value: text(g12.net_to_heirs_formatted ?? moneyText(g12.net_to_heirs)),
         body: text(g12.read),
         status: `Retention ${text(g12.retention_score, "64")}%`,
         releaseCondition: text(g12.compatibility),
       },
       {
-        label: "G2 -> G3 without governance lock",
+        label: "Next-generation record without governance lock",
         value: text(g23.without_structure_formatted ?? moneyText(g23.net_to_g3_without_structure)),
         body: text(g23.read),
         status: `Retention ${text(g23.retention_score_without_structure, "35")}%`,

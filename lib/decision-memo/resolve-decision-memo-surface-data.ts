@@ -28,6 +28,17 @@ const INTERNAL_OBJECT_KEYS = new Set([
   'runtime_packet',
   'writeback_packet',
 ]);
+const RAW_MEMO_TEXT_KEYS = new Set([
+  'memo_text',
+  'memo_markdown',
+  'markdown',
+  'full_markdown',
+  'full_memo_markdown',
+  'document_markdown',
+  'raw_markdown',
+  'raw_memo',
+  'raw_text',
+]);
 
 function textOrNull(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -39,6 +50,26 @@ function releaseReadinessReviewUrl(intakeId: string): string {
 
 function sanitizePrincipalSurfaceText(value: string): string {
   return value
+    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
+    .replace(/\brelease differently\b/gi, 'gated negotiation only')
+    .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bproceed modified\b/gi, 'proceed under signed gates')
+    .replace(/\bPROCEED MODIFIED\b/g, 'PROCEED UNDER SIGNED GATES')
+    .replace(/\bHigh until release gates clear\b/gi, 'Evidence pending; no capital release')
+    .replace(/\bRisk level\b/gi, 'Release status')
+    .replace(/\bData quality\b/gi, 'Evidence status')
+    .replace(/\brelease-read sprint\b/gi, 'release-readiness sprint')
+    .replace(/\bFull Decision Memo\b/gi, 'Release Readiness Review')
+    .replace(/\bDecision Memo\b/gi, 'Release Readiness Review')
+    .replace(/\bPressure Variants Tested\b/gi, 'Release Readiness Routes Reviewed')
+    .replace(/\bpressure variants?\b/gi, 'release-readiness routes')
+    .replace(/\bPressure Test\b/gi, 'Release Readiness Review')
+    .replace(/\bpressure-test(?:ed|ing)?\b/gi, 'release-readiness reviewed')
+    .replace(/\bpressure read\b/gi, 'release read')
+    .replace(/\bseller pressure\b/gi, 'seller timing')
+    .replace(/\bbank pressure\b/gi, 'bank readiness')
+    .replace(/\babsence pressure\b/gi, 'absence readiness')
+    .replace(/\bpressure\b/gi, 'readiness')
     .replace(
       /\b2222 route-pattern rows reviewed; 8 driver families selected; 21 route witnesses carried into the memo\./gi,
       'Route-pattern source records were reviewed; 8 driver families and 21 route witnesses were carried into the memo as methodology, not release proof.',
@@ -65,13 +96,79 @@ function sanitizePrincipalSurfaceText(value: string): string {
     .replace(/\bGranthika\b/g, 'source library')
     .replace(/\bAquarium\b/g, 'source-review memory')
     .replace(/\bnative_library_route_compiler\b/gi, 'source_review_route_compiler')
+    .replace(
+      /\bas a London family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi,
+      'as a proposed London family-use acquisition with education, residence, succession, and capital-preservation claims treated as separate gates',
+    )
+    .replace(
+      /\bLondon family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi,
+      'proposed London family-use acquisition with education, residence, succession, and capital-preservation claims treated as separate gates',
+    )
+    .replace(
+      /\bLondon family base,\s*education\/continuity node,\s*and capital-preservation reserve\b/gi,
+      'London family-use, continuity, and capital-preservation claims treated as separate release gates',
+    )
+    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/g, 'principal / named family user / next-generation record')
+    .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/g, 'generation-to-generation')
+    .replace(/\bG1 principal\b/gi, 'principal')
+    .replace(/\bG1 founder\s*\/\s*principal\b/gi, 'principal')
+    .replace(/\bG1\b/g, 'principal')
+    .replace(/\bG2 son\b/gi, 'named family user')
+    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, 'named family-fairness owner')
+    .replace(/\bG2 fairness owner\b/gi, 'family-fairness owner')
+    .replace(/\bG2\b/g, 'named family user')
+    .replace(/\bG3\/grandchild\b/gi, 'next-generation continuity')
+    .replace(/\bG3 grandson\b/gi, 'next-generation record')
+    .replace(/\bG3 memory rules\b/gi, 'next-generation decision record rules')
+    .replace(/\bG3 decision memory\b/gi, 'next-generation decision record')
+    .replace(/\bG3 memory\b/gi, 'next-generation decision record')
+    .replace(/\bG3\b/g, 'next-generation record')
+    .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, 'named family-fairness owner')
+    .replace(/\bdaughter\/fairness\b/gi, 'family-fairness')
+    .replace(/\bdaughter fairness\b/gi, 'family-fairness')
+    .replace(/\bson-use\b/gi, 'named family-user')
+    .replace(/\bson use\b/gi, 'named family-user')
+    .replace(/\bson\b/gi, 'named family user')
+    .replace(/\bdaughter\b/gi, 'named family-fairness owner')
+    .replace(/\bfuture-grandchild\b/gi, 'next-generation')
+    .replace(/\bgrandson\b/gi, 'next-generation record')
+    .replace(/\bspouse veto if relevant\b/gi, 'family-use veto position where recorded')
+    .replace(/\bspouse if relevant\b/gi, 'family-use veto holder where recorded')
+    .replace(/\bspouse veto\b/gi, 'family-use veto position')
+    .replace(/\bfamily-home veto position\b/gi, 'family-use veto position')
+    .replace(/\bfamily-home veto holder\b/gi, 'family-use veto holder')
+    .replace(/\bFounder authority\b/gi, 'Principal authority')
+    .replace(/\bfounder authority\b/gi, 'principal authority')
+    .replace(/\bFounder\b/g, 'Principal')
+    .replace(/\bfounder\b/g, 'principal')
+    .replace(/\bnext-generation decision memory\b/gi, 'next-generation decision record')
+    .replace(/\bThe route must be retrievable six years later\b/gi, 'The route must be retrievable years later')
+    .replace(/\bsix years later\b/gi, 'later')
+    .replace(
+      /\bLooks like prime London capital preservation even though the economics are control\/use-led after duty drag\.?/gi,
+      'Appears like a capital-preservation purchase, but economics are family-use and control-led after duty drag.',
+    )
+    .replace(
+      /\bCapital should not move while the transfer path is only narrated\.?/gi,
+      'Capital remains blocked until the transfer path is bank-accepted in writing.',
+    )
+    .replace(
+      /\bThe asset cannot become a silent family promise or future conflict point\.?/gi,
+      'Use rights, carry, and veto must be written so the property does not become an implied future entitlement.',
+    )
+    .replace(
+      /\bThe purchase must remain legible (?:six years )?later without relying on (?:founder|principal) memory\.?/gi,
+      'The purchase must remain explainable later without relying on memory or informal understandings.',
+    )
     .replace(/\b2,222\b/g, 'methodology-bounded')
-    .replace(/\b2222\b/g, 'methodology-bounded');
+    .replace(/\b2222\b/g, 'methodology-bounded')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function shouldDropPrincipalSurfaceField(key: string, value: unknown): boolean {
   const normalizedKey = key.trim().toLowerCase();
-  if (INTERNAL_OBJECT_KEYS.has(normalizedKey)) {
+  if (INTERNAL_OBJECT_KEYS.has(normalizedKey) || RAW_MEMO_TEXT_KEYS.has(normalizedKey)) {
     return true;
   }
 
