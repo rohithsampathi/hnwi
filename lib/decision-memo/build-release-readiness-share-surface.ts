@@ -180,6 +180,7 @@ function numberOr(value: unknown, fallback = 0): number {
 function sanitizeShareText(value: unknown): string {
   return text(value)
     .replace(/\bRelease Differently\b/gi, "Gated negotiation only")
+    .replace(/\bGated negotiation only only\b/gi, "Gated negotiation only")
     .replace(/\bproceed[-\s]modified\b/gi, "Proceed under signed gates")
     .replace(/\bPreferred modified route only if\b/gi, "Preferred direct route only if")
     .replace(/\bPreferred modified route\b/gi, "Preferred direct route under signed gates")
@@ -269,6 +270,12 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bfounder authority\b/gi, "principal authority")
     .replace(/\bFounder\b/g, "Principal")
     .replace(/\bfounder\b/g, "principal")
+    .replace(/\bPrincipal\s*\/\s*principal\b/gi, "Principal")
+    .replace(/\bprincipal\s*\/\s*principal\b/gi, "Principal")
+    .replace(
+      /\bnamed family user\s*\/\s*named family user\s+named family-fairness owner\b/gi,
+      "Named family user / named family-fairness owner",
+    )
     .replace(/\bsix years later\b/gi, "later")
     .replace(/\bmemo source file\b/gi, "source register")
     .replace(/\brelease-readiness reviewing\b/gi, "release-readiness review")
@@ -1018,63 +1025,53 @@ function buildAntifragilitySection(resolved: ResolvedDecisionMemoSurfaceData): R
   });
 }
 
-function buildGenerationSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
-  const heir = asRecord(pickSection(resolved, "heir_management_data"));
-  const g1 = asRecord(heir.g1_position);
-  const g12 = asRecord(heir.g1_to_g2_transfer);
-  const g23 = asRecord(heir.g2_to_g3_transfer);
-  const structured = asRecord(heir.with_structure);
-  const third = asRecord(heir.third_generation_problem);
-  const layerMap = asArray(heir.succession_layer_map);
-
+function buildGenerationSection(_resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
   return reportSection({
     id: "g1-g2-g3-continuity",
-    eyebrow: "Generation-to-generation continuity",
+    eyebrow: "Responsibility transfer",
     title: "The house should transfer responsibility before it transfers symbolism",
-    intro: sanitizeShareText(
-      heir.read ??
-        "The property must be legible across generations: who can use it, who can stop it, who pays for it, and who can explain it later.",
-    ),
+    intro:
+      "The house should transfer responsibility, not just symbolism. Use, carry, veto, fairness, sale/refinance, and future explanation must be written before the asset becomes a family expectation.",
     cards: [
       {
-        label: "Current-owner route control",
-        value: text(g1.asset_value_formatted ?? moneyText(g1.asset_value)),
-        body: text(g1.read),
-        status: `Retention ${text(g1.retention_score, "78")}%`,
-        releaseCondition: text(g1.compatibility),
+        label: "Current authority",
+        title: "Control before commitment",
+        body:
+          "Principal authority, stop rights, and office retrieval must be written before seller timing turns intent into commitment.",
+        releaseCondition:
+          "Release only when approval, stop, signing, reporting, and retrieval rights are documented.",
       },
       {
-        label: "Operating transfer to named family user",
-        value: text(g12.net_to_heirs_formatted ?? moneyText(g12.net_to_heirs)),
-        body: text(g12.read),
-        status: `Retention ${text(g12.retention_score, "64")}%`,
-        releaseCondition: text(g12.compatibility),
+        label: "Family use",
+        title: "Use is not ownership",
+        body:
+          "The named family user can use the house only under written use, carry, security, guest, sale/refinance, and escalation rules.",
+        releaseCondition: "Use rights and carry owner are recorded before bid release or exchange.",
       },
       {
-        label: "Next-generation record without governance lock",
-        value: text(g23.without_structure_formatted ?? moneyText(g23.net_to_g3_without_structure)),
-        body: text(g23.read),
-        status: `Retention ${text(g23.retention_score_without_structure, "35")}%`,
-        releaseCondition: text(g23.compatibility),
+        label: "Fairness",
+        title: "No implied future entitlement",
+        body:
+          "Fairness, veto, and future-beneficiary treatment must be recorded before the asset becomes a family signal.",
+        releaseCondition: "Family-fairness owner and next-generation decision record are signed.",
       },
       {
-        label: "With release-readiness governance",
-        value: text(structured.with_structure_formatted ?? moneyText(structured.net_to_g3_with_structure)),
-        body: text(structured.compatibility),
-        status: `Retention ${text(structured.retention_score, "65")}%`,
-        releaseCondition: text(structured.loss_point),
+        label: "Decision memory",
+        title: "The file must explain the decision later",
+        body:
+          "The family should be able to retrieve why the route advanced, held, or stopped without relying on memory or adviser fragments.",
+        releaseCondition: "Decision record location, retrieval owner, and explanation packet are indexed.",
       },
     ],
     table: {
-      columns: ["Succession layer", "Compatibility", "Loss if unfixed", "Release lock"],
-      rows: layerMap.map((row) => [
-        text(row.layer),
-        text(row.compatibility),
-        text(row.loss_if_unfixed),
-        text(row.release_lock),
-      ]),
+      columns: ["Layer", "Release condition"],
+      rows: [
+        ["Current authority", "Approval, stop, signing, reporting, and retrieval rights are written."],
+        ["Family use", "Use, carry, security, guest, sale/refinance, and escalation rules are written."],
+        ["Fairness", "Family-fairness owner, veto position, and future-beneficiary treatment are recorded."],
+        ["Decision memory", "Decision record location, retrieval owner, and explanation packet are indexed."],
+      ],
     },
-    bullets: safeStringArray(third.causes),
   });
 }
 

@@ -60,6 +60,7 @@ function cleanDisplayText(value: unknown): string {
   if (typeof value !== "string") return "";
   return value
     .replace(/\bRelease Differently\b/gi, "Gated negotiation only")
+    .replace(/\bGated negotiation only only\b/gi, "Gated negotiation only")
     .replace(/\bproceed[-\s]modified\b/gi, "Proceed under signed gates")
     .replace(/\bPreferred modified route only if\b/gi, "Preferred direct route only if")
     .replace(/\bPreferred modified route\b/gi, "Preferred direct route under signed gates")
@@ -117,6 +118,8 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bfounder authority\b/gi, "principal authority")
     .replace(/\bFounder\b/g, "Principal")
     .replace(/\bfounder\b/g, "principal")
+    .replace(/\bPrincipal\s*\/\s*principal\b/gi, "Principal")
+    .replace(/\bprincipal\s*\/\s*principal\b/gi, "Principal")
     .replace(/\bG2 fairness owner\b/gi, "family-fairness owner")
     .replace(/\bG3 memory\b/gi, "next-generation decision record")
     .replace(/\bsix years later\b/gi, "later")
@@ -126,6 +129,10 @@ function cleanDisplayText(value: unknown): string {
     .replace(/(^|[_-])g2(?=$|[_-])/gi, "$1named_family_user")
     .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
     .replace(/\bdaughter\/fairness\b/gi, "family-fairness")
+    .replace(
+      /\bnamed family user\s*\/\s*named family user\s+named family-fairness owner\b/gi,
+      "Named family user / named family-fairness owner",
+    )
     .replace(/\bG3 grandson\b/gi, "next-generation record")
     .replace(/\bfuture-grandchild\b/gi, "next-generation")
     .replace(/\bgrandson\b/gi, "next-generation record")
@@ -589,7 +596,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
         </p>
       </Section>
 
-      <Section eyebrow="Next seven days" title="The only lawful order of movement">
+      <Section eyebrow="Next seven days" title="The controlled order of movement">
         <PrincipalTable columns={["Window", "Action", "Owner"]} rows={nextSevenDayRows} />
       </Section>
 
@@ -882,7 +889,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
         </div>
       </Section>
 
-      <Section eyebrow={roadmap?.eyebrow} title="Next seven days: the only lawful order of movement">
+      <Section eyebrow={roadmap?.eyebrow} title="Next seven days: the controlled order of movement">
         <PrincipalTable
           columns={roadmap?.table?.columns ?? ["Order", "Step", "Action", "Owner", "Timeline", "Release gate"]}
           rows={uniqueRows(reportRows(roadmap), 9)}
