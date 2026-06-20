@@ -111,6 +111,7 @@ interface UseOpportunitiesConfig {
   timeframe?: string;
   isPersonalMode?: boolean;
   hasCompletedAssessment?: boolean;
+  userId?: string | null;
   includeCrownVault?: boolean;
   includeStaleMap?: boolean;
 
@@ -146,6 +147,7 @@ function buildOpportunitiesCacheKey(config: {
   isPublic: boolean
   timeframe: string
   shouldUsePersonalizedView: boolean
+  userId: string
   includeCrownVault: boolean
   includeStaleMap: boolean
   publicEndpoint: string
@@ -389,6 +391,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
     timeframe = 'live',
     isPersonalMode = false,
     hasCompletedAssessment = false,
+    userId = null,
     includeCrownVault = false,
     includeStaleMap = false,
     publicEndpoint = '/api/public/assessment/preview-opportunities',
@@ -404,10 +407,12 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
   const [bustCache, setBustCache] = useState(initialBustCache);
   const shouldUsePersonalizedView = isPersonalMode && hasCompletedAssessment;
+  const normalizedUserId = String(userId || '').trim();
   const cacheKey = buildOpportunitiesCacheKey({
     isPublic,
     timeframe,
     shouldUsePersonalizedView,
+    userId: normalizedUserId,
     includeCrownVault,
     includeStaleMap,
     publicEndpoint,
@@ -481,7 +486,8 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         const shouldIncludeCrownVault = includeCrownVault;
 
         const limitParam = timeframeParam === 'ALL' || timeframeParam === 'LIVE' ? 500 : 250;
-        const apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}&limit=${limitParam}`;
+        const userScopeParam = normalizedUserId ? `&user_id=${encodeURIComponent(normalizedUserId)}` : '';
+        const apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}&limit=${limitParam}${userScopeParam}`;
 
         // Use secureApi for authenticated requests with cache busting when needed
         response = await secureApi.get(apiUrl, true, bustCache);
@@ -492,7 +498,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
         // Fallback: if personalized returned empty, retry with view=all
         if (opportunities.length === 0 && viewParam === 'personalized') {
-          const fallbackUrl = `/api/command-centre/opportunities?view=all&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}&limit=${limitParam}`;
+          const fallbackUrl = `/api/command-centre/opportunities?view=all&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}&limit=${limitParam}${userScopeParam}`;
           const fallbackResponse = await secureApi.get(fallbackUrl, true, bustCache);
           opportunities = fallbackResponse?.opportunities ||
                          (Array.isArray(fallbackResponse) ? fallbackResponse : []);
@@ -607,6 +613,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
     isPublic,
     timeframe,
     shouldUsePersonalizedView,
+    normalizedUserId,
     includeCrownVault,
     includeStaleMap,
     publicEndpoint,

@@ -919,6 +919,7 @@ export default function WarRoomPage() {
     timeframe,
     isPersonalMode,
     hasCompletedAssessment,
+    userId,
     includeCrownVault: true,
     cleanCategories: true
   });
