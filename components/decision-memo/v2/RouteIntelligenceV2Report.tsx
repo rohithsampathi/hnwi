@@ -1192,6 +1192,7 @@ export default function RouteIntelligenceV2Report({
     if (!selectedRoute || !fullMemo) return null;
     return typeof fullMemo === 'function' ? fullMemo(selectedRoute) : fullMemo;
   }, [fullMemo, selectedRoute]);
+  const showFullMemoFallbackPanels = !selectedFullMemo || isOutcomeOnlyTrack;
   const [sourceJurisdiction, destinationJurisdiction] = useMemo(() => {
     const parts = intelligence.corridor.split(/\s*(?:->|→)\s*/);
     return [parts[0] || 'Source', parts[1] || 'Destination'];
@@ -1311,77 +1312,81 @@ export default function RouteIntelligenceV2Report({
           <StressSignals route={selectedRoute} />
         </section>
 
-        <TaxDutyPanel
-          route={selectedRoute}
-          taxSection={taxSection}
-          citationIds={taxCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
+        {showFullMemoFallbackPanels ? (
+          <>
+            <TaxDutyPanel
+              route={selectedRoute}
+              taxSection={taxSection}
+              citationIds={taxCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
 
-        <section>
-          <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
-          <JurisdictionGrid route={selectedRoute} />
-        </section>
+            <section>
+              <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
+              <JurisdictionGrid route={selectedRoute} />
+            </section>
 
-        <RouteShareSectionPanel
-          section={continuitySection}
-          citationIds={continuityCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
+            <RouteShareSectionPanel
+              section={continuitySection}
+              citationIds={continuityCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
 
-        <RouteShareSectionPanel
-          section={specialistSection}
-          citationIds={continuityCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-          cardLimit={4}
-        />
+            <RouteShareSectionPanel
+              section={specialistSection}
+              citationIds={continuityCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              cardLimit={4}
+            />
 
-        <RouteShareSectionPanel
-          section={crisisSection}
-          citationIds={crisisCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-          cardLimit={10}
-        />
+            <RouteShareSectionPanel
+              section={crisisSection}
+              citationIds={crisisCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              cardLimit={10}
+            />
 
-        <RouteShareSectionPanel
-          section={antiFragilitySection}
-          citationIds={crisisCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-          cardLimit={8}
-        />
+            <RouteShareSectionPanel
+              section={antiFragilitySection}
+              citationIds={crisisCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              cardLimit={8}
+            />
 
-        <section>
-          <SectionHeader label="Projection" title="Base, stress, and opportunity outcomes for the selected route." />
-          <ScenarioGraph route={selectedRoute} />
-        </section>
+            <section>
+              <SectionHeader label="Projection" title="Base, stress, and opportunity outcomes for the selected route." />
+              <ScenarioGraph route={selectedRoute} />
+            </section>
 
-        <section>
-          <SectionHeader label="Release Evidence" title="Evidence pack required before this route can move." />
-          <EvidencePack route={selectedRoute} />
-        </section>
+            <section>
+              <SectionHeader label="Release Evidence" title="Evidence pack required before this route can move." />
+              <EvidencePack route={selectedRoute} />
+            </section>
 
-        <section>
-          <SectionHeader label="Operator Control" title="Responsibility transfer and record mismatch release-readiness review." />
-          <ResponsibilityAndRecords route={selectedRoute} />
-        </section>
+            <section>
+              <SectionHeader label="Operator Control" title="Responsibility transfer and record mismatch release-readiness review." />
+              <ResponsibilityAndRecords route={selectedRoute} />
+            </section>
 
-        <section>
-          <SectionHeader label="Counsel Pack" title="Questions that make existing advisors useful instead of bypassed." />
-          <CounselQuestions route={selectedRoute} />
-        </section>
+            <section>
+              <SectionHeader label="Counsel Pack" title="Questions that make existing advisors useful instead of bypassed." />
+              <CounselQuestions route={selectedRoute} />
+            </section>
 
-        <RouteShareSectionPanel
-          section={decisionMemorySection}
-          citationIds={marketCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-          cardLimit={2}
-        />
+            <RouteShareSectionPanel
+              section={decisionMemorySection}
+              citationIds={marketCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              cardLimit={2}
+            />
+          </>
+        ) : null}
 
         <section className="rounded-lg border border-border/25 bg-card/40 p-5">
           <div className="flex items-start gap-3">
