@@ -12,6 +12,7 @@ import {
   DecisionMemoMissingError,
   fetchDecisionMemoSurfaceData,
 } from '@/lib/decision-memo/fetch-decision-memo-surface-data';
+import { buildReleaseReadinessSharePayload } from '@/lib/decision-memo/build-release-readiness-share-surface';
 import type { ResolvedDecisionMemoSurfaceData } from '@/lib/decision-memo/resolve-decision-memo-surface-data';
 import { resolvePublicDecisionMemoId } from '@/lib/decision-memo/memo-id-aliases';
 
@@ -52,6 +53,49 @@ function readableSurfaceError(error: unknown): string {
 }
 
 type RecordLike = Record<string, any>;
+
+function requestedViewMode(searchParams: Record<string, string | string[] | undefined> | undefined): string {
+  const value = searchParams?.view;
+  return Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '');
+}
+
+function buildPrincipalOnlySurfaceData(
+  reference: string,
+  data: ResolvedDecisionMemoSurfaceData,
+): ResolvedDecisionMemoSurfaceData {
+  const payload = buildReleaseReadinessSharePayload(reference, data);
+  const previewData = {
+    release_readiness_share_payload: payload,
+    route_intelligence_v2: {
+      title: payload.title,
+      corridor: payload.corridor,
+      move: payload.move,
+      routeOptions: payload.routeOptions,
+    },
+    risk_assessment: {
+      verdict: payload.decision,
+      recommendation: payload.releaseRule,
+      risk_level: payload.riskLevel,
+      mitigation_timeline: payload.mitigation,
+      total_exposure: payload.selectedRoute.metrics.totalAcquisitionCostUsd,
+    },
+  };
+
+  return {
+    memoData: {
+      intake_id: reference,
+      preview_data: previewData,
+    } as any,
+    backendData: {
+      surface_contract: payload.surfaceContract,
+      intake_id: reference,
+      preview_data: previewData,
+      release_readiness_share_payload: payload,
+    },
+    fullArtifact: null,
+    developmentsCount: data.developmentsCount,
+  };
+}
 
 function isRecord(value: unknown): value is RecordLike {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -582,6 +626,12 @@ export default async function DecisionMemoAuditPage({
     initialSurfaceError = readableSurfaceError(error);
   }
 
+  const requestedView = requestedViewMode(resolvedSearchParams);
+  const clientInitialSurfaceData =
+    initialSurfaceData && (!requestedView || requestedView === 'principal')
+      ? buildPrincipalOnlySurfaceData(publicId, initialSurfaceData)
+      : initialSurfaceData;
+
   return (
     <>
       <DecisionMemoServerAuditText
@@ -593,7 +643,7 @@ export default async function DecisionMemoAuditPage({
         <DecisionMemoAuditClientPage
           initialIntakeId={resolvedParams.intakeId}
           initialSearchParamsString={query}
-          initialSurfaceData={initialSurfaceData}
+          initialSurfaceData={clientInitialSurfaceData}
           initialSurfaceError={initialSurfaceError}
         />
       </Suspense>

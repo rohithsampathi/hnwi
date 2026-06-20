@@ -939,6 +939,14 @@ export default function DecisionMemoAuditClientPage({
     if (!resolvedSurfaceData || !isReleaseReadinessReviewPath) return null;
 
     try {
+      const embeddedPayload =
+        (resolvedSurfaceData.backendData as Record<string, unknown> | undefined)?.release_readiness_share_payload ??
+        ((resolvedSurfaceData.memoData as Record<string, unknown> | undefined)?.preview_data as Record<string, unknown> | undefined)?.release_readiness_share_payload;
+
+      if (embeddedPayload && typeof embeddedPayload === 'object') {
+        return embeddedPayload as ReturnType<typeof buildReleaseReadinessSharePayload>;
+      }
+
       return buildReleaseReadinessSharePayload(canonicalMemoReference, resolvedSurfaceData);
     } catch (caught) {
       console.error('[DecisionMemo] Principal view failed to build', caught);
