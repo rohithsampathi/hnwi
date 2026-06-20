@@ -90,6 +90,9 @@ function cleanDisplayText(value: unknown): string {
       /\bCapital should not move while the transfer path is only narrated\.?/gi,
       "Capital remains blocked until the transfer path is bank-accepted in writing."
     )
+    .replace(/\ba undocumented family expectation\b/gi, "an undocumented family expectation")
+    .replace(/\bDestination tax counsel\b/gi, "UK tax counsel")
+    .replace(/\bDestination property counsel\b/gi, "UK property counsel")
     .replace(
       /\bThe asset cannot become a silent family promise or future conflict point\.?/gi,
       "Use rights, carry, and veto must be written so the property does not become an implied future entitlement."
@@ -936,7 +939,7 @@ function RouteOptionCard({ option, selected }: { option: ReleaseReadinessShareRo
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
         <div>
           <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Duties</p>
-          <p className="font-semibold text-foreground">{money(option.metrics.totalDutiesUsd, "No purchase")}</p>
+          <p className="font-semibold text-foreground">{money(option.metrics.totalDutiesUsd, "US$0 / no purchase")}</p>
         </div>
         <div>
           <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Drag</p>
@@ -1252,28 +1255,33 @@ function MethodologyView({
 
       {drivers.length ? (
         <Section eyebrow="Method records" title="Used only to identify failure modes">
-          <div className="mb-5 rounded-md border border-border bg-muted/30 p-4 text-sm leading-6 text-muted-foreground">
-            These records explain why a gate matters. They do not prove legal status, tax treatment, title quality,
-            bank acceptance, valuation, or family authority.
-            <br />
-            Source mapping is held in Evidence Vault. Method records are not proof; they explain gate relevance.
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {drivers.map((driver) => (
-              <article key={driver.id} className="rounded-md border border-border bg-card/70 p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {cleanDisplayText(driver.title)}
-                </p>
-                <p className="mt-3 text-base leading-7 text-foreground">{cleanDisplayText(driver.driver)}</p>
-                {driver.releaseRead ? (
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    <span className="font-semibold text-foreground">Release read:</span>{" "}
-                    {cleanDisplayText(driver.releaseRead)}
+          <details className="rounded-md border border-border bg-card/70 p-5">
+            <summary className="cursor-pointer text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Show lower-authority method records
+            </summary>
+            <div className="mt-5 rounded-md border border-border bg-muted/30 p-4 text-sm leading-6 text-muted-foreground">
+              These records explain why a gate matters. They do not prove legal status, tax treatment, title quality,
+              bank acceptance, valuation, or family authority.
+              <br />
+              Source mapping is held in Evidence Vault. Method records are not proof; they explain gate relevance.
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {drivers.map((driver) => (
+                <article key={driver.id} className="rounded-md border border-border bg-card/70 p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {cleanDisplayText(driver.title)}
                   </p>
-                ) : null}
-              </article>
-            ))}
-          </div>
+                  <p className="mt-3 text-base leading-7 text-foreground">{cleanDisplayText(driver.driver)}</p>
+                  {driver.releaseRead ? (
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                      <span className="font-semibold text-foreground">Release read:</span>{" "}
+                      {cleanDisplayText(driver.releaseRead)}
+                    </p>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </details>
         </Section>
       ) : null}
     </>

@@ -86,15 +86,26 @@ function routeDisplayText(value: unknown): string {
     .replace(/\bspouse veto if relevant\b/gi, 'family-home veto position where recorded')
     .replace(/\bspouse if relevant\b/gi, 'family-home veto holder where recorded')
     .replace(/\bspouse veto\b/gi, 'family-home veto position')
+    .replace(/\ba undocumented family expectation\b/gi, 'an undocumented family expectation')
+    .replace(/\bDestination tax counsel\b/gi, 'UK tax counsel')
+    .replace(/\bDestination property counsel\b/gi, 'UK property counsel')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function releaseTone(route: RouteIntelligenceOptionV2): string {
-  if (route.releaseRule === 'Release Differently') {
+  const rule = routeDisplayText(route.releaseRule).toLowerCase();
+  const verdict = routeDisplayText(route.verdict).toLowerCase();
+  if (
+    route.releaseRule === 'Release Differently' ||
+    rule.includes('gated negotiation') ||
+    rule.includes('release differently') ||
+    verdict.includes('preferred direct') ||
+    verdict.includes('proceed under signed gates')
+  ) {
     return 'border-emerald-500/25 bg-emerald-500/[0.04] text-emerald-500';
   }
-  if (route.releaseRule === 'Hold') {
+  if (route.releaseRule === 'Hold' || rule.includes('hold')) {
     return 'border-amber-500/25 bg-amber-500/[0.04] text-amber-500';
   }
   return 'border-red-500/25 bg-red-500/[0.04] text-red-500';
@@ -102,8 +113,11 @@ function releaseTone(route: RouteIntelligenceOptionV2): string {
 
 function releaseRuleDisplay(rule: RouteIntelligenceOptionV2['releaseRule'] | string): string {
   if (rule === 'Release Differently') return 'Gated negotiation only';
+  if (routeDisplayText(rule).toLowerCase().includes('gated negotiation')) return 'Gated negotiation only';
   if (rule === 'Hold') return 'Hold';
+  if (routeDisplayText(rule).toLowerCase().includes('hold')) return 'Hold';
   if (rule === 'Stop') return 'Stop';
+  if (routeDisplayText(rule).toLowerCase().includes('stop')) return 'Stop';
   return String(rule || '');
 }
 

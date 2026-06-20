@@ -305,6 +305,9 @@ function sanitizeShareText(value: unknown): string {
       /\bCapital should not move while the transfer path is only narrated\.?/gi,
       "Capital remains blocked until the transfer path is bank-accepted in writing."
     )
+    .replace(/\ba undocumented family expectation\b/gi, "an undocumented family expectation")
+    .replace(/\bDestination tax counsel\b/gi, "UK tax counsel")
+    .replace(/\bDestination property counsel\b/gi, "UK property counsel")
     .replace(
       /\bThe asset cannot become a silent family promise or future conflict point\.?/gi,
       "Use rights, carry, and veto must be written so the property does not become an implied future entitlement."
@@ -485,7 +488,7 @@ function buildSafeRouteIntelligence(route: RouteIntelligenceV2, reference: strin
             releaseRead: sanitizeShareText(driver.releaseRead),
             evidenceBasis: sanitizeShareText(driver.evidenceBasis),
             sourceIds: driver.sources.map(sourceCitationId).filter(Boolean),
-            sources: driver.sources.map(sanitizeDriverSource).filter((source) => Boolean(source.id)),
+            sources: [],
           })),
         }
       : undefined,
@@ -513,11 +516,11 @@ function buildSafeRouteIntelligence(route: RouteIntelligenceV2, reference: strin
 function buildDefaultPrivateEvidence() {
   return [
     ["Buyer profile", "Required before bid", "Principal / FO operator", "Identity class, residence posture, property count, and buyer capacity."],
-    ["Title pack", "Required before exchange unless indexed in data room", "UK property counsel", "Title, searches, survey, restrictions, seller authority, insurance quote and security plan, and exchange mechanics."],
+    ["Title pack", "Indexed if available; counsel sign-off required before exchange", "UK property counsel", "Title, searches, survey, restrictions, seller authority, insurance quote and security plan, and exchange mechanics."],
     ["SDLT computation", "Required before bid / counsel-confirmed", "UK tax counsel", "Signed SDLT treatment, surcharges, relief exclusions, and filing responsibility."],
     ["SoW / SoF file", "Required before exchange", "Source bank", "Corroborated source narrative, account path, adverse-media checks, and transfer authority."],
     ["Receiving and fallback rails", "Required before exchange", "Receiving bank", "Primary rail, fallback rail, KYC acceptance, FX authority, limits, and timetable."],
-    ["Family authority minute", "Required before bid release or exchange unless signed", "Family office / principal", "Use boundary, family-home rights position, title authority, carry owner, sale/refinance limits, and decision memory."],
+    ["Family authority minute", "Indexed if available; signed authority minute required before bid release or exchange", "Family office / principal", "Use boundary, family-home rights position, title authority, carry owner, sale/refinance limits, and decision memory."],
     ["Family fairness minute", "Required before bid release or exchange", "Family fairness owner", "Notice, fairness protection, beneficiary treatment, and next-generation record."],
     ["Operating file", "Required before completion", "FO operator", "Insurance quote, security plan, service contracts, initial carry budget, and reporting cadence."],
   ].map(([label, status, owner, detail]) => ({
@@ -931,6 +934,7 @@ function buildTaxSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseRead
 function buildMarketSection(
   resolved: ResolvedDecisionMemoSurfaceData,
   methodDrivers: ReleaseReadinessMethodDriver[],
+  publicSourceCount: number,
 ): ReleaseReadinessShareReportSection {
   const market = asRecord(pickSection(resolved, "market_validation"));
   const expected = asRecord(market.expected_vs_reality);
@@ -959,7 +963,7 @@ function buildMarketSection(
       },
       {
         label: "Public source anchors",
-        value: text(market.source_count, "31"),
+        value: `${publicSourceCount}`,
         body: "Public legal, tax, property, market, and FX anchors support the model; private files still govern release.",
       },
       {
@@ -1423,12 +1427,13 @@ function buildFullReportSections(
     capitalRule: string;
   },
   methodDrivers: ReleaseReadinessMethodDriver[],
+  publicSourceCount: number,
 ): ReleaseReadinessShareReportSection[] {
   return [
     buildInputFrameSection(payloadSeed),
     buildCapitalSection(resolved),
     buildTaxSection(resolved),
-    buildMarketSection(resolved, methodDrivers),
+    buildMarketSection(resolved, methodDrivers, publicSourceCount),
     buildWealthProjectionSection(resolved),
     buildScenarioTreeSection(resolved),
     buildCrisisSection(resolved),
@@ -1489,6 +1494,15 @@ function buildPrivateEvidenceForPayload(): ReleaseReadinessPrivateEvidence[] {
 }
 
 function buildMethodDriversForPayload(route: RouteIntelligenceV2): ReleaseReadinessMethodDriver[] {
+  const abstractSourceTitle = (driverTitle: string, index: number): string => {
+    const haystack = driverTitle.toLowerCase();
+    if (/bank|rail|source|kyc|sow|sof/.test(haystack)) return `Bank-rail failure-pattern source record ${index + 1}`;
+    if (/price|market|mayfair|property|trophy|bid/.test(haystack)) return `Trophy-pricing source record ${index + 1}`;
+    if (/residence|mobility|migration|relocation|education|succession/.test(haystack)) return `Mobility-pattern source record ${index + 1}`;
+    if (/family|fairness|authority|generation/.test(haystack)) return `Family-governance source record ${index + 1}`;
+    return `Release-gate method source record ${index + 1}`;
+  };
+
   return (route.routeDriverRegister?.items ?? []).map((driver) => ({
     id: text(driver.id),
     title: sanitizeShareText(driver.title),
@@ -1497,9 +1511,9 @@ function buildMethodDriversForPayload(route: RouteIntelligenceV2): ReleaseReadin
     sources: driver.sources
       .map(sanitizeDriverSource)
       .filter((source) => Boolean(source.id))
-      .map((source) => ({
+      .map((source, index) => ({
         id: text(source.id),
-        title: sanitizeShareText(source.title),
+        title: abstractSourceTitle(text(driver.title), index),
         date: sanitizeShareText(source.date),
         url: text(source.url ?? source.source_url),
       })),
@@ -1564,6 +1578,7 @@ export function buildReleaseReadinessSharePayload(
       capitalRule,
     },
     methodDrivers,
+    publicSources.length,
   );
 
   return {
