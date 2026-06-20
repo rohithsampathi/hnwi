@@ -2227,6 +2227,7 @@ export default function DecisionMemoAuditClientPage({
             onCitationSelect={setSelectedCitationId}
             citationMap={computedCitationMap}
             preloadedSources={computedPreloadedSources}
+            shareId={publicMemoId}
             preferRemoteSources
           />
         </div>
@@ -2242,6 +2243,7 @@ export default function DecisionMemoAuditClientPage({
             onCitationSelect={setSelectedCitationId}
             citationMap={computedCitationMap}
             preloadedSources={computedPreloadedSources}
+            shareId={publicMemoId}
             preferRemoteSources
           />
         </AnimatePresence>
