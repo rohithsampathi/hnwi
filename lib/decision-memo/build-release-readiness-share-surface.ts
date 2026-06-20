@@ -737,9 +737,22 @@ function cleanRows(rows: string[][]): string[][] {
 }
 
 function reportSection(section: ReleaseReadinessShareReportSection): ReleaseReadinessShareReportSection {
-  return sanitizeObject({
-    ...section,
-    cards: section.cards?.filter((card) => Boolean(card.label || card.title || card.value || card.body)),
+  return {
+    id: section.id,
+    eyebrow: sanitizeShareText(section.eyebrow),
+    title: sanitizeShareText(section.title),
+    intro: section.intro ? sanitizeShareText(section.intro) : undefined,
+    cards: section.cards
+      ?.filter((card) => Boolean(card.label || card.title || card.value || card.body))
+      .map((card) => ({
+        label: sanitizeShareText(card.label),
+        value: card.value ? sanitizeShareText(card.value) : undefined,
+        title: card.title ? sanitizeShareText(card.title) : undefined,
+        body: card.body ? sanitizeShareText(card.body) : undefined,
+        owner: card.owner ? sanitizeShareText(card.owner) : undefined,
+        status: card.status ? sanitizeShareText(card.status) : undefined,
+        releaseCondition: card.releaseCondition ? sanitizeShareText(card.releaseCondition) : undefined,
+      })),
     table: section.table
       ? {
           columns: section.table.columns.map(sanitizeShareText),
@@ -747,7 +760,12 @@ function reportSection(section: ReleaseReadinessShareReportSection): ReleaseRead
         }
       : undefined,
     bullets: section.bullets?.map(sanitizeShareText).filter(Boolean),
-  });
+    chart: section.chart?.map((series) => ({
+      name: sanitizeShareText(series.name),
+      verdict: sanitizeShareText(series.verdict),
+      points: series.points.map((point) => ({ year: point.year, value: point.value })),
+    })),
+  };
 }
 
 function routeSanitizedParty(value: unknown): string {

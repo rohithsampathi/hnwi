@@ -173,9 +173,10 @@ function citationNumber(citationMap: Map<string, number>, id: string): number | 
 
 function reportSection(
   payload: ReleaseReadinessSharePayload,
-  id: string,
+  ...ids: string[]
 ): ReleaseReadinessShareReportSection | undefined {
-  return payload.reportSections.find((section) => section.id === id);
+  const wanted = new Set(ids.map((id) => id.toLowerCase()));
+  return payload.reportSections.find((section) => wanted.has(String(section.id).toLowerCase()));
 }
 
 function reportCard(
@@ -403,7 +404,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
   const scenario = reportSection(payload, "release-rule-scenario-tree");
   const crisis = reportSection(payload, "crisis-resilience");
   const antiFragility = reportSection(payload, "anti-fragility");
-  const continuity = reportSection(payload, "g1-g2-g3-continuity");
+  const continuity = reportSection(payload, "g1-g2-g3-continuity", "generation_to_generation-continuity");
   const authority = reportSection(payload, "authority-veto");
   const responsibility = reportSection(payload, "responsibility-transfer");
   const recordMismatch = reportSection(payload, "record-mismatch");

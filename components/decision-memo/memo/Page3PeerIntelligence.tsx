@@ -1025,8 +1025,8 @@ export function Page3PeerIntelligence({
                 ))
               ) : (
                 <div className="text-center py-8 text-muted-foreground/60">
-                  <p className="text-2xl font-medium mb-2">—</p>
-                  <p className="text-xs uppercase tracking-[0.2em]">Driver data pending from backend</p>
+                  <p className="text-sm font-medium mb-2 text-foreground">Route-driver evidence in source ledger</p>
+                  <p className="text-xs uppercase tracking-[0.2em]">See Evidence & Methodology</p>
                 </div>
               )}
             </div>

@@ -13,6 +13,7 @@ import { PrintPaginationOptimizer } from './PrintPaginationOptimizer';
 import HouseGradeMemoSection from './HouseGradeMemoSection';
 import { MemoLastPage } from './MemoLastPage';
 import { ReleaseReadinessInquiryForm } from './ReleaseReadinessInquiryForm';
+import type { ReleaseReadinessSharePayload } from '@/lib/decision-memo/build-release-readiness-share-surface';
 
 type RenderMode = 'screen' | 'print';
 
@@ -30,6 +31,7 @@ interface DecisionMemoLinearReportProps {
   includeFramingPages?: boolean;
   showPrintChrome?: boolean;
   motionEnabled?: boolean;
+  releaseReadinessSharePayload?: ReleaseReadinessSharePayload | null;
 }
 
 interface RevealConfig {
@@ -88,6 +90,7 @@ export default function DecisionMemoLinearReport({
   includeFramingPages = false,
   showPrintChrome = false,
   motionEnabled = false,
+  releaseReadinessSharePayload,
 }: DecisionMemoLinearReportProps) {
   const printContainerRef = useRef<HTMLDivElement>(null);
   const canonicalReference = resolveDecisionMemoDisplayReference(intakeId);
@@ -164,6 +167,7 @@ export default function DecisionMemoLinearReport({
           destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
           onCitationClick={onCitationClick}
           citationMap={citationMap}
+          releaseReadinessSharePayload={releaseReadinessSharePayload}
         />
       </ReportSection>
 

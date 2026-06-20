@@ -16,9 +16,13 @@ import {
   TimerReset,
   Users,
 } from 'lucide-react';
-import { CrossBorderTaxAudit } from '@/components/decision-memo/memo/CrossBorderTaxAudit';
 import { DecisionMemoRenderProvider } from '@/components/decision-memo/memo/decision-memo-render-context';
 import { ReleaseReadinessInquiryForm } from '@/components/decision-memo/memo/ReleaseReadinessInquiryForm';
+import {
+  type ReleaseReadinessShareCard,
+  type ReleaseReadinessSharePayload,
+  type ReleaseReadinessShareReportSection,
+} from '@/lib/decision-memo/build-release-readiness-share-surface';
 import {
   type BuyerProfileRemissionMatrix,
   formatUsdCompact,
@@ -40,6 +44,7 @@ interface RouteIntelligenceV2ReportProps {
   embedded?: boolean;
   onCitationClick?: (citationId: string) => void;
   citationMap?: Map<string, number>;
+  sharePayload?: ReleaseReadinessSharePayload | null;
 }
 
 function pct(value: number): string {
@@ -256,6 +261,77 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
 function sourceChipLabel(sourceId: string, citationMap?: Map<string, number>, index = 0): string {
   const citationNumber = citationMap?.get(sourceId);
   return citationNumber ? `[${citationNumber}]` : `[${index + 1}]`;
+}
+
+function reportSectionById(
+  sharePayload: ReleaseReadinessSharePayload | null | undefined,
+  ...ids: string[]
+): ReleaseReadinessShareReportSection | undefined {
+  if (!sharePayload?.reportSections?.length) return undefined;
+  const wanted = new Set(ids.map((id) => id.toLowerCase()));
+  return sharePayload.reportSections.find((section) => wanted.has(String(section.id).toLowerCase()));
+}
+
+function reportCardBody(section: ReleaseReadinessShareReportSection | undefined, labelNeedle: string, fallback = ''): string {
+  const needle = labelNeedle.toLowerCase();
+  const card = section?.cards?.find((item) => routeDisplayText(item.label).toLowerCase().includes(needle));
+  return routeDisplayText(card?.body || fallback);
+}
+
+function citationIdsFor(
+  sharePayload: ReleaseReadinessSharePayload | null | undefined,
+  matcher: RegExp,
+  limit = 3,
+): string[] {
+  if (!sharePayload) return [];
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  const push = (id: unknown) => {
+    const value = typeof id === 'string' ? id.trim() : '';
+    const normalized = value.toLowerCase();
+    if (!value || seen.has(normalized)) return;
+    seen.add(normalized);
+    ids.push(value);
+  };
+
+  sharePayload.methodDrivers?.forEach((driver) => {
+    const haystack = [driver.title, driver.driver, driver.releaseRead].filter(Boolean).join(' ');
+    if (matcher.test(haystack)) {
+      driver.sources?.forEach((source) => push(source.id));
+    }
+  });
+
+  if (!ids.length) {
+    sharePayload.citations?.forEach((citation) => push(citation.id));
+  }
+
+  return ids.slice(0, limit);
+}
+
+function InlineCitationButtons({
+  ids,
+  onCitationClick,
+  citationMap,
+}: {
+  ids: string[];
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
+}) {
+  if (!ids.length) return null;
+  return (
+    <span className="ml-2 inline-flex flex-wrap gap-1 align-baseline">
+      {ids.map((sourceId, index) => (
+        <button
+          key={`${sourceId}-${index}`}
+          type="button"
+          onClick={() => onCitationClick?.(sourceId)}
+          className="inline-flex h-6 items-center rounded-full border border-gold/30 px-2 text-[11px] font-semibold text-gold transition hover:border-gold hover:bg-gold/10"
+        >
+          {sourceChipLabel(sourceId, citationMap, index)}
+        </button>
+      ))}
+    </span>
+  );
 }
 
 function ReviewerLayerNotice() {
@@ -480,6 +556,202 @@ function MetricStrip({ route }: { route: RouteIntelligenceOptionV2 }) {
         );
       })}
     </div>
+  );
+}
+
+function RouteShareCard({ card }: { card: ReleaseReadinessShareCard }) {
+  return (
+    <article className="min-w-0 rounded-lg border border-border/25 bg-card/40 p-4">
+      <p className="break-words text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
+        {routeDisplayText(card.label)}
+      </p>
+      {card.value ? <p className="mt-3 text-xl font-semibold text-foreground">{routeDisplayText(card.value)}</p> : null}
+      {card.title ? <h3 className="mt-3 text-base font-semibold leading-snug text-foreground">{routeDisplayText(card.title)}</h3> : null}
+      {card.body ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{routeDisplayText(card.body)}</p> : null}
+      {card.status ? <p className="mt-3 text-sm font-semibold text-gold">{routeDisplayText(card.status)}</p> : null}
+      {card.owner ? <p className="mt-3 text-sm font-semibold text-foreground">{routeDisplayText(card.owner)}</p> : null}
+      {card.releaseCondition ? (
+        <p className="mt-3 border-t border-border/20 pt-3 text-xs leading-relaxed text-muted-foreground">
+          <span className="font-semibold text-foreground">Release condition:</span> {routeDisplayText(card.releaseCondition)}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+function RouteShareTable({ table }: { table: NonNullable<ReleaseReadinessShareReportSection['table']> }) {
+  if (!table.rows.length) return null;
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border/25 bg-card/35">
+      <table className="min-w-full border-collapse text-left text-sm">
+        <thead className="bg-muted/35 text-xs uppercase tracking-[0.16em] text-muted-foreground/70">
+          <tr>
+            {table.columns.map((column) => (
+              <th key={column} className="border-b border-border/20 px-4 py-3 font-medium">
+                {routeDisplayText(column)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, rowIndex) => (
+            <tr key={`${row.join('|')}-${rowIndex}`} className="border-b border-border/10 last:border-b-0">
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={`${cell}-${cellIndex}`}
+                  className={`min-w-48 px-4 py-4 align-top leading-relaxed ${
+                    cellIndex === 0 ? 'font-medium text-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  {routeDisplayText(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RouteShareSectionPanel({
+  section,
+  citationIds,
+  onCitationClick,
+  citationMap,
+  cardLimit,
+}: {
+  section?: ReleaseReadinessShareReportSection;
+  citationIds: string[];
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
+  cardLimit?: number;
+}) {
+  if (!section) return null;
+  const cards = cardLimit ? section.cards?.slice(0, cardLimit) : section.cards;
+
+  return (
+    <section>
+      <SectionHeader label={section.eyebrow} title={section.title} />
+      <div className="space-y-5">
+        {section.intro ? (
+          <p className="max-w-5xl text-sm leading-relaxed text-muted-foreground">
+            {routeDisplayText(section.intro)}
+            <InlineCitationButtons ids={citationIds} onCitationClick={onCitationClick} citationMap={citationMap} />
+          </p>
+        ) : null}
+        {cards?.length ? (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {cards.map((card, index) => (
+              <RouteShareCard key={`${section.id}-card-${index}`} card={card} />
+            ))}
+          </div>
+        ) : null}
+        {section.table ? <RouteShareTable table={section.table} /> : null}
+        {section.bullets?.length ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {section.bullets.map((bullet, index) => (
+              <p key={`${section.id}-bullet-${index}`} className="rounded-lg border border-border/20 bg-card/35 p-4 text-sm leading-relaxed text-muted-foreground">
+                {routeDisplayText(bullet)}
+              </p>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function TaxDutyPanel({
+  route,
+  taxSection,
+  citationIds,
+  onCitationClick,
+  citationMap,
+}: {
+  route: RouteIntelligenceOptionV2;
+  taxSection?: ReleaseReadinessShareReportSection;
+  citationIds: string[];
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
+}) {
+  const acquisitionAudit = (route.taxAudit?.acquisition_audit ?? {}) as Record<string, unknown>;
+  const treatmentRows = taxSection?.table?.rows?.length
+    ? taxSection.table.rows
+    : [
+        [
+          routeDisplayText(route.routeName),
+          'Base residential SDLT plus non-resident and additional-dwelling surcharge posture for the selected buyer route.',
+          `${formatUsdCompact(route.metrics.totalDutiesUsd)} duty drag; ${pct(route.metrics.dutyDragPct)} of transaction value.`,
+          'UK tax counsel signs buyer profile, residence status, property count, surcharge posture, relief exclusions, and filing responsibility.',
+        ],
+        [
+          'Main-residence or replacement route',
+          'Lower-duty route only if residence and disposal facts are true at the transaction date.',
+          'Not credited in the control case.',
+          'Signed day-count, prior residence disposal/replacement evidence, and counsel computation required before bid authority changes.',
+        ],
+        [
+          'Company / non-natural-person wrapper',
+          'Can add higher SDLT, ATED, beneficial-owner disclosure, bank scrutiny, and reporting friction.',
+          'Not a tax-saving route in the control case.',
+          'Use only if counsel signs a non-tax governance, security, succession, or operating purpose.',
+        ],
+      ];
+
+  return (
+    <section>
+      <SectionHeader label="Tax audit" title="Cross-border tax and duty read for the selected route." />
+      <div className="space-y-5">
+        <p className="max-w-5xl text-sm leading-relaxed text-muted-foreground">
+          {routeDisplayText(taxSection?.intro || 'The route is tax-modeled, not tax-released. The selected buyer route must clear SDLT, surcharge, residence, filing, and counsel-signoff gates before capital moves.')}
+          <InlineCitationButtons ids={citationIds} onCitationClick={onCitationClick} citationMap={citationMap} />
+        </p>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <RouteShareCard
+            card={{
+              label: 'Transaction value',
+              value: formatUsdCompact(route.metrics.propertyValueUsd),
+              body: reportCardBody(taxSection, 'buyer category', 'Control case transaction value for the selected route.'),
+            }}
+          />
+          <RouteShareCard
+            card={{
+              label: 'Base SDLT',
+              value: formatUsdCompact(route.metrics.bsdUsd || Number(acquisitionAudit.bsd_stamp_duty_usd) || 0),
+              body: 'Base residential SDLT component for the selected control case.',
+            }}
+          />
+          <RouteShareCard
+            card={{
+              label: 'Surcharge posture',
+              value: formatUsdCompact(route.metrics.absdUsd || Number(acquisitionAudit.absd_additional_stamp_duty_usd) || 0),
+              body: 'Non-resident and additional-dwelling exposure before any relief or refund is credited.',
+            }}
+          />
+          <RouteShareCard
+            card={{
+              label: 'Total duty drag',
+              value: formatUsdCompact(route.metrics.totalDutiesUsd),
+              body: `${pct(route.metrics.dutyDragPct)} of property value in the selected route.`,
+            }}
+          />
+        </div>
+
+        <div>
+          <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">Tax treatment by category</p>
+          <RouteShareTable
+            table={{
+              columns: taxSection?.table?.columns?.length
+                ? taxSection.table.columns
+                : ['Route reviewed', 'Mechanism', 'Model effect', 'Release requirement'],
+              rows: treatmentRows,
+            }}
+          />
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -900,6 +1172,7 @@ export default function RouteIntelligenceV2Report({
   embedded = false,
   onCitationClick,
   citationMap,
+  sharePayload,
 }: RouteIntelligenceV2ReportProps) {
   const routes = useMemo(
     () => (intelligence.pressureVariants?.length ? intelligence.pressureVariants : intelligence.routeOptions) ?? [],
@@ -923,6 +1196,16 @@ export default function RouteIntelligenceV2Report({
     const parts = intelligence.corridor.split(/\s*(?:->|→)\s*/);
     return [parts[0] || 'Source', parts[1] || 'Destination'];
   }, [intelligence.corridor]);
+  const taxSection = reportSectionById(sharePayload, 'tax-legal-route-readiness');
+  const continuitySection = reportSectionById(sharePayload, 'g1-g2-g3-continuity', 'generation_to_generation-continuity');
+  const crisisSection = reportSectionById(sharePayload, 'crisis-resilience');
+  const antiFragilitySection = reportSectionById(sharePayload, 'anti-fragility');
+  const specialistSection = reportSectionById(sharePayload, 'specialist-release-reviews');
+  const decisionMemorySection = reportSectionById(sharePayload, 'information-flow-decision-memory');
+  const taxCitationIds = citationIdsFor(sharePayload, /tax|sdlt|residence|wrapper|company|ated|duty|property/i, 4);
+  const continuityCitationIds = citationIdsFor(sharePayload, /family|fairness|authority|generation|succession|continuity|residence|education/i, 4);
+  const crisisCitationIds = citationIdsFor(sharePayload, /bank|rail|source|kyc|sof|sow|crisis|war|sanction|technology|ai|insurance/i, 4);
+  const marketCitationIds = citationIdsFor(sharePayload, /market|price|bid|mayfair|seller|trophy|property/i, 4);
 
   if (!selectedRoute) {
     return (
@@ -1028,19 +1311,49 @@ export default function RouteIntelligenceV2Report({
           <StressSignals route={selectedRoute} />
         </section>
 
-        <section>
-          <SectionHeader label="Tax Audit" title="Cross-border tax and duty read for the selected route." />
-          <CrossBorderTaxAudit
-            audit={selectedRoute.taxAudit as any}
-            sourceJurisdiction={sourceJurisdiction}
-            destinationJurisdiction={destinationJurisdiction}
-          />
-        </section>
+        <TaxDutyPanel
+          route={selectedRoute}
+          taxSection={taxSection}
+          citationIds={taxCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
         <section>
           <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
           <JurisdictionGrid route={selectedRoute} />
         </section>
+
+        <RouteShareSectionPanel
+          section={continuitySection}
+          citationIds={continuityCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
+
+        <RouteShareSectionPanel
+          section={specialistSection}
+          citationIds={continuityCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+          cardLimit={4}
+        />
+
+        <RouteShareSectionPanel
+          section={crisisSection}
+          citationIds={crisisCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+          cardLimit={10}
+        />
+
+        <RouteShareSectionPanel
+          section={antiFragilitySection}
+          citationIds={crisisCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+          cardLimit={8}
+        />
 
         <section>
           <SectionHeader label="Projection" title="Base, stress, and opportunity outcomes for the selected route." />
@@ -1061,6 +1374,14 @@ export default function RouteIntelligenceV2Report({
           <SectionHeader label="Counsel Pack" title="Questions that make existing advisors useful instead of bypassed." />
           <CounselQuestions route={selectedRoute} />
         </section>
+
+        <RouteShareSectionPanel
+          section={decisionMemorySection}
+          citationIds={marketCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+          cardLimit={2}
+        />
 
         <section className="rounded-lg border border-border/25 bg-card/40 p-5">
           <div className="flex items-start gap-3">

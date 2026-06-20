@@ -25,6 +25,10 @@ import HeirManagementSection from './HeirManagementSection';
 import ReferencesSection from './ReferencesSection';
 import { ZeroTrustMoveIntakeSection } from './ZeroTrustMoveIntakeSection';
 import { memoNumberClass } from '@/lib/decision-memo/memo-design-tokens';
+import type {
+  ReleaseReadinessSharePayload,
+  ReleaseReadinessShareReportSection,
+} from '@/lib/decision-memo/build-release-readiness-share-surface';
 
 interface HouseGradeMemoSectionProps {
   data?: Record<string, any> | null;
@@ -38,6 +42,7 @@ interface HouseGradeMemoSectionProps {
   onCitationClick?: (citationId: string) => void;
   citationMap?: Map<string, number>;
   embedDetailedSchedules?: boolean;
+  releaseReadinessSharePayload?: ReleaseReadinessSharePayload | null;
   chapterId?:
     | 'hero'
     | 'governing-correction'
@@ -79,6 +84,15 @@ function asText(value: unknown, fallback = '—'): string {
     return String(value);
   }
   return fallback;
+}
+
+function releaseReadinessReportSection(
+  payload: ReleaseReadinessSharePayload | null | undefined,
+  ...ids: string[]
+): ReleaseReadinessShareReportSection | undefined {
+  if (!payload?.reportSections?.length) return undefined;
+  const wanted = new Set(ids.map((id) => id.toLowerCase()));
+  return payload.reportSections.find((section) => wanted.has(String(section.id).toLowerCase()));
 }
 
 function formatDisplayMetric(value: unknown, fallback = '—'): string {
@@ -504,9 +518,16 @@ function fallbackFailureLogic(preview: Record<string, any>) {
   return { items };
 }
 
-function fallbackContinuity(preview: Record<string, any>) {
+function fallbackContinuity(preview: Record<string, any>, releasePayload?: ReleaseReadinessSharePayload | null) {
   const heir = preview.heir_management_data || {};
   const acq = preview.cross_border_audit_summary?.acquisition_audit || {};
+  const releaseContinuity = releaseReadinessReportSection(
+    releasePayload,
+    'g1-g2-g3-continuity',
+    'generation_to_generation-continuity',
+  );
+  const releaseContinuityRows = asArray<string[]>(releaseContinuity?.table?.rows);
+  const releaseContinuityCards = asArray<Record<string, any>>(releaseContinuity?.cards);
   const g1 = heir.g1_position || {};
   const g2 = heir.g1_to_g2_transfer || {};
   const g3 = heir.g2_to_g3_transfer || {};
@@ -539,35 +560,64 @@ function fallbackContinuity(preview: Record<string, any>) {
       : toFiniteValue(g1.retention_score) !== null
         ? `${Math.round(toFiniteValue(g1.retention_score) as number)}% retained`
         : 'Release-gated';
+  const legacyItems = [
+    {
+      label: 'G1 route control',
+      value: routeControl,
+      detail: [g1.compatibility, g1.loss_point].filter(Boolean).join(' ') || 'How well the route preserves control before hard commitment.',
+    },
+    {
+      label: 'G1 -> G2 retained value',
+      value: g2.net_to_heirs_formatted || formatUsdCompactValue(g2Net),
+      detail: [g2.compatibility, g2.loss_point].filter(Boolean).join(' ') || 'Net continuity after estate drag and route friction.',
+    },
+    {
+      label: 'G2 -> G3 without governance lock',
+      value: g3.without_structure_formatted || formatUsdCompactValue(g3Without),
+      detail: [g3.compatibility, g3.loss_point].filter(Boolean).join(' ') || 'Durable value if succession remains loose.',
+    },
+    {
+      label: 'G2 -> G3 with governance lock',
+      value: withStructure.with_structure_formatted || formatUsdCompactValue(g3With),
+      detail: [withStructure.compatibility, withStructure.loss_point].filter(Boolean).join(' ') || 'Durable value after governance and succession are locked before close.',
+    },
+  ];
+  const legacyHasValues = legacyItems.some((item) => {
+    const value = asText(item.value, '');
+    return value && value !== '—' && value !== 'Release-gated';
+  });
+  const releaseItems = releaseContinuityCards.map((card, index) => ({
+    label: asText(card.label, `Continuity layer ${index + 1}`),
+    value: asText(card.title || card.value, 'Release condition required'),
+    detail: asText(card.body, ''),
+  }));
+  const releaseTopRow =
+    releaseContinuityRows.find((row) => /fairness|family use|decision memory|current authority/i.test(row.join(' '))) ||
+    releaseContinuityRows[0];
+  const releaseLayerMap = releaseContinuityRows.map((row) => ({
+    layer: row[0],
+    compatibility: row[1],
+    loss_point: row[1],
+  }));
+
   return {
-    items: [
-      {
-        label: 'G1 route control',
-        value: routeControl,
-        detail: [g1.compatibility, g1.loss_point].filter(Boolean).join(' ') || 'How well the route preserves control before hard commitment.',
-      },
-      {
-        label: 'G1 -> G2 retained value',
-        value: g2.net_to_heirs_formatted || formatUsdCompactValue(g2Net),
-        detail: [g2.compatibility, g2.loss_point].filter(Boolean).join(' ') || 'Net continuity after estate drag and route friction.',
-      },
-      {
-        label: 'G2 -> G3 without governance lock',
-        value: g3.without_structure_formatted || formatUsdCompactValue(g3Without),
-        detail: [g3.compatibility, g3.loss_point].filter(Boolean).join(' ') || 'Durable value if succession remains loose.',
-      },
-      {
-        label: 'G2 -> G3 with governance lock',
-        value: withStructure.with_structure_formatted || formatUsdCompactValue(g3With),
-        detail: [withStructure.compatibility, withStructure.loss_point].filter(Boolean).join(' ') || 'Durable value after governance and succession are locked before close.',
-      },
-    ],
-    succession_layer_map: asArray(heir.succession_layer_map),
+    items: !legacyHasValues && releaseItems.length ? releaseItems : legacyItems,
+    succession_layer_map: asArray(heir.succession_layer_map).length ? asArray(heir.succession_layer_map) : releaseLayerMap,
     top_trigger: {
-      trigger: topTrigger.trigger || topTrigger.name || topTrigger.description,
-      timeline: topTrigger.timeline || 'Before exchange',
-      at_risk: topTrigger.at_risk || formatUsdCompactValue(topTrigger.dollars_at_risk),
-      mitigation: topTrigger.mitigation || heir.next_action || heir.continuity_provisions?.next_action,
+      trigger:
+        topTrigger.trigger ||
+        topTrigger.name ||
+        topTrigger.description ||
+        (releaseTopRow ? `${releaseTopRow[0]}: ${releaseTopRow[1]}` : undefined),
+      timeline: topTrigger.timeline || (releaseTopRow ? 'Before bid release or exchange' : 'Before exchange'),
+      at_risk: topTrigger.at_risk || formatUsdCompactValue(topTrigger.dollars_at_risk) || (releaseTopRow ? 'Implied entitlement and retrieval failure' : undefined),
+      mitigation:
+        topTrigger.mitigation ||
+        heir.next_action ||
+        heir.continuity_provisions?.next_action ||
+        (releaseContinuityRows.length
+          ? 'Write approval, use, carry, fairness, veto, sale/refinance, retrieval owner, and decision-record location before capital release.'
+          : undefined),
     },
     third_generation_problem: heir.third_generation_problem,
     beneficiary_map_note: heir.beneficiary_map_note,
@@ -2087,6 +2137,7 @@ export default function HouseGradeMemoSection({
   onCitationClick,
   citationMap,
   embedDetailedSchedules = true,
+  releaseReadinessSharePayload,
   chapterId,
 }: HouseGradeMemoSectionProps) {
   const preview = previewData || {};
@@ -2117,7 +2168,7 @@ export default function HouseGradeMemoSection({
   };
   const executionSequence = memo.execution_sequence || fallbackExecutionSequence(preview);
   const failureLogic = memo.failure_logic || fallbackFailureLogic(preview);
-  const fallbackContinuityData: Record<string, any> = fallbackContinuity(preview);
+  const fallbackContinuityData: Record<string, any> = fallbackContinuity(preview, releaseReadinessSharePayload);
   const memoContinuity =
     memo.continuity_and_g1_g2_g3_consequence &&
     typeof memo.continuity_and_g1_g2_g3_consequence === 'object' &&
@@ -2248,8 +2299,19 @@ export default function HouseGradeMemoSection({
   );
   const dayOneLossLabel = asText(economics.day_one_loss, 'the day-one drag');
   const drawdownFloorLabel = asText(economics.drawdown_floor || crisis.stress_drawdown_floor, 'the modeled stress floor');
+  const releaseRouteSourceCount = new Set(
+    [
+      ...(releaseReadinessSharePayload?.citations || []).map((citation) => citation.id),
+      ...(releaseReadinessSharePayload?.methodDrivers || []).flatMap((driver) =>
+        (driver.sources || []).map((source) => source.id),
+      ),
+    ]
+      .map((id) => String(id || '').trim())
+      .filter(Boolean),
+  ).size;
   const routePatternSourceCount = [
     precedentCount,
+    releaseRouteSourceCount,
     asArray(preview.legal_references?.pattern_witnesses).length,
     asArray(preview.legal_references?.pattern_evidence_records).length,
     asArray(preview.pattern_evidence_records).length,
@@ -2682,8 +2744,8 @@ export default function HouseGradeMemoSection({
     },
     {
       label: 'Tracked Market File',
-      value: developmentsCount ? `${developmentsCount.toLocaleString()}` : '—',
-      displayValue: developmentsCount ? `${developmentsCount.toLocaleString()}` : '—',
+      value: developmentsCount ? `${developmentsCount.toLocaleString()}` : routePatternSourceCount ? `${routePatternSourceCount.toLocaleString()}` : 'Evidence gated',
+      displayValue: developmentsCount ? `${developmentsCount.toLocaleString()}` : routePatternSourceCount ? `${routePatternSourceCount.toLocaleString()}` : 'Evidence gated',
       detail: `Tracked market records, source records, and related objects shaping the current ${corridorLabel} read.`,
     },
     {
@@ -3259,7 +3321,9 @@ export default function HouseGradeMemoSection({
                   {continuity.top_trigger.mitigation ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{asText(continuity.top_trigger.mitigation, '')}</p> : null}
                 </>
               ) : (
-                <p className="text-sm leading-relaxed text-muted-foreground">No top succession trigger has been loaded yet.</p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Succession trigger remains release-gated until authority, use, fairness, veto, carry, and decision-memory records are signed.
+                </p>
               )}
             </SurfaceCard>
           </div>

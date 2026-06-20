@@ -315,7 +315,6 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
     acquisitionReliefUsd,
     dayOneLossPct,
   } = resolveCrossBorderDisplayMetrics(audit);
-  const isZeroSavings = displayTaxSavingsPct === 0;
   const acquisitionAudit = audit.acquisition_audit;
   const hasAnyFtc =
     !!audit.rental_income_audit?.ftc_available
@@ -342,6 +341,17 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
   const secondaryFeeValue = isDubaiResidentialRoute
     ? acquisitionAudit?.additional_transfer_tax
     : acquisitionAudit?.absd_additional_stamp_duty;
+  const headlineMetricLabel = acquisitionAudit ? 'Duty Drag' : 'Tax Savings';
+  const headlineMetricValue = acquisitionAudit && dayOneLossPct !== null && dayOneLossPct !== undefined
+    ? dayOneLossPct
+    : displayTaxSavingsPct;
+  const headlineIsZero = headlineMetricValue === 0;
+  const hasTaxTreatmentPanels = Boolean(
+    audit.rental_income_audit ||
+      audit.capital_gains_audit ||
+      audit.estate_tax_audit ||
+      audit.net_yield_audit,
+  );
 
   return (
     <div ref={sectionRef} className="print-cross-border-audit relative">
@@ -380,17 +390,22 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
             {/* Key metric: Total Tax Savings */}
             <div className={`grid gap-3 sm:gap-6 ${acquisitionReliefPct ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
               <div className="text-center">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Tax Savings</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">{headlineMetricLabel}</p>
                 <p className={`text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight ${
-                  isZeroSavings ? 'text-red-500/80' : 'text-emerald-500/80'
+                  headlineIsZero ? 'text-red-500/80' : acquisitionAudit ? 'text-red-500/80' : 'text-emerald-500/80'
                 }`}>
-                  <AnimatedNumber value={displayTaxSavingsPct} />
+                  <AnimatedNumber value={headlineMetricValue} decimals={2} />
                 </p>
-                {audit.ongoing_tax_savings_note && (
+                {audit.ongoing_tax_savings_note && !acquisitionAudit && (
                   <p className="mt-2 text-xs text-muted-foreground/60 font-normal leading-relaxed">
                     {audit.ongoing_tax_savings_note}
                   </p>
                 )}
+                {acquisitionAudit ? (
+                  <p className="mt-2 text-xs text-muted-foreground/60 font-normal leading-relaxed">
+                    Non-recoverable acquisition duty as percentage of property value.
+                  </p>
+                ) : null}
               </div>
 
               {audit.acquisition_audit && (
@@ -633,7 +648,7 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
               netYieldAudit.annual_tax_paid,
               netYieldAudit.annual_net_income,
             ].some(hasPositiveValue);
-            const useLedCarry = annualCarry > 0 && !hasYieldUnderwriting;
+            const useLedCarry = !hasYieldUnderwriting;
 
             if (useLedCarry) {
               const annualComponents = Array.isArray(carryModel?.annual_components)
@@ -662,7 +677,9 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
                       </div>
                       <div className="text-center">
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Annual carry</p>
-                        <p className="text-xl font-bold tabular-nums text-foreground/80">{formatCurrency(annualCarry)}</p>
+                        <p className="text-xl font-bold tabular-nums text-foreground/80">
+                          {annualCarry > 0 ? formatCurrency(annualCarry) : 'Evidence gated'}
+                        </p>
                       </div>
                       {opportunityCost > 0 ? (
                         <div className="text-center">
@@ -751,6 +768,56 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
               </motion.div>
             );
           })()}
+
+          {!hasTaxTreatmentPanels && acquisitionAudit ? (
+            <>
+              <motion.div
+                className="relative rounded-xl border border-border/20 bg-card/50 p-6"
+                whileHover={{ y: -2, transition: { duration: 0.2 } }}
+              >
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+                <div className="relative z-10">
+                  <h4 className="text-sm font-normal text-foreground mb-5">Acquisition Duty Treatment</h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground/70">{primaryFeeLabel}</span>
+                      <span className="font-semibold text-foreground tabular-nums">{formatOptionalCharge(primaryFeeValue)}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground/70">{secondaryFeeLabel}</span>
+                      <span className="font-semibold text-foreground tabular-nums">{formatOptionalCharge(secondaryFeeValue)}</span>
+                    </div>
+                    <div className="h-px bg-border/20" />
+                    <div className="flex justify-between gap-4">
+                      <span className="text-foreground">Total acquisition cost</span>
+                      <span className="font-semibold text-gold tabular-nums">{formatCurrency(acquisitionAudit.total_acquisition_cost)}</span>
+                    </div>
+                  </div>
+                  <p className="mt-5 text-sm leading-relaxed text-muted-foreground/70">
+                    The release question is not generic tax savings. It is whether the selected buyer route accepts the duty drag, avoids unsupported relief claims, and clears counsel before exchange.
+                  </p>
+                </div>
+              </motion.div>
+
+              <motion.div
+                className="relative rounded-xl border border-border/20 bg-card/50 p-6"
+                whileHover={{ y: -2, transition: { duration: 0.2 } }}
+              >
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+                <div className="relative z-10">
+                  <h4 className="text-sm font-normal text-foreground mb-5">Route Tax Boundary</h4>
+                  <div className="space-y-4 text-sm leading-relaxed text-muted-foreground/70">
+                    <p>
+                      No residence, replacement-residence, or wrapper benefit is credited unless UK tax counsel signs the buyer profile, day-count/residence file, relief position, and exchange-date treatment.
+                    </p>
+                    <p>
+                      The direct route remains the control case until a structure has a signed non-tax purpose and bank acceptance.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          ) : null}
         </div>
       </motion.div>
 

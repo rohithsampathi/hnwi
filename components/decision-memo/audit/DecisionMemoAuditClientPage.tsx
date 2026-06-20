@@ -1058,6 +1058,12 @@ export default function DecisionMemoAuditClientPage({
       });
     }
 
+    principalSharePayload?.citations?.forEach((citation) => {
+      if (citation.id) {
+        addDevId(String(citation.id));
+      }
+    });
+
     const citationList: Citation[] = allDevIds.map((devId, index) => ({
       id: devId,
       number: index + 1,
@@ -1077,7 +1083,7 @@ export default function DecisionMemoAuditClientPage({
         ? rawPrecedentCount
         : sourceRecords.length,
     };
-  }, [backendData, resolvedSurfaceData]);
+  }, [backendData, principalSharePayload, resolvedSurfaceData]);
 
   // Sync computed citations with useCitationManager (for EliteCitationPanel)
   useEffect(() => {
@@ -2021,6 +2027,7 @@ export default function DecisionMemoAuditClientPage({
                 embedded
                 onCitationClick={handleCitationClick}
                 citationMap={computedCitationMap}
+                sharePayload={principalSharePayload}
                 zeroTrustMoveIntake={(memoData.preview_data as Record<string, unknown>).zero_trust_move_intake as Record<string, unknown> | undefined}
                 fullMemo={(selectedRoute) => {
                   const routeScopedSurface = buildRouteScopedDecisionMemoSurface({
@@ -2044,6 +2051,7 @@ export default function DecisionMemoAuditClientPage({
                       citationMap={computedCitationMap}
                       onShare={handleShare}
                       linkCopied={linkCopied}
+                      releaseReadinessSharePayload={principalSharePayload}
                     />
                   );
                 }}
