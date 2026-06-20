@@ -8,44 +8,63 @@ import { extractDevIds } from '@/lib/parse-dev-citations';
 import type { Citation } from '@/lib/parse-dev-citations';
 import { isRecentlyAddedOpportunity } from '@/lib/opportunity-recency';
 import { resolveOpportunityCoordinates } from '@/lib/map-coordinate-resolver';
+import {
+  resolveOpportunityAnalysisText,
+  resolveOpportunitySummaryText,
+  resolveOpportunityTitle,
+  resolveOpportunityValue,
+  structuredOpportunitySummaryText,
+} from '@/lib/opportunity-display-fields';
 
 interface Opportunity {
   _id?: string;
   id?: string;
-  title: string;
-  tier: string;
-  location: string;
-  latitude: number;
-  longitude: number;
-  country: string;
+  name?: string;
+  title?: string;
+  tier?: string;
+  location?: string;
+  latitude?: number | string;
+  longitude?: number | string;
+  country?: string;
   city?: string;
   state?: string;
   region?: string;
   address?: string;
-  value: string;
-  risk: string;
-  analysis: string;
+  value?: string;
+  risk?: string;
+  analysis?: string;
   summary?: string;
   description?: string;
   hbyte_summary?: string;
   card_summary?: string;
   short_summary?: string;
   full_analysis?: string;
+  full_text?: string;
   full_castle_brief?: string;
   castle_brief?: string;
   castle_brief_enriched?: string;
   brief_source_text?: string;
   public_mirror_excerpt?: string;
+  source_summary?: string;
+  castle_source_summary?: string;
+  source_summary_structured?: unknown;
+  castle_source_summary_structured?: unknown;
   brief_title?: string;
   source_title?: string;
   source_url?: string;
   url?: string;
-  source: string;
+  source?: string;
   dev_id?: string;
   devid?: string;
   mongo_article_id?: string;
   castle_brief_id?: string;
   source_development_id?: string;
+  value_usd?: number | string;
+  value_native?: number | string;
+  value_original?: string;
+  value_currency?: string;
+  minimum_investment_display?: string;
+  minimum_investment_usd?: number | string;
   victor_score?: string;
   elite_pulse_analysis?: string;
   category?: string;
@@ -238,6 +257,10 @@ const transformOpportunityToCity = (
     resolvedCoordinate.source === 'resolved'
       ? resolvedCoordinate.label
       : opp.location || opp.country || opp.title || 'Opportunity';
+  const opportunityTitle = resolveOpportunityTitle(opp, displayName);
+  const opportunityAnalysis = resolveOpportunityAnalysisText(opp);
+  const opportunitySummary = resolveOpportunitySummaryText(opp, opportunityAnalysis);
+  const opportunityValue = resolveOpportunityValue(opp);
   const sourceLower = (opp.source || '').toLowerCase();
   const opportunityType =
     sourceLower.includes('crown vault') || sourceLower === 'crown vault'
@@ -247,7 +270,7 @@ const transformOpportunityToCity = (
         : 'hnwi';
 
   // Extract citations from both analysis fields
-  const devIdsFromAnalysis = extractDevIds(opp.analysis || '');
+  const devIdsFromAnalysis = extractDevIds(opportunityAnalysis || '');
   const devIdsFromElitePulse = extractDevIds(opp.elite_pulse_analysis || '');
   const katherineAnalysisText =
     (opp.katherine_analysis && opp.katherine_analysis.trim()) ||
@@ -267,6 +290,12 @@ const transformOpportunityToCity = (
     opp.castle_brief_enriched,
     opp.brief_source_text,
     opp.public_mirror_excerpt,
+    opp.source_summary,
+    opp.castle_source_summary,
+    structuredOpportunitySummaryText(opp.source_summary_structured),
+    structuredOpportunitySummaryText(opp.castle_source_summary_structured),
+    opportunitySummary,
+    opportunityAnalysis,
     katherineAnalysisText,
   ].filter(Boolean).join('\n'));
   const structuredCitationIds = normalizeDevelopmentCitationIds([
@@ -288,8 +317,8 @@ const transformOpportunityToCity = (
     (cleanCategories ? cleanCategoryName(opp.category) : opp.category) :
     opp.category;
 
-  const titleLower = (opp.title || '').toLowerCase();
-  const analysisLower = (opp.analysis || '').toLowerCase();
+  const titleLower = (opportunityTitle || '').toLowerCase();
+  const analysisLower = (opportunityAnalysis || '').toLowerCase();
   const combined = titleLower + ' ' + analysisLower;
   const categoryLower = (correctedCategory || '').toLowerCase();
 
@@ -322,21 +351,21 @@ const transformOpportunityToCity = (
     country: opp.country || 'Unknown',
     latitude: lat,
     longitude: lng,
-    population: opp.value,
+    population: opportunityValue,
     type: opportunityType,
     _id: opp._id,
     id: opp.id,
-    title: opp.title,
+    title: opportunityTitle,
     tier: opp.tier,
-    value: opp.value,
+    value: opportunityValue,
     risk: opp.risk,
-    analysis: opp.analysis,
-    summary: opp.card_summary || opp.hbyte_summary || opp.summary || opp.description,
-    description: opp.description,
+    analysis: opportunityAnalysis,
+    summary: opportunitySummary,
+    description: opp.description || opportunitySummary,
     hbyte_summary: opp.hbyte_summary,
     card_summary: opp.card_summary,
     short_summary: opp.short_summary,
-    full_analysis: opp.full_analysis,
+    full_analysis: opp.full_analysis || opp.full_text,
     full_castle_brief: opp.full_castle_brief,
     castle_brief: opp.castle_brief,
     castle_brief_enriched: opp.castle_brief_enriched,

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 
 const STORAGE_KEY = 'dashboard_personal_mode';
 
-export function usePersonalMode(hasCompletedAssessment: boolean) {
+export function usePersonalMode(hasCompletedAssessment: boolean | null | undefined) {
   // Initialize from localStorage (default to false)
   const [isPersonalMode, setIsPersonalMode] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -20,15 +20,16 @@ export function usePersonalMode(hasCompletedAssessment: boolean) {
     }
   }, [isPersonalMode]);
 
-  // Reset to false if user hasn't completed assessment
+  // Reset to false only after assessment eligibility is known. War Room can
+  // mount from a shared memo URL before profile recovery finishes.
   useEffect(() => {
-    if (!hasCompletedAssessment && isPersonalMode) {
+    if (hasCompletedAssessment === false && isPersonalMode) {
       setIsPersonalMode(false);
     }
   }, [hasCompletedAssessment, isPersonalMode]);
 
   const togglePersonalMode = () => {
-    if (!hasCompletedAssessment) {
+    if (hasCompletedAssessment !== true) {
       // Cannot toggle if assessment not completed
       return;
     }

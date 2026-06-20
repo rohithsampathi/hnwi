@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { CrownLoader } from "@/components/ui/crown-loader";
 import { getCurrentUser } from "@/lib/auth-manager";
+import { resolveCanonicalUserId, resolveStoredUserId } from "@/lib/auth-user-normalization";
 import { fetchAssessmentHistory, hasRecentAssessmentResult } from "@/lib/client-assessment-history";
 import { useOpportunities } from "@/lib/hooks/useOpportunities";
 import { usePersonalMode } from "@/lib/hooks/usePersonalMode";
@@ -610,8 +611,11 @@ export default function WarRoomPage() {
 
   // Auth
   const [user, setUser] = useState<any>(null);
-  const [hasCompletedAssessment, setHasCompletedAssessment] = useState(false);
-  const userId = user?.id || user?.user_id || null;
+  const [hasCompletedAssessment, setHasCompletedAssessment] = useState<boolean | null>(null);
+  const userId = useMemo(
+    () => resolveCanonicalUserId(user) || resolveStoredUserId(user) || null,
+    [user]
+  );
 
   // Personal Mode state (shared across Home Dashboard and War Room)
   const { isPersonalMode, togglePersonalMode } = usePersonalMode(hasCompletedAssessment);
@@ -644,10 +648,23 @@ export default function WarRoomPage() {
     isPanelOpen,
   } = useCitationManager();
 
-  // Get current user
+  // Keep War Room's auth scope aligned with the authenticated dashboard. A
+  // shared memo URL may mount before local profile recovery finishes.
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
+    const syncCurrentUser = () => {
+      setUser(getCurrentUser());
+    };
+
+    syncCurrentUser();
+    window.addEventListener('auth:login', syncCurrentUser);
+    window.addEventListener('auth:userUpdated', syncCurrentUser);
+    window.addEventListener('storage', syncCurrentUser);
+
+    return () => {
+      window.removeEventListener('auth:login', syncCurrentUser);
+      window.removeEventListener('auth:userUpdated', syncCurrentUser);
+      window.removeEventListener('storage', syncCurrentUser);
+    };
   }, []);
 
   useEffect(() => {
@@ -663,16 +680,21 @@ export default function WarRoomPage() {
   // Check assessment status
   useEffect(() => {
     const checkAssessment = async () => {
-      if (!userId) return;
+      if (!userId) {
+        setHasCompletedAssessment(null);
+        return;
+      }
 
       try {
         const data = await fetchAssessmentHistory(userId);
 
         if (data) {
           setHasCompletedAssessment(hasRecentAssessmentResult(data));
+        } else {
+          setHasCompletedAssessment(false);
         }
       } catch {
-        // Silent fail
+        // Keep the prior mode state on transient profile/history failures.
       }
     };
 
@@ -918,7 +940,7 @@ export default function WarRoomPage() {
     isPublic: false,
     timeframe,
     isPersonalMode,
-    hasCompletedAssessment,
+    hasCompletedAssessment: Boolean(userId) && hasCompletedAssessment !== false,
     userId,
     includeCrownVault: true,
     cleanCategories: true
