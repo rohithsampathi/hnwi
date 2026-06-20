@@ -429,6 +429,13 @@ function DecisionMemoServerAuditText({
   const dutyDragPct = Number.isFinite(selectedMetrics.dutyDragPct)
     ? Number(selectedMetrics.dutyDragPct).toFixed(2)
     : asString(acquisition.duty_drag_pct || quantified.direct_duty_drag_pct_of_price);
+  const entityIncrementalDuty =
+    selectedMetrics.incrementalDutyVsRecommendedUsd ??
+    quantified.entity_incremental_duty_vs_direct_usd;
+  const opportunityCostPer100Bps =
+    quantified.opportunity_cost_per_100bps_usd ??
+    carrying.opportunity_cost_sensitivity?.per_100bps_on_purchase_price_usd ??
+    (Number.isFinite(selectedMetrics.propertyValueUsd) ? Number(selectedMetrics.propertyValueUsd) * 0.01 : undefined);
   const releaseRouteOptions = releasePayload?.routeOptions?.length ? releasePayload.routeOptions : [];
   const continuityCards = reportCards(continuitySection);
   const continuityRows = reportRows(continuitySection);
@@ -478,17 +485,18 @@ function DecisionMemoServerAuditText({
           <div><dt>Base SDLT</dt><dd>{money(selectedMetrics.bsdUsd || quantified.primary_fee_usd || acquisition.bsd_stamp_duty_usd)}</dd></div>
           <div><dt>Non-resident and additional-dwelling surcharge</dt><dd>{money(selectedMetrics.absdUsd || quantified.secondary_fee_usd || acquisition.absd_additional_stamp_duty_usd)}</dd></div>
           <div><dt>Direct route all-in outlay</dt><dd>{money(selectedMetrics.totalAcquisitionCostUsd || quantified.direct_total_outlay_usd || acquisition.total_acquisition_cost_usd)}</dd></div>
-          <div><dt>Entity/trustee incremental duty versus direct</dt><dd>{money(selectedMetrics.incrementalDutyVsRecommendedUsd || quantified.entity_incremental_duty_vs_direct_usd)}</dd></div>
+          <div><dt>Entity/trustee incremental duty versus direct</dt><dd>{money(entityIncrementalDuty)}</dd></div>
           <div><dt>Annual carry before opportunity cost</dt><dd>{money(selectedMetrics.annualCarryingCostUsd || quantified.annual_carrying_cost_before_opportunity_usd || carrying.annual_carrying_cost_before_opportunity_usd)}</dd></div>
-          <div><dt>Opportunity cost per 100 bps</dt><dd>{money(quantified.opportunity_cost_per_100bps_usd || carrying.opportunity_cost_sensitivity?.per_100bps_on_purchase_price_usd)}</dd></div>
+          <div><dt>Opportunity cost per 100 bps</dt><dd>{money(opportunityCostPer100Bps)}</dd></div>
         </dl>
         {taxSection?.table ? (
           <ul>
             {reportRows(taxSection).map((row, index) => (
               <li key={`tax-row-${index}`}>
-                <strong>{asString(row.Category || row.Treatment || `Tax treatment ${index + 1}`)}</strong>
-                {asString(row.Route) ? `: ${asString(row.Route)}` : ''}
-                {asString(row['Release condition']) ? ` Release condition: ${asString(row['Release condition'])}.` : ''}
+                <strong>{asString(row['Route reviewed'] || row.Category || row.Treatment || `Tax treatment ${index + 1}`)}</strong>
+                {asString(row.Mechanism || row.Route) ? `: ${asString(row.Mechanism || row.Route)}` : ''}
+                {asString(row['Model effect']) ? ` Model effect: ${asString(row['Model effect'])}.` : ''}
+                {asString(row['Release requirement'] || row['Release condition']) ? ` Release requirement: ${asString(row['Release requirement'] || row['Release condition'])}.` : ''}
               </li>
             ))}
           </ul>
