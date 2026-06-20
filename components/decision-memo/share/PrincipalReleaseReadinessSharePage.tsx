@@ -602,12 +602,6 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
         <PrincipalTable columns={["Window", "Action", "Owner"]} rows={nextSevenDayRows} />
       </Section>
 
-      <Section eyebrow="Reviewer access" title="Additional reviewer material is restricted">
-        <p className="max-w-4xl rounded-md border border-border bg-card/70 p-5 text-base leading-8 text-muted-foreground">
-          Additional reviewer material is restricted to authorized advisers.
-        </p>
-      </Section>
-
       <Section eyebrow="Decision answer" title="What is approved, blocked, and required">
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-5">
