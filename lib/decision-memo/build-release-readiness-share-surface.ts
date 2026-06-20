@@ -533,8 +533,7 @@ function buildSafeReleasePacket(data: ResolvedDecisionMemoSurfaceData) {
 
   return sanitizeObject({
     rationale:
-      releasePacket.rationale ??
-      "The route can advance only if authority, evidence, source, bank, title, tax, and family-use gates clear before seller timing hardens.",
+      "Proceed to gated negotiation only. The house is approved for London family use only after title, SDLT, source, bank, authority, family-use, fairness, and decision-memory evidence clears.",
     advance_conditions:
       Array.isArray(releasePacket.advance_conditions) && releasePacket.advance_conditions.length
         ? releasePacket.advance_conditions
