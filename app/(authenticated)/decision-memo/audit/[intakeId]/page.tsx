@@ -15,6 +15,8 @@ import {
 import {
   buildReleaseReadinessSharePayload,
   buildReleaseReadinessShareSurfaceData,
+  type ReleaseReadinessSharePayload,
+  type ReleaseReadinessShareReportSection,
 } from '@/lib/decision-memo/build-release-readiness-share-surface';
 import type { ResolvedDecisionMemoSurfaceData } from '@/lib/decision-memo/resolve-decision-memo-surface-data';
 import { resolvePublicDecisionMemoId } from '@/lib/decision-memo/memo-id-aliases';
@@ -229,6 +231,53 @@ function pickSection(data: ResolvedDecisionMemoSurfaceData | null, key: string):
   return fullArtifact[key] ?? memoData[key] ?? previewData[key] ?? backendData[key] ?? null;
 }
 
+function resolveReleaseReadinessPayload(
+  reference: string,
+  data: ResolvedDecisionMemoSurfaceData,
+): ReleaseReadinessSharePayload | null {
+  const backendPayload = isRecord(data.backendData)
+    ? (data.backendData as RecordLike).release_readiness_share_payload
+    : null;
+  const memoData = isRecord(data.memoData) ? (data.memoData as RecordLike) : {};
+  const previewData = isRecord(memoData.preview_data) ? memoData.preview_data : {};
+  const previewPayload = isRecord(previewData.release_readiness_share_payload)
+    ? previewData.release_readiness_share_payload
+    : null;
+
+  if (isRecord(backendPayload)) return backendPayload as ReleaseReadinessSharePayload;
+  if (isRecord(previewPayload)) return previewPayload as ReleaseReadinessSharePayload;
+
+  try {
+    return buildReleaseReadinessSharePayload(reference, data);
+  } catch {
+    return null;
+  }
+}
+
+function findReportSection(
+  payload: ReleaseReadinessSharePayload | null,
+  ...ids: string[]
+): ReleaseReadinessShareReportSection | null {
+  if (!payload?.reportSections?.length) return null;
+  return payload.reportSections.find((section) => ids.includes(section.id)) ?? null;
+}
+
+function reportCards(section: ReleaseReadinessShareReportSection | null): RecordLike[] {
+  return Array.isArray(section?.cards) ? section.cards.filter(isRecord) : [];
+}
+
+function reportRows(section: ReleaseReadinessShareReportSection | null): RecordLike[] {
+  const columns = Array.isArray(section?.table?.columns) ? section.table.columns : [];
+  const rows = Array.isArray(section?.table?.rows) ? section.table.rows : [];
+  return rows.map((row) => {
+    const record: RecordLike = {};
+    columns.forEach((column, index) => {
+      record[column] = Array.isArray(row) ? row[index] : '';
+    });
+    return record;
+  });
+}
+
 function sectionTitle(value: string): string {
   return value
     .replace(/_/g, ' ')
@@ -361,6 +410,34 @@ function DecisionMemoServerAuditText({
   const familyAuthority = isRecord(principalSections.authority_and_veto_matrix ?? pickSection(data, 'authority_and_veto_matrix'))
     ? ((principalSections.authority_and_veto_matrix ?? pickSection(data, 'authority_and_veto_matrix')) as RecordLike)
     : {};
+  const releasePayload = resolveReleaseReadinessPayload(reference, data);
+  const selectedMetrics: Partial<ReleaseReadinessSharePayload['selectedRoute']['metrics']> =
+    releasePayload?.selectedRoute?.metrics ?? {};
+  const taxSection = findReportSection(releasePayload, 'tax-legal-route-readiness');
+  const continuitySection = findReportSection(releasePayload, 'g1-g2-g3-continuity', 'generation_to_generation-continuity');
+  const crisisSection = findReportSection(releasePayload, 'crisis-resilience');
+  const antiFragilitySection = findReportSection(releasePayload, 'anti-fragility');
+  const bankingSection = findReportSection(releasePayload, 'banking-sow-sof');
+  const decisionMemorySection = findReportSection(releasePayload, 'information-flow-decision-memory');
+  const releaseStatus = asString(releasePayload?.riskLevel || risk.risk_level, 'Evidence pending; no capital release');
+  const criticalItems = releasePayload?.stopConditions?.length
+    ? `${releasePayload.stopConditions.length} stop conditions`
+    : asString(risk.critical_items, 'Signed release gates required');
+  const highItems = releasePayload?.holdConditions?.length
+    ? `${releasePayload.holdConditions.length} hold conditions`
+    : asString(risk.high_items, 'Evidence gates active');
+  const dutyDragPct = Number.isFinite(selectedMetrics.dutyDragPct)
+    ? Number(selectedMetrics.dutyDragPct).toFixed(2)
+    : asString(acquisition.duty_drag_pct || quantified.direct_duty_drag_pct_of_price);
+  const releaseRouteOptions = releasePayload?.routeOptions?.length ? releasePayload.routeOptions : [];
+  const continuityCards = reportCards(continuitySection);
+  const continuityRows = reportRows(continuitySection);
+  const releaseCrisisItems = [...reportCards(crisisSection), ...reportRows(crisisSection)];
+  const releaseAntiFragilityItems = [...reportRows(antiFragilitySection), ...reportCards(antiFragilitySection)];
+  const bankingRows = reportRows(bankingSection);
+  const bankingCards = reportCards(bankingSection);
+  const decisionMemoryRows = reportRows(decisionMemorySection);
+  const decisionMemoryCards = reportCards(decisionMemorySection);
 
   return (
     <article
@@ -384,12 +461,12 @@ function DecisionMemoServerAuditText({
       <section>
         <h2>Principal Release Snapshot</h2>
         <dl>
-          <div><dt>Release status</dt><dd>{asString(risk.risk_level, 'High until release gates clear')}</dd></div>
-          <div><dt>Critical items</dt><dd>{asString(risk.critical_items, '-')}</dd></div>
-          <div><dt>High items</dt><dd>{asString(risk.high_items, '-')}</dd></div>
-          <div><dt>Next release window</dt><dd>{asString(risk.mitigation_timeline || pickSection(data, 'mitigationTimeline'), '72-hour bank/title/source retrieval check; 7-day counsel/bank/family-authority close path if seller timing starts.')}</dd></div>
-          <div><dt>Total exposure</dt><dd>{asString(risk.total_exposure || risk.total_exposure_formatted) || money(acquisition.total_acquisition_cost_usd || quantified.direct_total_outlay_usd)}</dd></div>
-          <div><dt>Duty drag</dt><dd>{money(acquisition.total_stamp_duties_usd || quantified.direct_total_duties_usd)}{asString(acquisition.duty_drag_pct || quantified.direct_duty_drag_pct_of_price) ? ` (${asString(acquisition.duty_drag_pct || quantified.direct_duty_drag_pct_of_price)}% of price)` : ''}</dd></div>
+          <div><dt>Release status</dt><dd>{releaseStatus}</dd></div>
+          <div><dt>Critical items</dt><dd>{criticalItems}</dd></div>
+          <div><dt>High items</dt><dd>{highItems}</dd></div>
+          <div><dt>Next release window</dt><dd>{asString(releasePayload?.mitigation || risk.mitigation_timeline || pickSection(data, 'mitigationTimeline'), '72-hour bank/title/source retrieval check; 7-day counsel/bank/family-authority close path if seller timing starts.')}</dd></div>
+          <div><dt>Total exposure</dt><dd>{asString(risk.total_exposure || risk.total_exposure_formatted) || money(selectedMetrics.totalAcquisitionCostUsd || acquisition.total_acquisition_cost_usd || quantified.direct_total_outlay_usd)}</dd></div>
+          <div><dt>Duty drag</dt><dd>{money(selectedMetrics.totalDutiesUsd || acquisition.total_stamp_duties_usd || quantified.direct_total_duties_usd)}{dutyDragPct ? ` (${dutyDragPct}% of price)` : ''}</dd></div>
         </dl>
       </section>
 
@@ -397,20 +474,31 @@ function DecisionMemoServerAuditText({
         <h2>Modeled Economics And Duty Drag</h2>
         <p>{asString(quantified.basis) || 'Modeled from official property, tax, bank, and market sources; final treatment requires counsel confirmation.'}</p>
         <dl>
-          <div><dt>Guide price</dt><dd>{money(quantified.price_usd || acquisition.property_value_usd)}{quantified.price_gbp ? ` / GBP ${Number(quantified.price_gbp).toLocaleString('en-US')}` : ''}</dd></div>
-          <div><dt>Base SDLT</dt><dd>{money(quantified.primary_fee_usd || acquisition.bsd_stamp_duty_usd)}</dd></div>
-          <div><dt>Non-resident and additional-dwelling surcharge</dt><dd>{money(quantified.secondary_fee_usd || acquisition.absd_additional_stamp_duty_usd)}</dd></div>
-          <div><dt>Direct route all-in outlay</dt><dd>{money(quantified.direct_total_outlay_usd || acquisition.total_acquisition_cost_usd)}</dd></div>
-          <div><dt>Entity/trustee incremental duty versus direct</dt><dd>{money(quantified.entity_incremental_duty_vs_direct_usd)}</dd></div>
-          <div><dt>Annual carry before opportunity cost</dt><dd>{money(quantified.annual_carrying_cost_before_opportunity_usd || carrying.annual_carrying_cost_before_opportunity_usd)}</dd></div>
+          <div><dt>Guide price</dt><dd>{money(selectedMetrics.propertyValueUsd || quantified.price_usd || acquisition.property_value_usd)}{quantified.price_gbp ? ` / GBP ${Number(quantified.price_gbp).toLocaleString('en-US')}` : ''}</dd></div>
+          <div><dt>Base SDLT</dt><dd>{money(selectedMetrics.bsdUsd || quantified.primary_fee_usd || acquisition.bsd_stamp_duty_usd)}</dd></div>
+          <div><dt>Non-resident and additional-dwelling surcharge</dt><dd>{money(selectedMetrics.absdUsd || quantified.secondary_fee_usd || acquisition.absd_additional_stamp_duty_usd)}</dd></div>
+          <div><dt>Direct route all-in outlay</dt><dd>{money(selectedMetrics.totalAcquisitionCostUsd || quantified.direct_total_outlay_usd || acquisition.total_acquisition_cost_usd)}</dd></div>
+          <div><dt>Entity/trustee incremental duty versus direct</dt><dd>{money(selectedMetrics.incrementalDutyVsRecommendedUsd || quantified.entity_incremental_duty_vs_direct_usd)}</dd></div>
+          <div><dt>Annual carry before opportunity cost</dt><dd>{money(selectedMetrics.annualCarryingCostUsd || quantified.annual_carrying_cost_before_opportunity_usd || carrying.annual_carrying_cost_before_opportunity_usd)}</dd></div>
           <div><dt>Opportunity cost per 100 bps</dt><dd>{money(quantified.opportunity_cost_per_100bps_usd || carrying.opportunity_cost_sensitivity?.per_100bps_on_purchase_price_usd)}</dd></div>
         </dl>
+        {taxSection?.table ? (
+          <ul>
+            {reportRows(taxSection).map((row, index) => (
+              <li key={`tax-row-${index}`}>
+                <strong>{asString(row.Category || row.Treatment || `Tax treatment ${index + 1}`)}</strong>
+                {asString(row.Route) ? `: ${asString(row.Route)}` : ''}
+                {asString(row['Release condition']) ? ` Release condition: ${asString(row['Release condition'])}.` : ''}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </section>
 
       <EvidenceList
         title="Release Readiness Routes Reviewed"
-        items={routeOptions.length ? routeOptions : pressureVariants}
-        getPrimary={(item, index) => `${asString(item.rank, String(index + 1))}. ${asString(item.route || item.name || item.title)} - ${asString(item.verdict || item.releaseRule || item.release_rule)}`}
+        items={routeOptions.length ? routeOptions : releaseRouteOptions.length ? releaseRouteOptions : pressureVariants}
+        getPrimary={(item, index) => `${asString(item.rank, String(index + 1))}. ${asString(item.route || item.routeName || item.name || item.title)} - ${asString(item.verdict || item.releaseRule || item.release_rule)}`}
         getSecondary={(item) => [
           asString(item.best_use || item.bestUse) ? `Best use: ${asString(item.best_use || item.bestUse)}` : '',
           asString(item.economic_read || item.economicRead) ? `Economic read: ${asString(item.economic_read || item.economicRead)}` : '',
@@ -477,10 +565,31 @@ function DecisionMemoServerAuditText({
 
       <section>
         <h2>Generation Authority And Family Consequence</h2>
+        {continuitySection?.intro ? <p>{asString(continuitySection.intro)}</p> : null}
         <ul>
-          {textList(familyAuthority.family_roles, 10).map((line, index) => <li key={`family-role-${index}`}>{line}</li>)}
-          {textList(familyAuthority.successor_roles, 10).map((line, index) => <li key={`successor-role-${index}`}>{line}</li>)}
-          {textList(familyAuthority.veto_holders, 10).map((line, index) => <li key={`veto-holder-${index}`}>Veto holder: {line}</li>)}
+          {continuityCards.map((card, index) => (
+            <li key={`continuity-card-${index}`}>
+              <strong>{asString(card.label || card.title)}</strong>
+              {asString(card.value) ? `: ${asString(card.value)}` : ''}
+              {asString(card.body) ? ` - ${asString(card.body)}` : ''}
+            </li>
+          ))}
+          {continuityRows.map((row, index) => (
+            <li key={`continuity-row-${index}`}>
+              <strong>{asString(row.Layer || row.Stage || `Continuity gate ${index + 1}`)}</strong>
+              {asString(row['Release condition']) ? `: ${asString(row['Release condition'])}` : ''}
+              {asString(row.Consequence) ? ` Consequence: ${asString(row.Consequence)}.` : ''}
+            </li>
+          ))}
+          {!continuityCards.length && !continuityRows.length
+            ? textList(familyAuthority.family_roles, 10).map((line, index) => <li key={`family-role-${index}`}>{line}</li>)
+            : null}
+          {!continuityCards.length && !continuityRows.length
+            ? textList(familyAuthority.successor_roles, 10).map((line, index) => <li key={`successor-role-${index}`}>{line}</li>)
+            : null}
+          {!continuityCards.length && !continuityRows.length
+            ? textList(familyAuthority.veto_holders, 10).map((line, index) => <li key={`veto-holder-${index}`}>Veto holder: {line}</li>)
+            : null}
         </ul>
       </section>
 
@@ -498,28 +607,51 @@ function DecisionMemoServerAuditText({
 
       <section>
         <h2>SoW / SoF And Bank Acceptance Readiness</h2>
-        <p>{asString(bankReadiness.standard)}</p>
+        <p>{asString(bankingSection?.intro || bankReadiness.standard)}</p>
         <p><strong>Release status:</strong> {asString(bankReadiness.release_status, 'Required before irrevocable commitment')}</p>
-        <ul>{textList(bankReadiness.evidence, 20).map((line, index) => <li key={`bank-readiness-${index}`}>{line}</li>)}</ul>
+        <ul>
+          {bankingCards.map((card, index) => (
+            <li key={`bank-card-${index}`}>
+              <strong>{asString(card.label || card.title)}</strong>
+              {asString(card.body || card.value) ? `: ${asString(card.body || card.value)}` : ''}
+            </li>
+          ))}
+          {bankingRows.map((row, index) => (
+            <li key={`bank-row-${index}`}>
+              <strong>{asString(row.Gate || row.Domain || `Banking gate ${index + 1}`)}</strong>
+              {asString(row.Condition) ? `: ${asString(row.Condition)}` : ''}
+              {asString(row.Owner) ? ` Owner: ${asString(row.Owner)}.` : ''}
+            </li>
+          ))}
+          {!bankingCards.length && !bankingRows.length
+            ? textList(bankReadiness.evidence, 20).map((line, index) => <li key={`bank-readiness-${index}`}>{line}</li>)
+            : null}
+        </ul>
       </section>
 
       <EvidenceList
         title="Bank Compliance Escalation Simulation"
-        items={bankSimulation}
-        getPrimary={(item, index) => asString(item.scenario, `Simulation ${index + 1}`)}
+        items={bankSimulation.length ? bankSimulation : releaseCrisisItems}
+        getPrimary={(item, index) => asString(item.scenario || item.label || item.Event || item.Scenario, `Simulation ${index + 1}`)}
         getSecondary={(item) => [
           asString(item.breakpoint) ? `Breakpoint: ${asString(item.breakpoint)}` : '',
+          asString(item.body) ? asString(item.body) : '',
+          asString(item['Route failure mode']) ? `Failure mode: ${asString(item['Route failure mode'])}` : '',
+          asString(item['Release response']) ? `Release response: ${asString(item['Release response'])}` : '',
           asString(item.required_response) ? `Required response: ${asString(item.required_response)}` : '',
         ]}
       />
 
       <EvidenceList
         title="Antifragile Resilience Review"
-        items={antifragile}
-        getPrimary={(item, index) => asString(item.control, `Control ${index + 1}`)}
+        items={antifragile.length ? antifragile : releaseAntiFragilityItems}
+        getPrimary={(item, index) => asString(item.control || item.Control || item.label || item.Gate, `Control ${index + 1}`)}
         getSecondary={(item) => [
           asString(item.stress_event) ? `Stress event: ${asString(item.stress_event)}` : '',
           asString(item.release_test) ? `Release review: ${asString(item.release_test)}` : '',
+          asString(item.body) ? asString(item.body) : '',
+          asString(item['What gets stronger']) ? `What gets stronger: ${asString(item['What gets stronger'])}` : '',
+          asString(item['Failure if missing']) ? `Failure if missing: ${asString(item['Failure if missing'])}` : '',
         ]}
       />
 
@@ -533,8 +665,24 @@ function DecisionMemoServerAuditText({
       <section>
         <h2>Decision Memory Packet</h2>
         <p><strong>Owner:</strong> {asString(decisionMemory.owner, 'Family office operator / CFO')}</p>
-        <p>{asString(decisionMemory.why_recorded)}</p>
-        <ul>{textList(decisionMemory.retrieval_keys, 12).map((line, index) => <li key={`decision-memory-${index}`}>{line}</li>)}</ul>
+        <p>{asString(decisionMemorySection?.intro || decisionMemory.why_recorded)}</p>
+        <ul>
+          {decisionMemoryCards.map((card, index) => (
+            <li key={`decision-memory-card-${index}`}>
+              <strong>{asString(card.label || card.title)}</strong>
+              {asString(card.body || card.value) ? `: ${asString(card.body || card.value)}` : ''}
+            </li>
+          ))}
+          {decisionMemoryRows.map((row, index) => (
+            <li key={`decision-memory-row-${index}`}>
+              <strong>{asString(row.Record || row.Gate || `Decision memory ${index + 1}`)}</strong>
+              {asString(row.Condition) ? `: ${asString(row.Condition)}` : ''}
+            </li>
+          ))}
+          {!decisionMemoryCards.length && !decisionMemoryRows.length
+            ? textList(decisionMemory.retrieval_keys, 12).map((line, index) => <li key={`decision-memory-${index}`}>{line}</li>)
+            : null}
+        </ul>
       </section>
 
       <EvidenceList
