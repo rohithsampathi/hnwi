@@ -941,7 +941,7 @@ export default function DecisionMemoAuditClientPage({
     try {
       const embeddedPayload =
         (resolvedSurfaceData.backendData as Record<string, unknown> | undefined)?.release_readiness_share_payload ??
-        ((resolvedSurfaceData.memoData as Record<string, unknown> | undefined)?.preview_data as Record<string, unknown> | undefined)?.release_readiness_share_payload;
+        (((resolvedSurfaceData.memoData as unknown) as Record<string, unknown> | undefined)?.preview_data as Record<string, unknown> | undefined)?.release_readiness_share_payload;
 
       if (embeddedPayload && typeof embeddedPayload === 'object') {
         return embeddedPayload as ReturnType<typeof buildReleaseReadinessSharePayload>;
