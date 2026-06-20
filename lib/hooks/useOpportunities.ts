@@ -365,7 +365,7 @@ const transformOpportunityToCity = (
     hbyte_summary: opp.hbyte_summary,
     card_summary: opp.card_summary,
     short_summary: opp.short_summary,
-    full_analysis: opp.full_analysis || opp.full_text,
+    full_analysis: opp.full_analysis,
     full_castle_brief: opp.full_castle_brief,
     castle_brief: opp.castle_brief,
     castle_brief_enriched: opp.castle_brief_enriched,

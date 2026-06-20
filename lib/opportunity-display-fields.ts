@@ -78,22 +78,19 @@ export const structuredOpportunitySummaryText = (value: unknown): string => {
   return lines.join('\n')
 }
 
+// Visible map analysis should stay on Command Centre display fields. Castle
+// bodies are evidence/source material and are intentionally not promoted here.
 export const resolveOpportunityAnalysisText = (opp: OpportunityDisplaySource): string => firstText(
   opp.analysis,
   opp.elite_pulse_analysis,
   opp.full_analysis,
-  opp.full_text,
-  opp.full_castle_brief,
-  opp.castle_brief_enriched,
-  opp.castle_brief,
-  opp.brief_source_text,
+  opp.hbyte_summary,
+  opp.card_summary,
+  opp.summary,
   opp.source_summary,
   opp.castle_source_summary,
   structuredOpportunitySummaryText(opp.source_summary_structured),
   structuredOpportunitySummaryText(opp.castle_source_summary_structured),
-  opp.hbyte_summary,
-  opp.card_summary,
-  opp.summary,
   opp.description,
   opp.public_mirror_excerpt,
 )
