@@ -9,6 +9,7 @@ import type { Citation } from '@/lib/parse-dev-citations';
 import { isRecentlyAddedOpportunity } from '@/lib/opportunity-recency';
 import { resolveOpportunityCoordinates } from '@/lib/map-coordinate-resolver';
 import {
+  appendOpportunityCitationText,
   resolveOpportunityAnalysisText,
   resolveOpportunitySummaryText,
   resolveOpportunityTitle,
@@ -311,6 +312,9 @@ const transformOpportunityToCity = (
     ...devIdsFromSourceText,
     ...structuredCitationIds,
   ]);
+  const displayCitationIds = structuredCitationIds.length > 0 ? structuredCitationIds : devIds;
+  const opportunityAnalysisWithCitation = appendOpportunityCitationText(opportunityAnalysis, displayCitationIds);
+  const opportunitySummaryWithCitation = appendOpportunityCitationText(opportunitySummary, displayCitationIds);
 
   // Smart category correction (for misclassified opportunities)
   let correctedCategory = opp.category ?
@@ -359,9 +363,9 @@ const transformOpportunityToCity = (
     tier: opp.tier,
     value: opportunityValue,
     risk: opp.risk,
-    analysis: opportunityAnalysis,
-    summary: opportunitySummary,
-    description: opp.description || opportunitySummary,
+    analysis: opportunityAnalysisWithCitation,
+    summary: opportunitySummaryWithCitation,
+    description: opp.description || opportunitySummaryWithCitation,
     hbyte_summary: opp.hbyte_summary,
     card_summary: opp.card_summary,
     short_summary: opp.short_summary,

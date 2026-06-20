@@ -48,6 +48,22 @@ const firstText = (...values: unknown[]): string => {
   return ''
 }
 
+const INLINE_CITATION_PATTERN =
+  /\[(?:Dev\s*ID|DEVID|Article\s*ID|Source\s*ID|Evidence\s*ID|Route\s*Witness|Witness\s*ID|Pattern\s*ID)\s*[:\-–—]\s*[^\]\r\n]+\]/i
+
+export const appendOpportunityCitationText = (
+  value: string,
+  citationIds: string[],
+): string => {
+  const text = asCleanText(value)
+  if (!text || INLINE_CITATION_PATTERN.test(text)) {
+    return text
+  }
+
+  const citationId = citationIds.map(asCleanText).find(Boolean)
+  return citationId ? `${text} [DEVID: ${citationId}]` : text
+}
+
 export const structuredOpportunitySummaryText = (value: unknown): string => {
   if (!value || typeof value !== 'object') {
     return asCleanText(value)

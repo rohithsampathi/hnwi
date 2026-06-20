@@ -1,4 +1,7 @@
-import { resolveOpportunityAnalysisText } from "@/lib/opportunity-display-fields";
+import {
+  appendOpportunityCitationText,
+  resolveOpportunityAnalysisText,
+} from "@/lib/opportunity-display-fields";
 
 describe("useOpportunities backend field mapping", () => {
   it("prefers authenticated command-centre analysis over source evidence bodies", () => {
@@ -46,5 +49,25 @@ describe("useOpportunities backend field mapping", () => {
     expect(text).toContain("Structured backend source summary.");
     expect(text).toContain("Money anchors: $42M");
     expect(text).not.toBe("Short card description.");
+  });
+
+  it("adds the row development citation to visible summary text when absent", () => {
+    const text = appendOpportunityCitationText(
+      "HByte Command Centre summary without inline source marker.",
+      ["dev_a982b5065f97f4adb888ebd2"]
+    );
+
+    expect(text).toBe(
+      "HByte Command Centre summary without inline source marker. [DEVID: dev_a982b5065f97f4adb888ebd2]"
+    );
+  });
+
+  it("does not duplicate an existing visible development citation", () => {
+    const text = appendOpportunityCitationText(
+      "Existing cited summary. [DEVID: dev_existing]",
+      ["dev_a982b5065f97f4adb888ebd2"]
+    );
+
+    expect(text).toBe("Existing cited summary. [DEVID: dev_existing]");
   });
 });

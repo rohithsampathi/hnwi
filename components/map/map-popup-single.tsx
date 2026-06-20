@@ -296,7 +296,7 @@ export function MapPopupSingle({
                 className="rounded-md border border-border bg-muted/20 p-3"
               >
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Command Centre Opportunity Analysis
+                  Summary
                 </p>
                 <div className="max-h-56 overflow-y-auto pr-1 text-xs leading-relaxed break-words">
                   <FormattedAnalysis
