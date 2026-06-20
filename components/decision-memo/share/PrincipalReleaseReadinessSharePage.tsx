@@ -109,7 +109,7 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bpressure\b/gi, "readiness")
     .replace(/\bNative Route Drivers\b/gi, "Route Drivers From Source Review")
     .replace(/\bg1[_-]g2[_-]g3\b/gi, "generation_to_generation")
-    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, "principal / named family user / next-generation record")
+    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, "Principal / named family user / next-generation record")
     .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/gi, "generation-to-generation")
     .replace(/\bG1\s*→\s*G2\s*→\s*G3\b/gi, "generation-to-generation")
     .replace(/\bG1 route control\b/gi, "current-owner route control")

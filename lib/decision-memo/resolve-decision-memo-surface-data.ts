@@ -109,7 +109,7 @@ function sanitizePrincipalSurfaceText(value: string): string {
       'London family-use, continuity, and capital-preservation claims treated as separate release gates',
     )
     .replace(/\bg1[_-]g2[_-]g3\b/gi, 'generation_to_generation')
-    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, 'principal / named family user / next-generation record')
+    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, 'Principal / named family user / next-generation record')
     .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/gi, 'generation-to-generation')
     .replace(/\bG1\s*→\s*G2\s*→\s*G3\b/gi, 'generation-to-generation')
     .replace(/\bG1 principal\b/gi, 'principal')
