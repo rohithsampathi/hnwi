@@ -969,58 +969,6 @@ export function InteractiveWorldMap({
                     </div>
                   </Popup>
                 )}
-                {/* Tooltip that follows cursor on hover */}
-                {!cityFocusActive && !shouldShowPermanentRouteLabel && (
-                  <Tooltip
-                    permanent={false}
-                    sticky={true}
-                    direction="top"
-                    offset={[0, -10]}
-                    opacity={1}
-                    className="corridor-label-tooltip"
-                  >
-                    <div
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '3px 5px 3px 9px',
-                        borderRadius: '12px',
-                        background: 'rgba(10,10,10,0.85)',
-                        backdropFilter: 'blur(4px)',
-                        border: `1px solid ${color}44`,
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        letterSpacing: '0.5px',
-                        fontFamily: 'Inter,system-ui,sans-serif',
-                        color: labelTextColor,
-                        whiteSpace: 'nowrap',
-                        textTransform: 'uppercase',
-                        boxShadow: `0 0 6px ${color}33`,
-                        filter: labelBlur,
-                      }}
-                    >
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: color, flexShrink: 0 }}></span>
-                      {routeTag}
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minWidth: '18px',
-                        height: '18px',
-                        borderRadius: '50%',
-                        background: color,
-                        color: badgeTextColor,
-                        fontSize: '11px',
-                        fontWeight: '900',
-                        flexShrink: 0,
-                        lineHeight: 1
-                      }}>
-                        {auditCount}
-                      </span>
-                    </div>
-                  </Tooltip>
-                )}
               </Polyline>
               {/* Glow layer — wider, translucent line for premium depth */}
               <Polyline
@@ -1209,8 +1157,7 @@ export function InteractiveWorldMap({
                   </Popup>
                 </Marker>
               )}
-              {/* Airline-style route label at arc midpoint. In focus mode, only the current
-                  corridor stays labeled; non-current corridors get a transient hover label. */}
+              {/* Single route label source; avoids duplicate Leaflet tooltip + marker labels on grey context corridors. */}
               {(shouldShowPermanentRouteLabel || shouldShowHoverRouteLabel) && (
                 <Marker
                   position={arcMid}

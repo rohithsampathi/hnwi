@@ -913,6 +913,7 @@ export default function WarRoomPage() {
     cities,
     loading,
     availableCategories,
+    refetch: refetchOpportunities,
   } = useOpportunities({
     isPublic: false,
     timeframe,
@@ -921,6 +922,37 @@ export default function WarRoomPage() {
     includeCrownVault: true,
     cleanCategories: true
   });
+
+  const opportunityReturnRefreshRef = useRef(0);
+  const refreshOpportunitiesOnReturn = useCallback(() => {
+    const now = Date.now();
+    if (now - opportunityReturnRefreshRef.current < 1500) return;
+    opportunityReturnRefreshRef.current = now;
+    void refetchOpportunities();
+  }, [refetchOpportunities]);
+
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        refreshOpportunitiesOnReturn();
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshOpportunitiesOnReturn();
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('focus', refreshOpportunitiesOnReturn);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('focus', refreshOpportunitiesOnReturn);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshOpportunitiesOnReturn]);
 
   // Track initial load separately
   const [initialLoad, setInitialLoad] = useState(true);
