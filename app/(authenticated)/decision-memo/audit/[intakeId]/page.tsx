@@ -115,13 +115,16 @@ function cleanTranscriptText(value: string): string {
     .replace(/\bHigh until release gates clear\b/gi, 'Evidence pending; no capital release')
     .replace(/\bRisk level\b/gi, 'Release status')
     .replace(/\bData quality\b/gi, 'Evidence status')
-    .replace(/\brelease-read sprint\b/gi, 'release-readiness sprint')
+    .replace(/\brelease-read sprint\b/gi, 'release-readiness review')
+    .replace(/\binsurance\/security file\b/gi, 'insurance quote and security plan')
+    .replace(/\bseller conditions\b/gi, 'seller identity, seller authority, exclusivity terms, deposit condition, and completion timetable')
+    .replace(/\bdeposit rail\b/gi, 'deposit account, conveyancer client-account details, transfer path, and release condition')
     .replace(
       /\bas a London family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi,
-      'as a proposed London family-use acquisition with education, residence, succession, and capital-preservation claims treated as separate gates',
+      'as a proposed London family-use acquisition with education, residence, succession, and capital-preservation claims not treated as release authority',
     )
-    .replace(/\bLondon family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi, 'proposed London family-use acquisition with education, residence, succession, and capital-preservation claims treated as separate gates')
-    .replace(/\bLondon family base,\s*education\/continuity node,\s*and capital-preservation reserve\b/gi, 'London family-use, continuity, and capital-preservation claims treated as separate release gates')
+    .replace(/\bLondon family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi, 'proposed London family-use acquisition with education, residence, succession, and capital-preservation claims not treated as release authority')
+    .replace(/\bLondon family base,\s*education\/continuity node,\s*and capital-preservation reserve\b/gi, 'London family-use, continuity, and capital-preservation claims held as separate evidence gates')
     .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/g, 'principal / named family user / next-generation record')
     .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/g, 'generation-to-generation')
     .replace(/\bG1 principal\b/gi, 'principal')
@@ -146,11 +149,12 @@ function cleanTranscriptText(value: string): string {
       /\bnamed family user\s*\/\s*named family user\s+named family-fairness owner\b/gi,
       'Named family user / named family-fairness owner',
     )
-    .replace(/\bfamily-home veto position\b/gi, 'family-use veto position')
-    .replace(/\bfamily-home veto holder\b/gi, 'family-use veto holder')
-    .replace(/\bspouse veto if relevant\b/gi, 'family-use veto position where recorded')
-    .replace(/\bspouse if relevant\b/gi, 'family-use veto holder where recorded')
-    .replace(/\bspouse veto\b/gi, 'family-use veto position')
+    .replace(/\bfamily-use veto position where recorded\b/gi, 'family-home rights position recorded before bid release or exchange')
+    .replace(/\bfamily-home veto position\b/gi, 'family-home rights position')
+    .replace(/\bfamily-home veto holder\b/gi, 'family-home rights holder')
+    .replace(/\bspouse veto if relevant\b/gi, 'family-home rights position recorded before bid release or exchange')
+    .replace(/\bspouse if relevant\b/gi, 'family-home rights holder where recorded')
+    .replace(/\bspouse veto\b/gi, 'family-home rights position')
     .replace(/\bThe route must be retrievable six years later\b/gi, 'The route must be retrievable years later')
     .replace(/\bsix years later\b/gi, 'later')
     .replace(
@@ -370,7 +374,7 @@ function DecisionMemoServerAuditText({
           <div><dt>Release status</dt><dd>{asString(risk.risk_level, 'High until release gates clear')}</dd></div>
           <div><dt>Critical items</dt><dd>{asString(risk.critical_items, '-')}</dd></div>
           <div><dt>High items</dt><dd>{asString(risk.high_items, '-')}</dd></div>
-          <div><dt>Mitigation timeline</dt><dd>{asString(risk.mitigation_timeline || pickSection(data, 'mitigationTimeline'), '0-7 days release-read sprint; 30-day counsel/bank/title/authority close; 90-day carry rhythm.')}</dd></div>
+          <div><dt>Next release window</dt><dd>{asString(risk.mitigation_timeline || pickSection(data, 'mitigationTimeline'), '72-hour bank/title/source retrieval check; 7-day counsel/bank/family-authority close path if seller timing starts.')}</dd></div>
           <div><dt>Total exposure</dt><dd>{asString(risk.total_exposure || risk.total_exposure_formatted) || money(acquisition.total_acquisition_cost_usd || quantified.direct_total_outlay_usd)}</dd></div>
           <div><dt>Duty drag</dt><dd>{money(acquisition.total_stamp_duties_usd || quantified.direct_total_duties_usd)}{asString(acquisition.duty_drag_pct || quantified.direct_duty_drag_pct_of_price) ? ` (${asString(acquisition.duty_drag_pct || quantified.direct_duty_drag_pct_of_price)}% of price)` : ''}</dd></div>
         </dl>

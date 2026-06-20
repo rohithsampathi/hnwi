@@ -209,6 +209,9 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bseller pressure\b/gi, "seller timing")
     .replace(/\bbank pressure\b/gi, "bank readiness")
     .replace(/\babsence pressure\b/gi, "absence readiness")
+    .replace(/\binsurance\/security file\b/gi, "insurance quote and security plan")
+    .replace(/\bseller conditions\b/gi, "seller identity, seller authority, exclusivity terms, deposit condition, and completion timetable")
+    .replace(/\bdeposit rail\b/gi, "deposit account, conveyancer client-account details, transfer path, and release condition")
     .replace(/\bpressure\b/gi, "readiness")
     .replace(/\bsubstituted\b/gi, "")
     .replace(/\bNative Route Drivers\b/g, "Route Drivers From Source Review")
@@ -259,13 +262,14 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bson use\b/gi, "named family-user")
     .replace(/\bnamed family user-use\b/gi, "named family-user use")
     .replace(/\bdaughter\/fairness\b/gi, "family-fairness")
-    .replace(/\bspouse veto if relevant\b/gi, "family-use veto position where recorded")
-    .replace(/\bspouse if relevant\b/gi, "family-use veto holder where recorded")
-    .replace(/\bspouse veto\b/gi, "family-use veto position")
-    .replace(/\bFamily-home veto position\b/gi, "Family-use veto position")
-    .replace(/\bfamily-home veto position\b/gi, "family-use veto position")
-    .replace(/\bFamily-home veto holder\b/gi, "Family-use veto holder")
-    .replace(/\bfamily-home veto holder\b/gi, "family-use veto holder")
+    .replace(/\bspouse veto if relevant\b/gi, "family-home rights position recorded before bid release or exchange")
+    .replace(/\bspouse if relevant\b/gi, "family-home rights holder where recorded")
+    .replace(/\bspouse veto\b/gi, "family-home rights position")
+    .replace(/\bfamily-use veto position where recorded\b/gi, "family-home rights position recorded before bid release or exchange")
+    .replace(/\bFamily-home veto position\b/gi, "Family-home rights position")
+    .replace(/\bfamily-home veto position\b/gi, "family-home rights position")
+    .replace(/\bFamily-home veto holder\b/gi, "Family-home rights holder")
+    .replace(/\bfamily-home veto holder\b/gi, "family-home rights holder")
     .replace(/\bFounder authority\b/gi, "Principal authority")
     .replace(/\bfounder authority\b/gi, "principal authority")
     .replace(/\bFounder\b/g, "Principal")
@@ -281,12 +285,17 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\brelease-readiness reviewing\b/gi, "release-readiness review")
     .replace(
       /\bas a London family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi,
-      "as a proposed London family-use acquisition with education, residence, succession, and capital-preservation claims treated as separate gates"
+      "as a proposed London family-use acquisition with education, residence, succession, and capital-preservation claims not treated as release authority"
     )
     .replace(
       /\bLondon family base,\s*education\/continuity node,\s*and capital-preservation reserve\b/gi,
-      "London family-use, continuity, and capital-preservation claims treated as separate release gates"
+      "London family-use, continuity, and capital-preservation claims held as separate evidence gates"
     )
+    .replace(
+      /\bThe Mayfair purchase is a family-base and continuity move, not a yield trade; release depends on written purpose, use boundaries, and who the asset is meant to serve across principal \/ named family user \/ next-generation record\.?/gi,
+      "The Mayfair purchase is tested as London family use, not yield. Release depends on written use boundaries, named family user, named fairness owner, and decision record."
+    )
+    .replace(/\bsocial or family promise\b/gi, "undocumented family expectation")
     .replace(/\bnext-generation decision memory\b/gi, "next-generation decision record")
     .replace(
       /\bLooks like prime London capital preservation even though the economics are control\/use-led after duty drag\.?/gi,
@@ -306,6 +315,25 @@ function sanitizeShareText(value: unknown): string {
     )
     .replace(/\s+/g, " ")
     .trim();
+}
+
+const NEXT_RELEASE_WINDOW =
+  "72-hour bank/title/source retrieval check; 7-day counsel/bank/family-authority close path if seller timing starts.";
+
+function normalizeMitigationTimeline(value: unknown): string {
+  const normalized = sanitizeShareText(value);
+  if (!normalized || /30-day|90-day|release-readiness sprint|release-read sprint/i.test(normalized)) {
+    return NEXT_RELEASE_WINDOW;
+  }
+  return normalized;
+}
+
+function normalizeMoveStatement(value: unknown): string {
+  const normalized = sanitizeShareText(value);
+  if (/Balfour Place/i.test(normalized) && /Mayfair/i.test(normalized)) {
+    return "A Dubai/GCC family is reviewing a GBP 49.5M Mayfair townhouse at Balfour Place, London W1K. Approved route: gated direct-buyer negotiation only. No capital release. Education, residence, succession, and capital-preservation claims are not release authority; they remain separate evidence gates.";
+  }
+  return normalized;
 }
 
 function sanitizeObject<T>(value: T): T {
@@ -418,7 +446,7 @@ function sanitizeRouteOption(option: RouteIntelligenceOptionV2): RouteIntelligen
       dutyDragPct: numberOr(option.metrics?.dutyDragPct),
       annualCarryingCostUsd: numberOr(option.metrics?.annualCarryingCostUsd),
       dataQuality: sanitizeShareText(option.metrics?.dataQuality),
-      mitigationTimeline: sanitizeShareText(option.metrics?.mitigationTimeline),
+      mitigationTimeline: normalizeMitigationTimeline(option.metrics?.mitigationTimeline),
     },
     jurisdictionValues: (option.jurisdictionValues ?? []).map((row) => ({
       jurisdiction: sanitizeShareText(row.jurisdiction),
@@ -484,16 +512,17 @@ function buildSafeRouteIntelligence(route: RouteIntelligenceV2, reference: strin
 
 function buildDefaultPrivateEvidence() {
   return [
-    ["Buyer profile", "Principal / FO operator", "Identity class, residence posture, property count, and buyer capacity."],
-    ["Title pack", "UK property counsel", "Title, searches, survey, restrictions, seller authority, insurance, and exchange mechanics."],
-    ["SDLT computation", "UK tax counsel", "Signed SDLT treatment, surcharges, relief exclusions, and filing responsibility."],
-    ["SoW / SoF file", "Source bank", "Corroborated source narrative, account path, adverse-media checks, and transfer authority."],
-    ["Receiving and fallback rails", "Receiving bank", "Primary rail, fallback rail, KYC acceptance, FX authority, limits, and timetable."],
-    ["Family authority minute", "Family office / principal", "Use boundary, veto position, title authority, carry owner, sale/refinance limits, and decision memory."],
-    ["Family fairness minute", "Family fairness owner", "Notice, fairness protection, beneficiary treatment, and next-generation record."],
-    ["Operating file", "FO operator", "Insurance quote, security plan, service contracts, initial carry budget, and reporting cadence."],
-  ].map(([label, owner, detail]) => ({
+    ["Buyer profile", "Required before bid", "Principal / FO operator", "Identity class, residence posture, property count, and buyer capacity."],
+    ["Title pack", "Required before exchange unless indexed in data room", "UK property counsel", "Title, searches, survey, restrictions, seller authority, insurance quote and security plan, and exchange mechanics."],
+    ["SDLT computation", "Required before bid / counsel-confirmed", "UK tax counsel", "Signed SDLT treatment, surcharges, relief exclusions, and filing responsibility."],
+    ["SoW / SoF file", "Required before exchange", "Source bank", "Corroborated source narrative, account path, adverse-media checks, and transfer authority."],
+    ["Receiving and fallback rails", "Required before exchange", "Receiving bank", "Primary rail, fallback rail, KYC acceptance, FX authority, limits, and timetable."],
+    ["Family authority minute", "Required before bid release or exchange unless signed", "Family office / principal", "Use boundary, family-home rights position, title authority, carry owner, sale/refinance limits, and decision memory."],
+    ["Family fairness minute", "Required before bid release or exchange", "Family fairness owner", "Notice, fairness protection, beneficiary treatment, and next-generation record."],
+    ["Operating file", "Required before completion", "FO operator", "Insurance quote, security plan, service contracts, initial carry budget, and reporting cadence."],
+  ].map(([label, status, owner, detail]) => ({
     label,
+    status,
     owner,
     release_effect: detail,
   }));
@@ -542,7 +571,7 @@ function buildSafeGates() {
       {
         gate: "Title and seller timetable",
         state: "Required before exchange",
-        evidence: "Title, searches, survey, restrictions, insurance/security file, seller authority, deposit terms, and completion mechanics.",
+        evidence: "Title, searches, survey, restrictions, insurance quote and security plan, seller identity, seller authority, exclusivity terms, deposit condition, deposit account, conveyancer client-account details, transfer path, release condition, and completion timetable.",
         why_it_matters: "Seller timing cannot outrun title readiness or convert a review into a capital commitment.",
       },
       {
@@ -554,7 +583,7 @@ function buildSafeGates() {
       {
         gate: "Authority and veto map",
         state: "Required before bid or exchange",
-        evidence: "Principal authority, named family-user boundary, family-use veto position where recorded, sale/refinance rights, and carry owner.",
+        evidence: "Principal authority, named family-user boundary, family-home rights position recorded before bid release or exchange, sale/refinance rights, and carry owner.",
         why_it_matters: "Use rights, carry, and veto must be written so the property does not become an implied future entitlement.",
       },
       {
@@ -582,22 +611,86 @@ function gateRowsFromSafeGates(gates: ReturnType<typeof buildSafeGates>): Releas
   }));
 }
 
+const CORE_PUBLIC_SOURCE_IDS = new Set([
+  "src_rightmove_mayfair_balfour",
+  "src_gov_sdlt_residential",
+  "src_gov_sdlt_non_resident",
+  "src_gov_sdlt_corporate",
+  "src_gov_ated",
+  "src_gov_overseas_entity_register",
+  "src_gov_fig",
+  "src_gov_iht_ltr",
+  "src_coutts_pcl_q1_2026",
+  "src_wise_gbp_usd",
+]);
+
+function isMethodologySource(source: RecordLike): boolean {
+  const category = text(source.category);
+  const institution = text(source.institution);
+  const id = text(source.id);
+  return (
+    /patterns?\s*&\s*methodology/i.test(category) ||
+    /HNWI Chronicles/i.test(institution) ||
+    /^src_hc_/i.test(id)
+  );
+}
+
+function sourceDecisionBoundary(source: RecordLike): string {
+  const id = text(source.id).toLowerCase();
+  const institution = text(source.institution);
+  const title = text(source.title);
+  const haystack = `${id} ${institution} ${title}`;
+
+  if (/rightmove|balfour/.test(haystack)) {
+    return "Public advertisement only; not valuation, title, seller authority, survey, or legal particulars.";
+  }
+  if (/coutts/.test(haystack)) {
+    return "Prime Central London discount context only; not Balfour valuation, offer authority, or bid price.";
+  }
+  if (/wise|fx|gbp.*usd|exchange/i.test(haystack)) {
+    return "Model FX input only; not an executable FX quote, bank spread, transfer limit, or settlement instruction.";
+  }
+  if (/sdlt|stamp duty|hmrc|gov_/.test(haystack)) {
+    return "Legal rate and public-rule source only; final treatment depends on buyer facts and counsel computation.";
+  }
+  if (/ated/.test(haystack)) {
+    return "ATED public-rule source only; actual exposure depends on ownership route, relief position, and counsel filing advice.";
+  }
+  if (/overseas entity|companies house|beneficial/.test(haystack)) {
+    return "Disclosure framework source only; actual filing requirement depends on ownership facts and counsel advice.";
+  }
+  if (/iht|inheritance|long-term resident|foreign income|gains/i.test(haystack)) {
+    return "UK tax-rule context only; family tax treatment remains counsel and fact-pattern gated.";
+  }
+  if (/westminster|council|property tax|business rates|council tax/i.test(haystack)) {
+    return "Local public-charge context only; final operating budget depends on title, use, and property file.";
+  }
+  if (/knight frank|savills|agent|market/i.test(haystack)) {
+    return "Market context only; not a valuation, offer authority, legal due diligence, or seller-timing proof.";
+  }
+
+  return sanitizeShareText(
+    source.decision_boundary ??
+      source.limit ??
+      "Supports the named public claim only; private execution evidence remains separately gated.",
+  );
+}
+
 function buildSafePublicSources(data: ResolvedDecisionMemoSurfaceData) {
   const sources = asArray(pickSection(data, "governing_source_register") ?? pickSection(data, "source_register"));
-  return sources.map((source, index) => ({
+  return sources.filter((source) => !isMethodologySource(source)).map((source, index) => {
+    const id = text(source.id, `R${index + 1}`);
+    return {
     id: text(source.id, `R${index + 1}`),
-    category: sanitizeShareText(source.category ?? "Source Register"),
+    category: CORE_PUBLIC_SOURCE_IDS.has(id) ? sanitizeShareText(source.category ?? "Source Register") : "Supplementary sources",
     institution: sanitizeShareText(source.institution ?? "Source"),
     title: sanitizeShareText(source.title ?? "Source record"),
     date: sanitizeShareText(source.date ?? source.checked_at ?? "Checked in source register"),
     claim: sanitizeShareText(source.claim_supported ?? source.claim ?? "Supports the stated source-register claim."),
-    boundary: sanitizeShareText(
-      source.decision_boundary ??
-        source.limit ??
-        "Supports only the stated claim; private execution evidence remains separately gated.",
-    ),
+    boundary: sourceDecisionBoundary(source),
     url: text(source.url),
-  })) satisfies ReleaseReadinessShareSource[];
+    };
+  }) satisfies ReleaseReadinessShareSource[];
 }
 
 function buildSafeRisk(data: ResolvedDecisionMemoSurfaceData, route: RouteIntelligenceV2) {
@@ -605,11 +698,12 @@ function buildSafeRisk(data: ResolvedDecisionMemoSurfaceData, route: RouteIntell
   const selected = route.selectedLiveOption ?? route.routeOptions[0];
 
   return sanitizeObject({
-    risk_level: risk.risk_level ?? "High until signed gates clear",
-    mitigation_timeline:
+    risk_level: risk.risk_level ?? "Evidence pending; no capital release",
+    mitigation_timeline: normalizeMitigationTimeline(
       risk.mitigation_timeline ??
       selected?.metrics?.mitigationTimeline ??
-      "72-hour evidence sprint, then counsel, bank, title, and authority close path.",
+      NEXT_RELEASE_WINDOW,
+    ),
   });
 }
 
@@ -656,9 +750,9 @@ function reportSection(section: ReleaseReadinessShareReportSection): ReleaseRead
 
 function routeSanitizedParty(value: unknown): string {
   return sanitizeShareText(value)
-    .replace(/\bSpouse if family-home use or veto rights are relevant\b/gi, "Family-home veto holder where recorded")
-    .replace(/\bSpouse if family-home use is intended\b/gi, "Family-home veto holder where recorded")
-    .replace(/\bSpouse\b/g, "Family-home veto holder")
+    .replace(/\bSpouse if family-home use or veto rights are relevant\b/gi, "Family-home rights holder where recorded")
+    .replace(/\bSpouse if family-home use is intended\b/gi, "Family-home rights holder where recorded")
+    .replace(/\bSpouse\b/g, "Family-home rights holder")
     .replace(/\bG2 son\b/gi, "Named family user")
     .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, "Named family-fairness owner")
     .replace(/\bG3\/grandchild\b/gi, "Next-generation continuity")
@@ -1381,7 +1475,7 @@ function toShareRouteOption(option: RouteIntelligenceOptionV2): ReleaseReadiness
       dutyDragPct: numberOr(safe.metrics?.dutyDragPct),
       annualCarryingCostUsd: numberOr(safe.metrics?.annualCarryingCostUsd),
       dataQuality: sanitizeShareText(safe.metrics?.dataQuality),
-      mitigationTimeline: sanitizeShareText(safe.metrics?.mitigationTimeline),
+      mitigationTimeline: normalizeMitigationTimeline(safe.metrics?.mitigationTimeline),
     },
   };
 }
@@ -1389,7 +1483,7 @@ function toShareRouteOption(option: RouteIntelligenceOptionV2): ReleaseReadiness
 function buildPrivateEvidenceForPayload(): ReleaseReadinessPrivateEvidence[] {
   return buildDefaultPrivateEvidence().map((item) => ({
     label: sanitizeShareText(item.label),
-    status: "Indexed for release review",
+    status: sanitizeShareText(item.status ?? "Private indexed"),
     owner: sanitizeShareText(item.owner),
     decisionUse: sanitizeShareText(item.release_effect),
   }));
@@ -1459,7 +1553,7 @@ export function buildReleaseReadinessSharePayload(
   const capitalRule =
     "No bid without closed comps and walk-away price. No exchange or deposit release without signed title, SDLT, source, bank rail, family authority, and bid discipline.";
   const corridor = sanitizeShareText(route.corridor);
-  const move = sanitizeShareText(route.move);
+  const move = normalizeMoveStatement(route.move);
   const reportSections = buildFullReportSections(
     resolved,
     {
@@ -1483,12 +1577,10 @@ export function buildReleaseReadinessSharePayload(
     releaseRule,
     purpose,
     capitalRule,
-    rationale: sanitizeShareText(
-      releasePacket.rationale ??
-        "The route can advance only if authority, evidence, source, bank, title, tax, and family-use gates clear before seller timing hardens.",
-    ),
+    rationale:
+      "Proceed to gated negotiation only. The house is approved for London family use only after title, SDLT, source, bank, authority, family-use, fairness, and decision-memory evidence clears.",
     riskLevel: sanitizeShareText(risk.risk_level),
-    mitigation: sanitizeShareText(risk.mitigation_timeline),
+    mitigation: normalizeMitigationTimeline(risk.mitigation_timeline),
     selectedRoute: selectedShareRoute,
     routeOptions,
     gateRows: gateRowsFromSafeGates(buildSafeGates()),

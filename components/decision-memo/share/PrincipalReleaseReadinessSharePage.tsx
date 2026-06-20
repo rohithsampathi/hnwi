@@ -20,7 +20,7 @@ import type {
   ReleaseReadinessShareChartSeries,
 } from "@/lib/decision-memo/build-release-readiness-share-surface";
 
-type ViewMode = "principal" | "route" | "evidence" | "methodology";
+type ViewMode = "principal" | "linear" | "route" | "evidence" | "methodology";
 
 interface PrincipalReleaseReadinessSharePageProps {
   reference: string;
@@ -30,13 +30,15 @@ interface PrincipalReleaseReadinessSharePageProps {
 
 const VIEW_LABELS: Array<{ id: ViewMode; label: string; description: string }> = [
   { id: "principal", label: "Principal View", description: "Family decision, capital rule, gates, and consequences." },
+  { id: "linear", label: "Linear Brief", description: "Readable memo path with decision, economics, and advance/hold/stop." },
   { id: "route", label: "Route View", description: "Full route memo with scenario, crisis, succession, and execution depth." },
   { id: "evidence", label: "Evidence Vault", description: "Public source register and private evidence index." },
   { id: "methodology", label: "Methodology", description: "Controlled method receipt, not raw process output." },
 ];
 
 function normalizeViewMode(value: string | null): ViewMode {
-  if (value === "route" || value === "linear") return "route";
+  if (value === "linear") return "linear";
+  if (value === "route") return "route";
   if (value === "evidence") return "evidence";
   if (value === "methodology") return "methodology";
   return "principal";
@@ -73,6 +75,9 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bOpen Release Gates\b/gi, "Release Gate Status")
     .replace(/\b0\s+to\s+close\b/gi, "Evidence pending")
     .replace(/\bAll listed release gates have assigned owners\b/gi, "Gate ownership assigned; release evidence pending")
+    .replace(/\binsurance\/security file\b/gi, "insurance quote and security plan")
+    .replace(/\bseller conditions\b/gi, "seller identity, seller authority, exclusivity terms, deposit condition, and completion timetable")
+    .replace(/\bdeposit rail\b/gi, "deposit account, conveyancer client-account details, transfer path, and release condition")
     .replace(/\bDOCUMENTED\b/g, "Indexed for review")
     .replace(/\bDocumented\b/g, "Indexed for review")
     .replace(/\bRisk level\b/gi, "Release status")
@@ -142,8 +147,9 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bspouse veto if relevant\b/gi, "family-use veto position where recorded")
     .replace(/\bspouse if relevant\b/gi, "family-use veto holder where recorded")
     .replace(/\bspouse veto\b/gi, "family-use veto position")
-    .replace(/\bfamily-home veto position\b/gi, "family-use veto position")
-    .replace(/\bfamily-home veto holder\b/gi, "family-use veto holder")
+    .replace(/\bfamily-use veto position where recorded\b/gi, "family-home rights position recorded before bid release or exchange")
+    .replace(/\bfamily-home veto position\b/gi, "family-home rights position")
+    .replace(/\bfamily-home veto holder\b/gi, "family-home rights holder")
     .replace(/\bG3 decision memory\b/gi, "next-generation decision record")
     .replace(/\bnext-generation decision memory\b/gi, "next-generation decision record")
     .replace(/\bG3\b/gi, "next-generation record")
@@ -452,11 +458,6 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
     ["Day 2-5", "Confirm SoW / SoF acceptance, signer authority, FX controls, primary rail, and fallback rail", "Source bank + receiving bank"],
     ["Day 4-7", "Sign family-use boundary, fairness minute, stop rights, carry owner, and decision record location", "Family office + succession counsel"],
   ];
-  const viewBoundaryRows = [
-    ["Principal View", "Decision surface", "What may advance, what capital remains blocked, what the route commits, and which gates must clear."],
-    ["Route View", "Full route memo", "Route options, scenario tree, crisis, resilience, succession, banking, tax/legal, and execution depth."],
-    ["Evidence & Methodology", "Proof boundary", "Public sources, private evidence classes, method drivers, and citation handles are separated."],
-  ];
   const whatChangesRows = [
     [
       "Property interest",
@@ -481,7 +482,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
     [
       "London presence",
       "Separate release gates",
-      "Education, residence, tax, succession, and capital-preservation claims are treated as separate approvals, not one property story.",
+      "Education, residence, tax, succession, and capital-preservation claims are not release authority; each remains a separate evidence gate.",
     ],
   ];
   const caughtRows = [
@@ -564,7 +565,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
           value="No release"
           note="No exchange, deposit, or seller commitment before signed route gates."
         />
-        <MetricCard label="Mitigation clock" value="72h / 7d" note={cleanDisplayText(payload.mitigation)} />
+        <MetricCard label="Next release window" value="72h / 7d" note={cleanDisplayText(payload.mitigation)} />
       </div>
 
       <Section eyebrow="Principal readout" title="No capital release; gated negotiation only">
@@ -600,8 +601,10 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
         <PrincipalTable columns={["Window", "Action", "Owner"]} rows={nextSevenDayRows} />
       </Section>
 
-      <Section eyebrow="View boundary" title="Each view has one job">
-        <PrincipalTable columns={["View", "Role", "What it should answer"]} rows={viewBoundaryRows} />
+      <Section eyebrow="Reviewer access" title="Additional reviewer material is restricted">
+        <p className="max-w-4xl rounded-md border border-border bg-card/70 p-5 text-base leading-8 text-muted-foreground">
+          Additional reviewer material is restricted to authorized advisers.
+        </p>
       </Section>
 
       <Section eyebrow="Decision answer" title="What is approved, blocked, and required">
@@ -1112,10 +1115,12 @@ function FullReportSections({ sections }: { sections: ReleaseReadinessShareRepor
 }
 
 function LinearBriefView({ payload }: { payload: ReleaseReadinessSharePayload }) {
+  const metrics = payload.selectedRoute.metrics;
   const sections = [
     {
       title: "Recommendation",
-      body: `${payload.decision}. The approved purpose is ${payload.purpose.toLowerCase()} ${payload.capitalRule}`,
+      body:
+        `Gated negotiation only. The approved purpose is London family use. Not yield, prestige, wrapper planning, or residence planning. Public guide price is GBP 49.5M; modeled all-in exposure is ${formatUsdCompact(metrics.totalAcquisitionCostUsd)} before operating costs, including ${formatUsdCompact(metrics.totalDutiesUsd)} modeled SDLT drag. No bid without closed comps and walk-away price. No exchange or deposit release without signed title, SDLT, SoW/SoF, bank rail, family authority, and bid discipline.`,
     },
     {
       title: "Control Case",
@@ -1148,12 +1153,42 @@ function EvidenceVaultView({
   publicSources: ReleaseReadinessShareSource[];
   privateEvidence: ReleaseReadinessPrivateEvidence[];
 }) {
-  const groupedSources = publicSources.reduce<Record<string, ReleaseReadinessShareSource[]>>((groups, source) => {
+  const coreSources = publicSources.filter((source) => source.category !== "Supplementary sources");
+  const supplementarySources = publicSources.filter((source) => source.category === "Supplementary sources");
+  const groupedSources = coreSources.reduce<Record<string, ReleaseReadinessShareSource[]>>((groups, source) => {
     const category = source.category || "Source Register";
     groups[category] = groups[category] || [];
     groups[category].push(source);
     return groups;
   }, {});
+  const renderSourceCard = (source: ReleaseReadinessShareSource) => (
+    <article key={source.id} className="rounded-md border border-border bg-card/70 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {cleanDisplayText(source.institution)}
+          </p>
+          <h4 className="mt-2 text-lg font-semibold leading-7 text-foreground">{cleanDisplayText(source.title)}</h4>
+        </div>
+        {source.url ? (
+          <a
+            href={source.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted"
+          >
+            Open <ArrowUpRight className="h-3.5 w-3.5" />
+          </a>
+        ) : null}
+      </div>
+      <p className="mt-3 text-xs font-medium text-primary">{cleanDisplayText(source.date)}</p>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(source.claim)}</p>
+      <p className="mt-3 border-t border-border pt-3 text-sm leading-6 text-muted-foreground">
+        <span className="font-semibold text-foreground">Decision boundary:</span>{" "}
+        {cleanDisplayText(source.boundary)}
+      </p>
+    </article>
+  );
 
   return (
     <>
@@ -1174,37 +1209,21 @@ function EvidenceVaultView({
             <div key={category}>
               <h3 className="text-lg font-semibold text-foreground">{cleanDisplayText(category)}</h3>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                {sources.map((source) => (
-                  <article key={source.id} className="rounded-md border border-border bg-card/70 p-5">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          {cleanDisplayText(source.institution)}
-                        </p>
-                        <h4 className="mt-2 text-lg font-semibold leading-7 text-foreground">{cleanDisplayText(source.title)}</h4>
-                      </div>
-                      {source.url ? (
-                        <a
-                          href={source.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted"
-                        >
-                          Open <ArrowUpRight className="h-3.5 w-3.5" />
-                        </a>
-                      ) : null}
-                    </div>
-                    <p className="mt-3 text-xs font-medium text-primary">{cleanDisplayText(source.date)}</p>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(source.claim)}</p>
-                    <p className="mt-3 border-t border-border pt-3 text-sm leading-6 text-muted-foreground">
-                      <span className="font-semibold text-foreground">Decision boundary:</span>{" "}
-                      {cleanDisplayText(source.boundary)}
-                    </p>
-                  </article>
-                ))}
+                {sources.map(renderSourceCard)}
               </div>
             </div>
           ))}
+          {supplementarySources.length ? (
+            <details className="rounded-md border border-border bg-card/60 p-5">
+              <summary className="cursor-pointer text-lg font-semibold text-foreground">Supplementary sources</summary>
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                {supplementarySources.map(renderSourceCard)}
+              </div>
+            </details>
+          ) : null}
+          <div className="rounded-md border border-border bg-muted/30 p-5 text-sm leading-6 text-muted-foreground">
+            Methodology records are available in the Methodology view. They explain why gates matter; they are not public-source evidence.
+          </div>
         </div>
       </Section>
 
@@ -1228,12 +1247,8 @@ function EvidenceVaultView({
 
 function MethodologyView({
   drivers,
-  citationMap,
-  onCitationClick,
 }: {
   drivers: ReleaseReadinessMethodDriver[];
-  citationMap: Map<string, number>;
-  onCitationClick: (id: string) => void;
 }) {
   const methodRows = [
     ["Route classification", "Direct, wrapper, residence/replacement, rent-first, and stop/reset routes.", "Private family records and raw scoring details."],
@@ -1274,6 +1289,8 @@ function MethodologyView({
           <div className="mb-5 rounded-md border border-border bg-muted/30 p-4 text-sm leading-6 text-muted-foreground">
             These records explain why a gate matters. They do not prove legal status, tax treatment, title quality,
             bank acceptance, valuation, or family authority.
+            <br />
+            Source mapping is held in Evidence Vault. Method records are not proof; they explain gate relevance.
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
             {drivers.map((driver) => (
@@ -1288,16 +1305,6 @@ function MethodologyView({
                     {cleanDisplayText(driver.releaseRead)}
                   </p>
                 ) : null}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {driver.sources.map((source) => (
-                    <SourceButton
-                      key={source.id}
-                      source={source}
-                      citationMap={citationMap}
-                      onClick={onCitationClick}
-                    />
-                  ))}
-                </div>
               </article>
             ))}
           </div>
@@ -1413,12 +1420,13 @@ export default function PrincipalReleaseReadinessSharePage({
         </nav>
 
         {activeView === "principal" ? <PrincipalRouteView payload={payload} /> : null}
+        {activeView === "linear" ? <LinearBriefView payload={payload} /> : null}
         {activeView === "route" ? <FullReportSections sections={payload.reportSections} /> : null}
         {activeView === "evidence" ? (
           <EvidenceVaultView publicSources={payload.publicSources} privateEvidence={payload.privateEvidence} />
         ) : null}
         {activeView === "methodology" ? (
-          <MethodologyView drivers={payload.methodDrivers} citationMap={citationMap} onCitationClick={openCitation} />
+          <MethodologyView drivers={payload.methodDrivers} />
         ) : null}
       </div>
 
