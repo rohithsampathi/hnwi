@@ -76,6 +76,7 @@ function cleanTranscriptText(value: string): string {
       'as a proposed London family-use acquisition with education, residence, succession, and capital-preservation claims treated as separate gates',
     )
     .replace(/\bLondon family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi, 'proposed London family-use acquisition with education, residence, succession, and capital-preservation claims treated as separate gates')
+    .replace(/\bLondon family base,\s*education\/continuity node,\s*and capital-preservation reserve\b/gi, 'London family-use, continuity, and capital-preservation claims treated as separate release gates')
     .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/g, 'principal / named family user / next-generation record')
     .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/g, 'generation-to-generation')
     .replace(/\bG1 principal\b/gi, 'principal')
