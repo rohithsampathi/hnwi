@@ -785,8 +785,9 @@ function buildInputFrameSection(payload: {
       },
       {
         label: "Approved decision posture",
-        value: payload.decision,
-        body: payload.capitalRule,
+        value: "Gated direct-buyer negotiation",
+        body:
+          "Negotiation authority only. This is not bid authority, exchange authority, deposit authority, or structure approval.",
       },
       {
         label: "Purpose boundary",

@@ -200,6 +200,15 @@ function cardValue(
   return cleanDisplayText(card?.value || card?.title || fallback);
 }
 
+function cardNote(
+  section: ReleaseReadinessShareReportSection | undefined,
+  labelNeedle: string,
+  fallback = "",
+): string {
+  const card = reportCard(section, labelNeedle);
+  return cleanDisplayText(card?.body || fallback);
+}
+
 function uniqueRows(rows: string[][], limit?: number): string[][] {
   const seen = new Set<string>();
   const output: string[][] = [];
@@ -404,10 +413,30 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
   const roadmap = reportSection(payload, "implementation-roadmap");
   const selectedRoute = payload.selectedRoute;
   const capitalCards = [
-    ["Transaction value", cardValue(capital, "transaction value", money(metrics.propertyValueUsd))],
-    ["Duty drag", cardValue(capital, "total duty drag", money(metrics.totalDutiesUsd))],
-    ["All-in before operating costs", cardValue(capital, "all-in", money(metrics.totalAcquisitionCostUsd))],
-    ["Annual carry", money(metrics.annualCarryingCostUsd)],
+    {
+      label: "Transaction value",
+      value: cardValue(capital, "transaction value", money(metrics.propertyValueUsd)),
+      note: cardNote(capital, "transaction value", "Guide-price basis converted to USD for the control case."),
+    },
+    {
+      label: "Duty drag",
+      value: cardValue(capital, "total duty drag", money(metrics.totalDutiesUsd)),
+      note: cardNote(capital, "total duty drag", "Modeled day-one duty drag before any relief is credited."),
+    },
+    {
+      label: "All-in before operating costs",
+      value: cardValue(capital, "all-in", money(metrics.totalAcquisitionCostUsd)),
+      note: cardNote(capital, "all-in", "Purchase price plus modeled day-one duty drag before operating costs."),
+    },
+    {
+      label: "Annual carry",
+      value: cardValue(capital, "annual carry", money(metrics.annualCarryingCostUsd)),
+      note: cardNote(
+        capital,
+        "annual carry",
+        "Annual operating exposure before the family approves carry owner, reporting cadence, and use policy.",
+      ),
+    },
   ];
   const principalReadoutRows = [
     [
@@ -611,7 +640,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
           </div>
           <div className="rounded-md border border-primary/25 bg-primary/5 p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Release rule</p>
-            <h3 className="mt-3 text-2xl font-semibold text-foreground">{cleanDisplayText(payload.releaseRule)}</h3>
+            <h3 className="mt-3 text-2xl font-semibold text-foreground">No bid / exchange / deposit</h3>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(payload.capitalRule)}</p>
           </div>
           <div className="rounded-md border border-amber-500/25 bg-amber-500/5 p-5">
@@ -638,16 +667,12 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
 
       <Section eyebrow="Capital consequence" title="The house is not committing only the guide price">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {capitalCards.map(([label, value]) => (
+          {capitalCards.map((card) => (
             <MetricCard
-              key={label}
-              label={label}
-              value={value}
-              note={
-                label === "Annual carry"
-                  ? "Annual operating exposure before the family approves carry owner, reporting cadence, and use policy."
-                  : "This amount becomes decision-relevant before the route has permission to harden."
-              }
+              key={card.label}
+              label={card.label}
+              value={card.value}
+              note={card.note}
             />
           ))}
         </div>
