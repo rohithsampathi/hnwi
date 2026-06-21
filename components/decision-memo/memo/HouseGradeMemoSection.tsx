@@ -3430,7 +3430,7 @@ export default function HouseGradeMemoSection({
 
         <div className="mt-5">
           <StageColumns
-            title="What The Office Must Carry In 7 / 30 / 90 Days"
+            title="Implementation Roadmap: What The Office Must Carry In 7 / 30 / 90 Days"
             description="This is the post-decision operating path. It turns the memo from insight into house carriage, with dated actions instead of founder-memory reliance."
             stages={[
               { label: 'Day 7', items: actionPath.day_7 },
