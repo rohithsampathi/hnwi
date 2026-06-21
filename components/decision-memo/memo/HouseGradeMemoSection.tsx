@@ -560,6 +560,14 @@ function fallbackContinuity(preview: Record<string, any>, releasePayload?: Relea
       : toFiniteValue(g1.retention_score) !== null
         ? `${Math.round(toFiniteValue(g1.retention_score) as number)}% retained`
         : 'Release-gated';
+  const compactOrNull = (value: unknown) => {
+    const formatted = formatUsdCompactValue(value, '');
+    return formatted && formatted !== '—' ? formatted : null;
+  };
+  const continuityRiskByLayer = (pattern: RegExp, fallback: string) => {
+    const row = releaseContinuityRows.find((item) => pattern.test(item.join(' ')));
+    return row?.[1] || fallback;
+  };
   const legacyItems = [
     {
       label: 'G1 route control',
@@ -568,18 +576,25 @@ function fallbackContinuity(preview: Record<string, any>, releasePayload?: Relea
     },
     {
       label: 'G1 -> G2 retained value',
-      value: g2.net_to_heirs_formatted || formatUsdCompactValue(g2Net),
+      value: g2.net_to_heirs_formatted || compactOrNull(g2Net) || 'Release-gated',
       detail: [g2.compatibility, g2.loss_point].filter(Boolean).join(' ') || 'Net continuity after estate drag and route friction.',
     },
     {
       label: 'G2 -> G3 without governance lock',
-      value: g3.without_structure_formatted || formatUsdCompactValue(g3Without),
-      detail: [g3.compatibility, g3.loss_point].filter(Boolean).join(' ') || 'Durable value if succession remains loose.',
+      value: g3.without_structure_formatted || compactOrNull(g3Without) || 'Unwritten risk',
+      detail:
+        [g3.compatibility, g3.loss_point].filter(Boolean).join(' ') ||
+        continuityRiskByLayer(
+          /fairness|future-beneficiary|use boundary|decision record/i,
+          'Durable value is not release-ready if succession, fairness, use, veto, sale/refinance, and carry rules remain unwritten.',
+        ),
     },
     {
       label: 'G2 -> G3 with governance lock',
-      value: withStructure.with_structure_formatted || formatUsdCompactValue(g3With),
-      detail: [withStructure.compatibility, withStructure.loss_point].filter(Boolean).join(' ') || 'Durable value after governance and succession are locked before close.',
+      value: withStructure.with_structure_formatted || compactOrNull(g3With) || 'Governance-gated',
+      detail:
+        [withStructure.compatibility, withStructure.loss_point].filter(Boolean).join(' ') ||
+        'Durable value is release-ready only after use, carry, fairness, veto, sale/refinance, retrieval owner, and decision-record location are written.',
     },
   ];
   const legacyHasValues = legacyItems.some((item) => {
