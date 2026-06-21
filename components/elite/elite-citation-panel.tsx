@@ -47,6 +47,7 @@ interface EliteCitationPanelProps {
   shareId?: string
   hideUnavailablePublicSources?: boolean
   preferRemoteSources?: boolean
+  disableRemoteFetch?: boolean
 }
 
 export function EliteCitationPanel({
@@ -58,7 +59,8 @@ export function EliteCitationPanel({
   preloadedSources,
   shareId,
   hideUnavailablePublicSources = false,
-  preferRemoteSources = false
+  preferRemoteSources = false,
+  disableRemoteFetch = false
 }: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
   const [loadingCitationId, setLoadingCitationId] = useState<string | null>(null)
@@ -138,62 +140,70 @@ export function EliteCitationPanel({
         setDevelopments(prev => new Map(prev).set(normalizedCitationId, preloadedSource))
       }
 
-      setLoading(!preloadedSource)
-      setLoadingCitationId(normalizedCitationId)
+      setLoading(!preloadedSource && !disableRemoteFetch)
+      setLoadingCitationId(disableRemoteFetch ? null : normalizedCitationId)
 
-      try {
-        const controller = new AbortController()
-        const timeoutId = window.setTimeout(() => controller.abort(), 12000)
-        const shareQuery = shareId ? `?share_id=${encodeURIComponent(shareId)}` : ''
-        const response = await fetch(`/api/developments/public/${encodeURIComponent(normalizedCitationId)}${shareQuery}`, {
-          signal: controller.signal,
-        })
-        window.clearTimeout(timeoutId)
-
-        if (response.ok) {
-          const payload = await response.json()
-          const newDev = buildCitationSourceDevelopment(payload, normalizedCitationId)
-
-          if (newDev) {
-            resolvedSource = newDev
-            setDevelopments(prev => new Map(prev).set(normalizedCitationId, newDev))
-          } else if (!preloadedSource) {
-            setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
-          }
-
-          // Extract DEV IDs from this development but don't fetch them
-          const devIdsInSummary = extractDevIds(newDev?.summary || preloadedSource?.summary || "")
-
-          if (devIdsInSummary.length > 0) {
-            const newCitations = [...allCitations]
-            const newCitationMap = new Map(localCitationMap)
-            let nextNumber = Math.max(...allCitations.map(c => c.number), 0) + 1
-
-            devIdsInSummary.forEach(devId => {
-              if (!newCitationMap.has(devId)) {
-                newCitationMap.set(devId, nextNumber)
-                newCitations.push({
-                  id: devId,
-                  number: nextNumber,
-                  originalText: `[Dev ID: ${devId}]`
-                })
-                nextNumber++
-              }
-            })
-
-            setAllCitations(uniqueCitations(newCitations))
-            setLocalCitationMap(newCitationMap)
-          }
-        } else if (!preloadedSource) {
-          setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
-        }
-      } catch (err) {
+      if (disableRemoteFetch) {
         if (!preloadedSource) {
           setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
         }
-      } finally {
         setLoading(false)
         setLoadingCitationId(null)
+      } else {
+        try {
+          const controller = new AbortController()
+          const timeoutId = window.setTimeout(() => controller.abort(), 12000)
+          const shareQuery = shareId ? `?share_id=${encodeURIComponent(shareId)}` : ''
+          const response = await fetch(`/api/developments/public/${encodeURIComponent(normalizedCitationId)}${shareQuery}`, {
+            signal: controller.signal,
+          })
+          window.clearTimeout(timeoutId)
+
+          if (response.ok) {
+            const payload = await response.json()
+            const newDev = buildCitationSourceDevelopment(payload, normalizedCitationId)
+
+            if (newDev) {
+              resolvedSource = newDev
+              setDevelopments(prev => new Map(prev).set(normalizedCitationId, newDev))
+            } else if (!preloadedSource) {
+              setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
+            }
+
+            // Extract DEV IDs from this development but don't fetch them
+            const devIdsInSummary = extractDevIds(newDev?.summary || preloadedSource?.summary || "")
+
+            if (devIdsInSummary.length > 0) {
+              const newCitations = [...allCitations]
+              const newCitationMap = new Map(localCitationMap)
+              let nextNumber = Math.max(...allCitations.map(c => c.number), 0) + 1
+
+              devIdsInSummary.forEach(devId => {
+                if (!newCitationMap.has(devId)) {
+                  newCitationMap.set(devId, nextNumber)
+                  newCitations.push({
+                    id: devId,
+                    number: nextNumber,
+                    originalText: `[Dev ID: ${devId}]`
+                  })
+                  nextNumber++
+                }
+              })
+
+              setAllCitations(uniqueCitations(newCitations))
+              setLocalCitationMap(newCitationMap)
+            }
+          } else if (!preloadedSource) {
+            setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
+          }
+        } catch (err) {
+          if (!preloadedSource) {
+            setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
+          }
+        } finally {
+          setLoading(false)
+          setLoadingCitationId(null)
+        }
       }
     }
 
@@ -216,7 +226,7 @@ export function EliteCitationPanel({
 
     // Select the citation
     onCitationSelect(normalizedCitationId)
-  }, [allCitations, developments, effectivePreloadedSources, hideUnavailablePublicSources, localCitationMap, onCitationSelect, shareId])
+  }, [allCitations, developments, disableRemoteFetch, effectivePreloadedSources, hideUnavailablePublicSources, localCitationMap, onCitationSelect, shareId])
 
   // Auto-load the selected citation when panel opens (if one is selected)
   useEffect(() => {

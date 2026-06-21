@@ -294,16 +294,20 @@ function citationIdsFor(
     ids.push(value);
   };
 
-  sharePayload.methodDrivers?.forEach((driver) => {
-    const haystack = [driver.title, driver.driver, driver.releaseRead].filter(Boolean).join(' ');
+  sharePayload.publicSources?.forEach((source) => {
+    matcher.lastIndex = 0;
+    const haystack = [
+      source.category,
+      source.institution,
+      source.title,
+      source.claim,
+      source.boundary,
+      source.url,
+    ].filter(Boolean).join(' ');
     if (matcher.test(haystack)) {
-      driver.sources?.forEach((source) => push(source.id));
+      push(source.id);
     }
   });
-
-  if (!ids.length) {
-    sharePayload.citations?.forEach((citation) => push(citation.id));
-  }
 
   return ids.slice(0, limit);
 }

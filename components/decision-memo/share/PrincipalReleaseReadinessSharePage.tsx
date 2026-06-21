@@ -7,6 +7,8 @@ import { ArrowUpRight, ClipboardCheck } from "lucide-react";
 import { EliteCitationPanel } from "@/components/elite/elite-citation-panel";
 import { useCitationManager } from "@/hooks/use-citation-manager";
 import { formatUsdCompact } from "@/lib/decision-memo/route-intelligence-v2";
+import type { Citation } from "@/lib/parse-dev-citations";
+import type { CitationSourceDevelopment } from "@/lib/development-citation";
 import type {
   ReleaseReadinessMethodDriver,
   ReleaseReadinessMethodSource,
@@ -169,6 +171,40 @@ function cleanDisplayText(value: unknown): string {
 
 function citationNumber(citationMap: Map<string, number>, id: string): number | null {
   return citationMap.get(id) ?? citationMap.get(id.toLowerCase()) ?? null;
+}
+
+function releaseReadinessSourceCitations(payload: ReleaseReadinessSharePayload | null): Citation[] {
+  return (payload?.publicSources ?? []).map((source, index) => ({
+    id: source.id,
+    number: index + 1,
+    originalText: `[${index + 1}]`,
+  }));
+}
+
+function releaseReadinessPreloadedSources(
+  payload: ReleaseReadinessSharePayload | null,
+): Map<string, CitationSourceDevelopment> {
+  const sources = new Map<string, CitationSourceDevelopment>();
+  (payload?.publicSources ?? []).forEach((source) => {
+    const claim = source.claim || "Supports a public claim used in this release-readiness review.";
+    const boundary = source.boundary || "Public source anchor; private file clearance remains separate.";
+    sources.set(source.id, {
+      id: source.id,
+      title: source.title || source.institution || "Public source evidence",
+      description: claim,
+      industry: source.category || "Public source register",
+      product: source.institution || undefined,
+      date: source.date || undefined,
+      summary: [
+        `Claim supported: ${claim}`,
+        `Decision boundary: ${boundary}`,
+        source.url ? `Source URL: ${source.url}` : "",
+      ].filter(Boolean).join("\n\n"),
+      summaryLabel: "Source Evidence",
+      url: source.url || undefined,
+    });
+  });
+  return sources;
 }
 
 function reportSection(
@@ -1318,7 +1354,8 @@ export default function PrincipalReleaseReadinessSharePage({
   const requestedView = searchParams.get("view");
   const normalizedRequestedView = normalizeViewMode(requestedView);
   const [activeView, setActiveView] = useState<ViewMode>(normalizedRequestedView);
-  const citationSeeds = useMemo(() => payload?.citations ?? [], [payload]);
+  const citationSeeds = useMemo(() => releaseReadinessSourceCitations(payload), [payload]);
+  const preloadedSources = useMemo(() => releaseReadinessPreloadedSources(payload), [payload]);
   const {
     citations,
     setCitations,
@@ -1430,8 +1467,9 @@ export default function PrincipalReleaseReadinessSharePage({
           onClose={closePanel}
           onCitationSelect={setSelectedCitationId}
           citationMap={citationMap}
+          preloadedSources={preloadedSources}
           shareId={payload.reference}
-          preferRemoteSources
+          disableRemoteFetch
         />
       ) : null}
     </main>

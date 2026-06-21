@@ -353,6 +353,30 @@ function collectMemoSourceRecords(previewData: unknown): MemoSourceRecord[] {
   return records;
 }
 
+function releaseReadinessPublicSourceDevelopment(
+  source: ReleaseReadinessSharePayload['publicSources'][number],
+): CitationSourceDevelopment {
+  const claim = source.claim || 'Supports a public claim used in this release-readiness review.';
+  const boundary = source.boundary || 'Public source anchor; private file clearance remains separate.';
+  const summary = [
+    `Claim supported: ${claim}`,
+    `Decision boundary: ${boundary}`,
+    source.url ? `Source URL: ${source.url}` : '',
+  ].filter(Boolean).join('\n\n');
+
+  return {
+    id: source.id,
+    title: source.title || source.institution || 'Public source evidence',
+    description: claim,
+    industry: source.category || 'Public source register',
+    product: source.institution || undefined,
+    date: source.date || undefined,
+    summary,
+    summaryLabel: 'Source Evidence',
+    url: source.url || undefined,
+  };
+}
+
 function sourcePayloadText(payload: Record<string, unknown>, fields: string[], fallback = ''): string {
   for (const field of fields) {
     const value = payload[field];
@@ -1033,36 +1057,43 @@ export default function DecisionMemoAuditClientPage({
       }
     };
 
-    sourceRecords.forEach(({ id }) => {
-      addDevId(id);
-    });
-
-    opportunities.forEach((opp) => {
-      if (opp.dev_id) {
-        addDevId(String(opp.dev_id));
-      }
-      // Also extract from analysis text — these contain [Dev ID: XXX] references
-      const analysisFields = [opp.hnwi_analysis, opp.expected_return, opp.opportunity_narrative];
-      analysisFields.forEach((field) => {
-        if (typeof field === 'string') {
-          extractDevIds(field).forEach(addDevId);
-        }
+    if (isReleaseReadinessReviewPath && principalSharePayload?.publicSources?.length) {
+      principalSharePayload.publicSources.forEach((source) => {
+        addDevId(source.id);
+        preloadedSources.set(source.id, releaseReadinessPublicSourceDevelopment(source));
       });
-    });
+    } else {
+      sourceRecords.forEach(({ id }) => {
+        addDevId(id);
+      });
 
-    if (previewData?.all_mistakes) {
-      (previewData.all_mistakes as Array<{ dev_id?: string; [key: string]: unknown }>).forEach((mistake: { dev_id?: string; [key: string]: unknown }) => {
-        if (mistake.dev_id) {
-          addDevId(String(mistake.dev_id));
+      opportunities.forEach((opp) => {
+        if (opp.dev_id) {
+          addDevId(String(opp.dev_id));
+        }
+        // Also extract from analysis text — these contain [Dev ID: XXX] references
+        const analysisFields = [opp.hnwi_analysis, opp.expected_return, opp.opportunity_narrative];
+        analysisFields.forEach((field) => {
+          if (typeof field === 'string') {
+            extractDevIds(field).forEach(addDevId);
+          }
+        });
+      });
+
+      if (previewData?.all_mistakes) {
+        (previewData.all_mistakes as Array<{ dev_id?: string; [key: string]: unknown }>).forEach((mistake: { dev_id?: string; [key: string]: unknown }) => {
+          if (mistake.dev_id) {
+            addDevId(String(mistake.dev_id));
+          }
+        });
+      }
+
+      principalSharePayload?.citations?.forEach((citation) => {
+        if (citation.id) {
+          addDevId(String(citation.id));
         }
       });
     }
-
-    principalSharePayload?.citations?.forEach((citation) => {
-      if (citation.id) {
-        addDevId(String(citation.id));
-      }
-    });
 
     const citationList: Citation[] = allDevIds.map((devId, index) => ({
       id: devId,
@@ -1083,7 +1114,7 @@ export default function DecisionMemoAuditClientPage({
         ? rawPrecedentCount
         : sourceRecords.length,
     };
-  }, [backendData, principalSharePayload, resolvedSurfaceData]);
+  }, [backendData, isReleaseReadinessReviewPath, principalSharePayload, resolvedSurfaceData]);
 
   // Sync computed citations with useCitationManager (for EliteCitationPanel)
   useEffect(() => {
@@ -2114,7 +2145,8 @@ export default function DecisionMemoAuditClientPage({
             citationMap={computedCitationMap}
             preloadedSources={computedPreloadedSources}
             shareId={publicMemoId}
-            preferRemoteSources
+            preferRemoteSources={!isReleaseReadinessReviewPath}
+            disableRemoteFetch={isReleaseReadinessReviewPath}
           />
         </div>
       )}
@@ -2130,7 +2162,8 @@ export default function DecisionMemoAuditClientPage({
             citationMap={computedCitationMap}
             preloadedSources={computedPreloadedSources}
             shareId={publicMemoId}
-            preferRemoteSources
+            preferRemoteSources={!isReleaseReadinessReviewPath}
+            disableRemoteFetch={isReleaseReadinessReviewPath}
           />
         </AnimatePresence>
       )}
