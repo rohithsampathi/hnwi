@@ -785,6 +785,20 @@ function RouteRead({ route }: { route: RouteIntelligenceOptionV2 }) {
 }
 
 function BuyerProfileMatrix({ matrix }: { matrix: BuyerProfileRemissionMatrix }) {
+  const thirdResidentialDisplay = (row: BuyerProfileRemissionMatrix['matrix'][number]) => {
+    const second = routeDisplayText(row.secondResidential).trim();
+    const third = routeDisplayText(row.thirdAndSubsequent).trim();
+    if (
+      second &&
+      third &&
+      second === third &&
+      /company|non-natural|entity|wrapper/i.test(row.profile)
+    ) {
+      return 'Same high-rate exposure; no scaling benefit.';
+    }
+    return third;
+  };
+
   return (
     <div className="rounded-lg border border-border/25 bg-card/40 p-5">
       <div className="grid gap-4 lg:grid-cols-[1fr_1.1fr]">
@@ -815,7 +829,7 @@ function BuyerProfileMatrix({ matrix }: { matrix: BuyerProfileRemissionMatrix })
               <div className="col-span-2 font-medium text-foreground">{routeDisplayText(row.profile)}</div>
               <div className="col-span-1 text-foreground">{row.firstResidential}</div>
               <div className="col-span-1 text-foreground">{row.secondResidential}</div>
-              <div className="col-span-1 text-foreground">{row.thirdAndSubsequent}</div>
+              <div className="col-span-1 text-foreground">{thirdResidentialDisplay(row)}</div>
               <div className="col-span-4 leading-relaxed text-muted-foreground">{routeDisplayText(row.releaseRead)}</div>
               <div className="col-span-3 leading-relaxed text-muted-foreground">{routeDisplayText(row.evidenceRequired)}</div>
             </div>
