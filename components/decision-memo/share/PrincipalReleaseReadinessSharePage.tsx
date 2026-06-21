@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, ClipboardCheck } from "lucide-react";
 import { EliteCitationPanel } from "@/components/elite/elite-citation-panel";
 import { useCitationManager } from "@/hooks/use-citation-manager";
@@ -1349,7 +1349,6 @@ export default function PrincipalReleaseReadinessSharePage({
   payload,
   initialSurfaceError,
 }: PrincipalReleaseReadinessSharePageProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedView = searchParams.get("view");
   const normalizedRequestedView = normalizeViewMode(requestedView);
@@ -1375,10 +1374,33 @@ export default function PrincipalReleaseReadinessSharePage({
     setActiveView(normalizedRequestedView);
   }, [normalizedRequestedView]);
 
-  const changeView = (view: ViewMode) => {
+  useEffect(() => {
+    const syncViewFromUrl = () => {
+      setActiveView(normalizeViewMode(new URLSearchParams(window.location.search).get("view")));
+    };
+
+    window.addEventListener("popstate", syncViewFromUrl);
+    return () => window.removeEventListener("popstate", syncViewFromUrl);
+  }, []);
+
+  const updateUrlView = useCallback((view: ViewMode) => {
+    const params = new URLSearchParams(window.location.search);
+    if (view === "principal") {
+      params.delete("view");
+    } else {
+      params.set("view", view);
+    }
+
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, []);
+
+  const changeView = useCallback((view: ViewMode) => {
+    if (view === activeView) return;
     setActiveView(view);
-    router.replace(`/release-readiness/review/${encodeURIComponent(reference)}?view=${view}`, { scroll: false });
-  };
+    updateUrlView(view);
+  }, [activeView, updateUrlView]);
 
   if (initialSurfaceError && !payload) {
     return (
