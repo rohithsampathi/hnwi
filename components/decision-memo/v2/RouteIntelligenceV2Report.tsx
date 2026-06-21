@@ -1326,6 +1326,26 @@ export default function RouteIntelligenceV2Report({
           <StressSignals route={selectedRoute} />
         </section>
 
+        {selectedFullMemo && !isOutcomeOnlyTrack ? (
+          <>
+            <RouteShareSectionPanel
+              section={crisisSection}
+              citationIds={crisisCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              cardLimit={10}
+            />
+
+            <RouteShareSectionPanel
+              section={antiFragilitySection}
+              citationIds={crisisCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              cardLimit={8}
+            />
+          </>
+        ) : null}
+
         {showFullMemoFallbackPanels ? (
           <>
             <TaxDutyPanel
