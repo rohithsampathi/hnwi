@@ -27,9 +27,11 @@ import {
   type BuyerProfileRemissionMatrix,
   formatUsdCompact,
   type PrincipalValueGate,
+  type RouteEvidenceGate,
   type RouteDriverRegisterItem,
   type RouteIntelligenceOptionV2,
   type RouteScenarioPoint,
+  type RouteStressSignal,
   type RouteIntelligenceV2,
 } from '@/lib/decision-memo/route-intelligence-v2';
 
