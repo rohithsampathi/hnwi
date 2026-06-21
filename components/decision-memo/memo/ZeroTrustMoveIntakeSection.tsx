@@ -109,6 +109,7 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
   const bankingRails = asRecord(intake.banking_rails);
   const adviserInputsFromNative = asRecords(intake.adviser_inputs);
   const adviserInputs = adviserInputsFromNative.length ? adviserInputsFromNative : asRecords(intake.adviser_asks);
+  const adviserConfirmationCount = adviserInputs.length || 6;
   const missing = asList(evidenceStates.missing).length ? asList(evidenceStates.missing) : asList(intake.missing_gates);
   const contradicted = asList(evidenceStates.contradicted).length ? asList(evidenceStates.contradicted) : asList(intake.contradictions);
   const openRecordGates = records
@@ -164,7 +165,7 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
           <div className="border border-border bg-background p-4">
             <CheckCircle2 className="h-5 w-5 text-primary" />
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Adviser Confirmations</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">{adviserInputs.length} desks</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{adviserConfirmationCount} desks</p>
           </div>
         </div>
       </div>

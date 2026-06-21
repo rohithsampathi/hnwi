@@ -2246,6 +2246,7 @@ export default function HouseGradeMemoSection({
     })();
 
   const corridorLabel = [sourceJurisdiction, destinationJurisdiction].filter(Boolean).join(' → ') || 'the corridor';
+  const corridorReadLabel = corridorLabel === 'the corridor' ? 'this corridor' : corridorLabel;
   const heirManagement = preview.heir_management_data || {};
   const hasCrossBorderAudit = Boolean(crossBorderAudit?.executive_summary || crossBorderAudit?.acquisition_audit);
   const hasTransparency =
@@ -2749,7 +2750,7 @@ export default function HouseGradeMemoSection({
       label: 'Route-Pattern Source Records',
       value: routePatternSourceCount ? `${routePatternSourceCount}` : 'Evidence gated',
       displayValue: routePatternSourceCount ? `${routePatternSourceCount.toLocaleString()}` : 'Evidence gated',
-      detail: `${corridorLabel} route-pattern source records and corridor-adjacent purchase cases informing why each release gate matters.`,
+      detail: `${corridorReadLabel} route-pattern source records and corridor-adjacent purchase cases informing why each release gate matters.`,
     },
     {
       label: 'Current Decision Window',
@@ -3223,7 +3224,7 @@ export default function HouseGradeMemoSection({
                 rows={marketSignalRows}
                 tone="gold"
                 embedded
-                description={`This is the source base behind the current ${corridorLabel} read: route-pattern source records, timing window, market file depth, and evidence lock.`}
+                description={`This is the source base behind the current ${corridorReadLabel} read: route-pattern source records, timing window, market file depth, and evidence lock.`}
               />
               <EditorialSignalRail
                 title="Resilience Read"
@@ -3310,7 +3311,7 @@ export default function HouseGradeMemoSection({
         {sectionHeader(
           'Chapter V',
           'Continuity, Succession, And Office Carry',
-          `A serious memo does not stop at recommendation. It shows what ${routeLabel} means if the principal dies or loses capacity, what the heirs actually inherit, and what the office must carry in the next ${decisionWindowLabel} so ${topContinuityRisk} never becomes permanent house friction.`,
+          `A serious memo does not stop at recommendation. It shows what ${routeLabel} means if the principal dies or loses capacity, what the heirs actually inherit, and what the office must record now so use, carry, fairness, veto, sale/refinance, and decision memory do not become permanent family friction.`,
           <GitBranch className="h-5 w-5" />,
         )}
 
