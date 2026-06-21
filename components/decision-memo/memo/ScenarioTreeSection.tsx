@@ -105,7 +105,9 @@ function displayBranchMetric(branch: ScenarioTreeData['branches'][0], expectedVa
   const explicitDisplay = readString((branch as any).display_value);
   if (explicitDisplay) return explicitDisplay;
   if (expectedValue === 0) {
-    return readString(branch.expected_value_note) || 'Qualitative route signal';
+    if (branch.name === 'DO_NOT_PROCEED') return 'Capital preserved';
+    if (branch.name === 'PROCEED_NOW') return 'Unreleased route';
+    return 'Qualitative route signal';
   }
   return formatScenarioMetricValue(expectedValue);
 }
@@ -617,6 +619,8 @@ function BranchCard({
   const conditions = Array.isArray(branch.conditions) ? branch.conditions : [];
   const expectedValue = toNumericValue(branch.expected_value) ?? 0;
   const metricDisplay = displayBranchMetric(branch, expectedValue);
+  const expectedValueNote = readString(branch.expected_value_note);
+  const shouldShowExpectedValueNote = Boolean(expectedValueNote && expectedValueNote !== metricDisplay);
   const strength = toNumericValue(branch.recommendation_strength) ?? 0.5;
   const verdict = readString(branch.verdict) || 'Decision branch pending final confirmation.';
 
@@ -667,9 +671,9 @@ function BranchCard({
         <p className={memoNumberClass('metric', expectedValue >= 0 ? 'default' : 'muted')}>
           {metricDisplay}
         </p>
-        {branch.expected_value_note && (
+        {shouldShowExpectedValueNote && (
           <p className="text-sm text-muted-foreground/60 italic mt-2 leading-relaxed">
-            {branch.expected_value_note}
+            {expectedValueNote}
           </p>
         )}
       </div>
