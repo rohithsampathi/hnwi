@@ -50,6 +50,17 @@ interface CitationDevelopmentCardProps {
   citationMap?: Map<string, number>
 }
 
+function formatDevelopmentDate(value?: string): string {
+  if (!value) return "Date not available"
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.valueOf())) return value
+  return parsed.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  })
+}
+
 export function CitationDevelopmentCard({ development, citationNumber, onCitationClick, citationMap }: CitationDevelopmentCardProps) {
   const { theme } = useTheme()
   const analysis = formatAnalysis(development.summary)
@@ -97,11 +108,7 @@ export function CitationDevelopmentCard({ development, citationNumber, onCitatio
                   ? "text-gray-200"
                   : "text-gray-700"
               }`}>
-                {development.date ? new Date(development.date).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric"
-                }) : "Date not available"}
+                {formatDevelopmentDate(development.date)}
               </div>
 
               <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">

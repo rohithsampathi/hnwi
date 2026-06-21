@@ -215,13 +215,14 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
     .slice(0, 6);
   const openGateNames = [...missing, ...contradicted].length ? [...missing, ...contradicted] : openRecordNames;
   const openGateCount = openGateNames.length;
+  const adviserConfirmationCount = adviserInputs.length || 6;
   const releaseDomainRead = recordNames.join(' / ') || 'Evidence domains are assigned in the release file';
   const openGateRead = openGateNames.slice(0, 2).join(' / ') || 'Owner assignment complete; release remains open until signed evidence is received.';
 
   const metrics = [
     { label: 'Release Domains', value: String(records.length), read: releaseDomainRead },
     { label: 'Release Gate Status', value: openGateCount ? `${openGateCount} Open` : 'Evidence Pending', read: openGateRead },
-    { label: 'Adviser Confirmations', value: String(adviserInputs.length), read: 'Property, tax, bank, succession, insurance, and operator desks' },
+    { label: 'Adviser Confirmations', value: String(adviserConfirmationCount), read: 'Property, tax, bank, succession, insurance, and operator desks' },
   ];
 
   return (

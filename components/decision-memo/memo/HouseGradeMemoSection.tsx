@@ -625,7 +625,7 @@ function fallbackContinuity(preview: Record<string, any>, releasePayload?: Relea
         topTrigger.description ||
         (releaseTopRow ? `${releaseTopRow[0]}: ${releaseTopRow[1]}` : undefined),
       timeline: topTrigger.timeline || (releaseTopRow ? 'Before bid release or exchange' : 'Before exchange'),
-      at_risk: topTrigger.at_risk || formatUsdCompactValue(topTrigger.dollars_at_risk) || (releaseTopRow ? 'Implied entitlement and retrieval failure' : undefined),
+      at_risk: topTrigger.at_risk || compactOrNull(topTrigger.dollars_at_risk) || (releaseTopRow ? 'Implied entitlement and retrieval failure' : undefined),
       mitigation:
         topTrigger.mitigation ||
         heir.next_action ||
