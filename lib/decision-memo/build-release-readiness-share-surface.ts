@@ -1076,11 +1076,11 @@ function buildCrisisSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseR
 
   return reportSection({
     id: "crisis-resilience",
-    eyebrow: "Crisis resilience",
-    title: "The purchase must survive live crisis regimes before exchange",
+    eyebrow: "Crisis resilience and anti-fragility read",
+    title: "Crisis Resilience And Anti-Fragility Read",
     intro: sanitizeShareText(
       overall.summary ??
-        "The route cannot release until bank, source, sanctions, insurance, security, travel, technology, labor-income, and absence-readiness controls are evidenced.",
+        "The route cannot release until bank, source, sanctions, insurance, security, travel, AI asset repricing, war / sanctions, labor-income, and absence-readiness controls are evidenced.",
     ),
     cards: [
       {

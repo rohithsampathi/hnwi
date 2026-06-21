@@ -75,8 +75,6 @@ function routeDisplayText(value: unknown): string {
     .replace(/\bPressure Test\b/gi, 'Release Readiness Review')
     .replace(/\bpressure-test(?:ed|ing)?\b/gi, 'release-readiness reviewed')
     .replace(/\bpressure\b/gi, 'readiness')
-    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/g, 'generation-to-generation')
-    .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/g, 'generation-to-generation')
     .replace(/\bG1 principal\b/gi, 'principal')
     .replace(/\bG2 son\b/gi, 'named family user')
     .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, 'named family-fairness owner')
@@ -94,6 +92,8 @@ function routeDisplayText(value: unknown): string {
     .replace(/\ba undocumented family expectation\b/gi, 'an undocumented family expectation')
     .replace(/\bDestination tax counsel\b/gi, 'UK tax counsel')
     .replace(/\bDestination property counsel\b/gi, 'UK property counsel')
+    .replace(/\bAI\/technology wealth repricing\b/gi, 'AI asset repricing / technology wealth repricing')
+    .replace(/\bGulf conflict,\s*sanctions\b/gi, 'War / sanctions, Gulf conflict')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -353,6 +353,28 @@ function ReviewerLayerNotice() {
           boundary, kept separate from the principal decision page.
         </p>
       </div>
+    </section>
+  );
+}
+
+function PrimarySourceAnchor({
+  ids,
+  onCitationClick,
+  citationMap,
+}: {
+  ids: string[];
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
+}) {
+  if (!ids.length) return null;
+
+  return (
+    <section className="rounded-lg border border-border/25 bg-card/35 p-4 sm:p-5">
+      <p className="text-xs uppercase tracking-[0.22em] text-gold/75">Primary source anchor</p>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        Target listing and source-register row for the Balfour Place acquisition.
+        <InlineCitationButtons ids={ids} onCitationClick={onCitationClick} citationMap={citationMap} />
+      </p>
     </section>
   );
 }
@@ -1211,7 +1233,6 @@ export default function RouteIntelligenceV2Report({
     if (!selectedRoute || !fullMemo) return null;
     return typeof fullMemo === 'function' ? fullMemo(selectedRoute) : fullMemo;
   }, [fullMemo, selectedRoute]);
-  const showFullMemoFallbackPanels = !selectedFullMemo || isOutcomeOnlyTrack;
   const [sourceJurisdiction, destinationJurisdiction] = useMemo(() => {
     const parts = intelligence.corridor.split(/\s*(?:->|→)\s*/);
     return [parts[0] || 'Source', parts[1] || 'Destination'];
@@ -1226,6 +1247,7 @@ export default function RouteIntelligenceV2Report({
   const continuityCitationIds = citationIdsFor(sharePayload, /family|fairness|authority|generation|succession|continuity|residence|education/i, 4);
   const crisisCitationIds = citationIdsFor(sharePayload, /bank|rail|source|kyc|sof|sow|crisis|war|sanction|technology|ai|insurance/i, 4);
   const marketCitationIds = citationIdsFor(sharePayload, /market|price|bid|mayfair|seller|trophy|property/i, 4);
+  const primaryListingCitationIds = citationIdsFor(sharePayload, /rightmove|ob private|balfour place|target listing/i, 1);
 
   if (!selectedRoute) {
     return (
@@ -1277,6 +1299,12 @@ export default function RouteIntelligenceV2Report({
         <ReviewerLayerNotice />
 
         <ZeroTrustRouteSummary data={zeroTrustMoveIntake} />
+
+        <PrimarySourceAnchor
+          ids={primaryListingCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
       <NativeRouteDriversPanel
         intelligence={intelligence}
@@ -1331,27 +1359,7 @@ export default function RouteIntelligenceV2Report({
           <StressSignals route={selectedRoute} />
         </section>
 
-        {selectedFullMemo && !isOutcomeOnlyTrack ? (
-          <>
-            <RouteShareSectionPanel
-              section={crisisSection}
-              citationIds={crisisCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-              cardLimit={10}
-            />
-
-            <RouteShareSectionPanel
-              section={antiFragilitySection}
-              citationIds={crisisCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-              cardLimit={8}
-            />
-          </>
-        ) : null}
-
-        {showFullMemoFallbackPanels ? (
+        {!isOutcomeOnlyTrack ? (
           <>
             <TaxDutyPanel
               route={selectedRoute}

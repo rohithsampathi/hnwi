@@ -713,9 +713,9 @@ function EvidenceMethodologyView({
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Official and adviser-facing rows supporting SDLT, residence, IHT, ATED, and reporting boundaries.</p>
           </div>
           <div className="rounded-md border border-border bg-background/60 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Private gates</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Private evidence index</p>
             <p className="mt-2 text-3xl font-bold text-foreground">{privateEvidenceCount}</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">Banking, family authority, adviser, and release gates carried into the packet.</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Banking, family authority, adviser, and release evidence classes carried into the packet.</p>
           </div>
         </div>
       </section>

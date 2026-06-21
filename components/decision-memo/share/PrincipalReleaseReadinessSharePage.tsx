@@ -1252,7 +1252,7 @@ function EvidenceVaultView({
         </div>
       </Section>
 
-      <Section eyebrow="Private evidence index" title="Redacted document classes, owners, and release use">
+      <Section eyebrow="PRIVATE EVIDENCE INDEX" title="Redacted document classes, owners, and release use">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {privateEvidence.map((item, index) => (
             <article key={`${item.label}-${index}`} className="rounded-md border border-border bg-card/70 p-5">

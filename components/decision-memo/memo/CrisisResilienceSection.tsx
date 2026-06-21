@@ -551,10 +551,10 @@ export function CrisisResilienceSection({
         transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
       >
         <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
-          Crisis Resilience And Bank Readiness Review
+          Crisis Resilience And Anti-Fragility Read
         </h2>
         <p className="text-sm text-muted-foreground/70 mb-4">
-          Banking acceptance, market shock, AI platform dependency, labor displacement, conflict, sanctions, settlement, and family-office absence readiness before release.
+          Banking acceptance, market shock, AI asset repricing, labor displacement, war / sanctions, settlement, and family-office absence readiness before release.
         </p>
         <div className="h-px bg-border" />
       </motion.div>
