@@ -60,6 +60,12 @@ interface Opportunity {
   product_aquarium_native?: boolean;
   product_aquarium_privacy?: string;
   product_aquarium_packet?: unknown;
+  product_aquarium_vector_text?: string;
+  product_aquarium_writeback_status?: string;
+  product_aquarium_repair_outcome_atom?: string;
+  product_aquarium_graph_edge_shape?: string[];
+  shodhana_product_aquarium_repair_packet?: unknown;
+  shodhana_latest_outcome_atom?: string;
   aquarium_learning_atoms?: unknown[];
   source_lineage?: unknown;
   granthika_graph_edges?: unknown[];
@@ -309,6 +315,9 @@ const transformOpportunityToCity = (
     opp.decision_memo_trigger,
     opp.pressure_test_prompt,
     opp.outcome_atom,
+    structuredOpportunitySummaryText(opp.product_aquarium_packet),
+    structuredOpportunitySummaryText(opp.shodhana_product_aquarium_repair_packet),
+    opp.product_aquarium_vector_text,
     opp.summary,
     opp.description,
     opp.hbyte_summary,
@@ -408,6 +417,12 @@ const transformOpportunityToCity = (
     product_aquarium_native: opp.product_aquarium_native,
     product_aquarium_privacy: opp.product_aquarium_privacy,
     product_aquarium_packet: opp.product_aquarium_packet,
+    product_aquarium_vector_text: opp.product_aquarium_vector_text,
+    product_aquarium_writeback_status: opp.product_aquarium_writeback_status,
+    product_aquarium_repair_outcome_atom: opp.product_aquarium_repair_outcome_atom,
+    product_aquarium_graph_edge_shape: opp.product_aquarium_graph_edge_shape,
+    shodhana_product_aquarium_repair_packet: opp.shodhana_product_aquarium_repair_packet,
+    shodhana_latest_outcome_atom: opp.shodhana_latest_outcome_atom,
     aquarium_learning_atoms: opp.aquarium_learning_atoms,
     source_lineage: opp.source_lineage,
     granthika_graph_edges: opp.granthika_graph_edges,

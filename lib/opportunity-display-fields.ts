@@ -7,6 +7,12 @@ type OpportunityDisplaySource = Partial<{
   pressure_test_prompt: unknown
   reusable_product_insight: unknown
   outcome_atom: unknown
+  product_aquarium_packet: unknown
+  product_aquarium_vector_text: unknown
+  product_aquarium_writeback_status: unknown
+  shodhana_product_aquarium_repair_packet: unknown
+  shodhana_latest_outcome_atom: unknown
+  product_aquarium_repair_outcome_atom: unknown
   analysis: unknown
   elite_pulse_analysis: unknown
   full_analysis: unknown
@@ -36,6 +42,12 @@ type OpportunityDisplaySource = Partial<{
   value_currency: unknown
   value_usd: unknown
   minimum_investment_usd: unknown
+  source: unknown
+  connection_source: unknown
+  source_collection: unknown
+  _source_collection: unknown
+  lineage_source_collection: unknown
+  source_surface: unknown
 }>
 
 const asCleanText = (value: unknown): string => {
@@ -54,6 +66,60 @@ const firstText = (...values: unknown[]): string => {
     if (text) return text
   }
   return ''
+}
+
+const CENTRAL_SUMMARY_PENDING = 'Command Centre summary pending from centralized backend packet.'
+
+const isCitationOnlyText = (value: string): boolean => {
+  const stripped = value.replace(/\[(?:Dev\s*ID|DEVID|Article\s*ID|Source\s*ID|Evidence\s*ID|Route\s*Witness|Witness\s*ID|Pattern\s*ID)\s*[:\-–—]?\s*[^\]\r\n]+\]/gi, '').trim()
+  return stripped.length === 0
+}
+
+const titleCaseLabel = (value: string): string => value
+  .replace(/_/g, ' ')
+  .replace(/\b\w/g, letter => letter.toUpperCase())
+
+const cleanCentralVectorText = (value: unknown): string => {
+  const text = asCleanText(value)
+  if (!text) return ''
+
+  const segments = text.split('|').map(segment => segment.trim()).filter(Boolean)
+  const lines: string[] = []
+  const seenLines = new Set<string>()
+  const metadataAllowlist = new Set([
+    'source_summary',
+    'money_anchors',
+    'decision_posture',
+    'actionability',
+    'pattern_memory_status',
+    'memory_strength',
+  ])
+
+  for (const segment of segments) {
+    if (/^https?:\/\//i.test(segment) || isCitationOnlyText(segment)) {
+      continue
+    }
+
+    const metadataMatch = segment.match(/^([a-z_]+):(.+)$/i)
+    let line = segment
+    if (metadataMatch) {
+      const key = metadataMatch[1]?.trim().toLowerCase()
+      const body = metadataMatch[2]?.trim()
+      if (!key || !body || !metadataAllowlist.has(key)) {
+        continue
+      }
+      line = `${titleCaseLabel(key)}: ${body}`
+    }
+
+    const normalized = line.toLowerCase()
+    if (seenLines.has(normalized)) continue
+    seenLines.add(normalized)
+    lines.push(line)
+  }
+
+  // Segment 0 is often the title. Keep the first material read plus evidence
+  // metadata, but avoid turning vector text into a full source body.
+  return lines.slice(0, 5).join('\n')
 }
 
 const INLINE_CITATION_PATTERN =
@@ -79,6 +145,7 @@ export const structuredOpportunitySummaryText = (value: unknown): string => {
 
   const record = value as Record<string, unknown>
   const rawLines = [
+    cleanCentralVectorText(record.vector_text),
     record.summary_sentence,
     record.summary,
     record.source_summary,
@@ -117,15 +184,38 @@ export const structuredOpportunitySummaryText = (value: unknown): string => {
   return lines.join('\n')
 }
 
-// Visible map analysis should stay on Command Centre display fields. Castle
-// bodies are evidence/source material and are intentionally not promoted here.
-export const resolveOpportunityAnalysisText = (opp: OpportunityDisplaySource): string => firstText(
+const centralOpportunityText = (opp: OpportunityDisplaySource): string => firstText(
   structuredOpportunitySummaryText(opp.command_centre_analysis_structured),
   opp.principal_decision_read,
   opp.reusable_product_insight,
   opp.decision_memo_trigger,
   opp.pressure_test_prompt,
   opp.outcome_atom,
+  structuredOpportunitySummaryText(opp.product_aquarium_packet),
+  structuredOpportunitySummaryText(opp.shodhana_product_aquarium_repair_packet),
+  cleanCentralVectorText(opp.product_aquarium_vector_text),
+)
+
+const isCastleBackedCommandCentreRow = (opp: OpportunityDisplaySource): boolean => {
+  const markers = [
+    opp.connection_source,
+    opp.source_collection,
+    opp._source_collection,
+    opp.lineage_source_collection,
+    opp.source_surface,
+  ].map(value => asCleanText(value).toLowerCase())
+
+  return Boolean(
+    opp.castle_source_summary ||
+    opp.castle_source_summary_structured ||
+    opp.castle_brief ||
+    opp.castle_brief_enriched ||
+    opp.full_castle_brief ||
+    markers.some(marker => marker.includes('castle')),
+  )
+}
+
+const legacyNonCastleOpportunityText = (opp: OpportunityDisplaySource): string => firstText(
   opp.analysis,
   opp.elite_pulse_analysis,
   opp.full_analysis,
@@ -138,21 +228,28 @@ export const resolveOpportunityAnalysisText = (opp: OpportunityDisplaySource): s
   opp.public_mirror_excerpt,
 )
 
+// Visible map analysis should stay on Command Centre display fields. Castle
+// bodies are evidence/source material and are intentionally not promoted here.
+export const resolveOpportunityAnalysisText = (opp: OpportunityDisplaySource): string => (
+  centralOpportunityText(opp) ||
+  (isCastleBackedCommandCentreRow(opp) ? CENTRAL_SUMMARY_PENDING : legacyNonCastleOpportunityText(opp))
+)
+
 export const resolveOpportunitySummaryText = (
   opp: OpportunityDisplaySource,
   analysisText: string,
-): string => firstText(
-  structuredOpportunitySummaryText(opp.command_centre_analysis_structured),
-  opp.principal_decision_read,
-  opp.reusable_product_insight,
-  opp.card_summary,
-  opp.hbyte_summary,
-  opp.summary,
-  opp.source_summary,
-  structuredOpportunitySummaryText(opp.source_summary_structured),
-  opp.description,
-  opp.public_mirror_excerpt,
-  analysisText,
+): string => (
+  centralOpportunityText(opp) ||
+  (isCastleBackedCommandCentreRow(opp) ? CENTRAL_SUMMARY_PENDING : firstText(
+    opp.card_summary,
+    opp.hbyte_summary,
+    opp.summary,
+    opp.source_summary,
+    structuredOpportunitySummaryText(opp.source_summary_structured),
+    opp.description,
+    opp.public_mirror_excerpt,
+    analysisText,
+  ))
 )
 
 export const resolveOpportunityTitle = (

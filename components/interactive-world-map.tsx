@@ -73,6 +73,12 @@ export interface City {
   product_aquarium_native?: boolean
   product_aquarium_privacy?: string
   product_aquarium_packet?: unknown
+  product_aquarium_vector_text?: string
+  product_aquarium_writeback_status?: string
+  product_aquarium_repair_outcome_atom?: string
+  product_aquarium_graph_edge_shape?: string[]
+  shodhana_product_aquarium_repair_packet?: unknown
+  shodhana_latest_outcome_atom?: string
   aquarium_learning_atoms?: unknown[]
   source_lineage?: unknown
   granthika_graph_edges?: unknown[]
