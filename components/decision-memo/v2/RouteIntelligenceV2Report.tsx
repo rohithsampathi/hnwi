@@ -214,6 +214,10 @@ function RouteFullMemoAnchor({
   return <>{typeof fullMemo === 'function' ? fullMemo(route) : fullMemo}</>;
 }
 
+function safeArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
 function metricLabel(route: RouteIntelligenceOptionV2): string {
   const releaseRule = releaseRuleDisplay(route.releaseRule);
   if (isOutcomeOnlyRoute(route) && releaseRule === 'Stop') return 'Capital Protected';
@@ -348,14 +352,16 @@ function reportSectionById(
   sharePayload: ReleaseReadinessSharePayload | null | undefined,
   ...ids: string[]
 ): ReleaseReadinessShareReportSection | undefined {
-  if (!sharePayload?.reportSections?.length) return undefined;
+  const sections = safeArray<ReleaseReadinessShareReportSection>(sharePayload?.reportSections);
+  if (!sections.length) return undefined;
   const wanted = new Set(ids.map((id) => id.toLowerCase()));
-  return sharePayload.reportSections.find((section) => wanted.has(String(section.id).toLowerCase()));
+  return sections.find((section) => wanted.has(String(section.id).toLowerCase()));
 }
 
 function reportCardBody(section: ReleaseReadinessShareReportSection | undefined, labelNeedle: string, fallback = ''): string {
   const needle = labelNeedle.toLowerCase();
-  const card = section?.cards?.find((item) => routeDisplayText(item.label).toLowerCase().includes(needle));
+  const card = safeArray<ReleaseReadinessShareCard>(section?.cards)
+    .find((item) => routeDisplayText(item.label).toLowerCase().includes(needle));
   return routeDisplayText(card?.body || fallback);
 }
 
@@ -375,7 +381,7 @@ function citationIdsFor(
     ids.push(value);
   };
 
-  sharePayload.publicSources?.forEach((source) => {
+  safeArray<NonNullable<ReleaseReadinessSharePayload['publicSources']>[number]>(sharePayload.publicSources).forEach((source) => {
     matcher.lastIndex = 0;
     const haystack = [
       source.category,
@@ -698,14 +704,16 @@ function RouteShareCard({ card }: { card: ReleaseReadinessShareCard }) {
 }
 
 function RouteShareTable({ table }: { table: NonNullable<ReleaseReadinessShareReportSection['table']> }) {
-  if (!table.rows.length) return null;
+  const columns = safeArray<string>(table.columns);
+  const rows = safeArray<string[]>(table.rows);
+  if (!rows.length) return null;
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border/25 bg-card/35">
       <table className="min-w-full border-collapse text-left text-sm">
         <thead className="bg-muted/35 text-xs uppercase tracking-[0.16em] text-muted-foreground/70">
           <tr>
-            {table.columns.map((column) => (
+            {columns.map((column) => (
               <th key={column} className="border-b border-border/20 px-4 py-3 font-medium">
                 {routeDisplayText(column)}
               </th>
@@ -713,7 +721,7 @@ function RouteShareTable({ table }: { table: NonNullable<ReleaseReadinessShareRe
           </tr>
         </thead>
         <tbody>
-          {table.rows.map((row, rowIndex) => (
+          {rows.map((row, rowIndex) => (
             <tr key={`${row.join('|')}-${rowIndex}`} className="border-b border-border/10 last:border-b-0">
               {row.map((cell, cellIndex) => (
                 <td
@@ -747,7 +755,9 @@ function RouteShareSectionPanel({
   cardLimit?: number;
 }) {
   if (!section) return null;
-  const cards = cardLimit ? section.cards?.slice(0, cardLimit) : section.cards;
+  const sectionCards = safeArray<ReleaseReadinessShareCard>(section.cards);
+  const cards = cardLimit ? sectionCards.slice(0, cardLimit) : sectionCards;
+  const bullets = safeArray<string>(section.bullets);
 
   return (
     <section>
@@ -767,9 +777,9 @@ function RouteShareSectionPanel({
           </div>
         ) : null}
         {section.table ? <RouteShareTable table={section.table} /> : null}
-        {section.bullets?.length ? (
+        {bullets.length ? (
           <div className="grid gap-3 md:grid-cols-2">
-            {section.bullets.map((bullet, index) => (
+            {bullets.map((bullet, index) => (
               <p key={`${section.id}-bullet-${index}`} className="rounded-lg border border-border/20 bg-card/35 p-4 text-sm leading-relaxed text-muted-foreground">
                 {routeDisplayText(bullet)}
               </p>
@@ -799,8 +809,10 @@ function RouteContinuityDeepDive({
   const intro =
     section?.intro ||
     'Use, carry, veto, fairness, sale/refinance, and future explanation must be written before the asset becomes a family expectation.';
-  const continuityRows = section?.table?.rows?.length
-    ? section.table.rows
+  const sectionRows = safeArray<string[]>(section?.table?.rows);
+  const sectionColumns = safeArray<string>(section?.table?.columns);
+  const continuityRows = sectionRows.length
+    ? sectionRows
     : [
         [
           'Principal authority',
@@ -827,7 +839,7 @@ function RouteContinuityDeepDive({
           'Decision record, source anchors, blockers, retrieval owner, and explanation packet are indexed.',
         ],
       ];
-  const gateNames = route.evidenceGates
+  const gateNames = safeArray<RouteEvidenceGate>((route as { evidenceGates?: unknown }).evidenceGates)
     .map((gate) => routeDisplayText(gate.gate))
     .filter((gate) => /authority|family|succession|fairness|decision|carry|use|title|bank|source/i.test(gate))
     .slice(0, 8);
@@ -1011,8 +1023,8 @@ function RouteContinuityDeepDive({
           <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">Release clearances by continuity layer</p>
           <RouteShareTable
             table={{
-              columns: section?.table?.columns?.length
-                ? section.table.columns
+              columns: sectionColumns.length
+                ? sectionColumns
                 : ['Continuity layer', 'Risk if unwritten', 'Owner', 'Release clearance'],
               rows: continuityRows,
             }}
@@ -1037,8 +1049,10 @@ function TaxDutyPanel({
   citationMap?: Map<string, number>;
 }) {
   const acquisitionAudit = (route.taxAudit?.acquisition_audit ?? {}) as Record<string, unknown>;
-  const treatmentRows = taxSection?.table?.rows?.length
-    ? taxSection.table.rows
+  const taxRows = safeArray<string[]>(taxSection?.table?.rows);
+  const taxColumns = safeArray<string>(taxSection?.table?.columns);
+  const treatmentRows = taxRows.length
+    ? taxRows
     : [
         [
           routeDisplayText(route.routeName),
@@ -1103,8 +1117,8 @@ function TaxDutyPanel({
           <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">Tax treatment by category</p>
           <RouteShareTable
             table={{
-              columns: taxSection?.table?.columns?.length
-                ? taxSection.table.columns
+              columns: taxColumns.length
+                ? taxColumns
                 : ['Route reviewed', 'Mechanism', 'Model effect', 'Release requirement'],
               rows: treatmentRows,
             }}
@@ -1145,6 +1159,7 @@ function RouteRead({ route }: { route: RouteIntelligenceOptionV2 }) {
 }
 
 function BuyerProfileMatrix({ matrix }: { matrix: BuyerProfileRemissionMatrix }) {
+  const rows = safeArray<BuyerProfileRemissionMatrix['matrix'][number]>(matrix.matrix);
   const thirdResidentialDisplay = (row: BuyerProfileRemissionMatrix['matrix'][number]) => {
     const second = routeDisplayText(row.secondResidential).trim();
     const third = routeDisplayText(row.thirdAndSubsequent).trim();
@@ -1184,7 +1199,7 @@ function BuyerProfileMatrix({ matrix }: { matrix: BuyerProfileRemissionMatrix })
             <div className="col-span-4">Release Read</div>
             <div className="col-span-3">Evidence Required</div>
           </div>
-          {matrix.matrix.map((row) => (
+          {rows.map((row) => (
             <div key={row.profile} className="grid grid-cols-12 gap-3 border-b border-border/10 px-3 py-4 text-sm last:border-b-0">
               <div className="col-span-2 font-medium text-foreground">{routeDisplayText(row.profile)}</div>
               <div className="col-span-1 text-foreground">{row.firstResidential}</div>
@@ -1254,9 +1269,22 @@ function PrincipalValueGatePanel({ gate }: { gate: PrincipalValueGate }) {
 }
 
 function StressSignals({ route }: { route: RouteIntelligenceOptionV2 }) {
+  const signals = safeArray<RouteStressSignal>((route as { stressSignals?: unknown }).stressSignals);
+
+  if (!signals.length) {
+    return (
+      <div className="rounded-lg border border-border/25 bg-card/40 p-4">
+        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">Stress Signals</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          No route-specific stress signals are available for this variant yet.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-3 md:grid-cols-3">
-      {route.stressSignals.map((signal) => (
+      {signals.map((signal) => (
         <div key={signal.label} className="rounded-lg border border-border/25 bg-card/40 p-4">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{routeDisplayText(signal.label)}</p>
           <p className="mt-2 text-xl font-semibold text-foreground">{routeDisplayText(signal.value)}</p>
@@ -1274,7 +1302,20 @@ function scenarioStroke(scenario: RouteScenarioPoint['scenario']): string {
 }
 
 function ScenarioGraph({ route }: { route: RouteIntelligenceOptionV2 }) {
-  const trajectories = route.scenarios.map((scenario) => {
+  const scenarios = safeArray<RouteScenarioPoint>((route as { scenarios?: unknown }).scenarios);
+
+  if (!scenarios.length) {
+    return (
+      <div className="rounded-lg border border-border/25 bg-card/40 p-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Base / Stress / Opportunity Trajectory</p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          No route-specific scenario trajectory is available for this variant yet.
+        </p>
+      </div>
+    );
+  }
+
+  const trajectories = scenarios.map((scenario) => {
     const points = (scenario.trajectory?.length
       ? scenario.trajectory
       : [
@@ -1346,7 +1387,7 @@ function ScenarioGraph({ route }: { route: RouteIntelligenceOptionV2 }) {
         </svg>
       </div>
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-        {route.scenarios.map((scenario) => (
+        {scenarios.map((scenario) => (
           <div key={`legend-${scenario.scenario}`} className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: scenarioStroke(scenario.scenario) }} />
             <span>{scenario.scenario}</span>
@@ -1354,7 +1395,7 @@ function ScenarioGraph({ route }: { route: RouteIntelligenceOptionV2 }) {
         ))}
       </div>
       <div className="space-y-4">
-        {route.scenarios.map((scenario) => {
+        {scenarios.map((scenario) => {
           const positive = scenario.netOutcomeUsd >= 0;
           return (
             <div key={scenario.scenario} className="mt-5 border-t border-border/15 pt-4">
@@ -1374,9 +1415,22 @@ function ScenarioGraph({ route }: { route: RouteIntelligenceOptionV2 }) {
 }
 
 function JurisdictionGrid({ route }: { route: RouteIntelligenceOptionV2 }) {
+  const values = safeArray<RouteIntelligenceOptionV2['jurisdictionValues'][number]>((route as { jurisdictionValues?: unknown }).jurisdictionValues);
+
+  if (!values.length) {
+    return (
+      <div className="rounded-lg border border-border/25 bg-card/40 p-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Jurisdiction Intelligence</p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          No route-specific jurisdiction values are available for this variant yet.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-3 lg:grid-cols-3">
-      {route.jurisdictionValues.map((item) => (
+      {values.map((item) => (
         <div key={item.jurisdiction} className="rounded-lg border border-border/25 bg-card/40 p-5">
           <div className="flex items-center gap-2">
             <Landmark className="h-4 w-4 text-gold/70" />
@@ -1391,6 +1445,19 @@ function JurisdictionGrid({ route }: { route: RouteIntelligenceOptionV2 }) {
 }
 
 function EvidencePack({ route }: { route: RouteIntelligenceOptionV2 }) {
+  const gates = safeArray<RouteEvidenceGate>((route as { evidenceGates?: unknown }).evidenceGates);
+
+  if (!gates.length) {
+    return (
+      <div className="rounded-lg border border-border/25 bg-card/40 p-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Release Evidence</p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          No route-specific evidence gates are available for this variant yet.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-hidden rounded-lg border border-border/25 bg-card/40">
       <div className="hidden grid-cols-12 border-b border-border/25 px-4 py-3 text-xs uppercase tracking-[0.18em] text-muted-foreground/70 md:grid">
@@ -1400,7 +1467,7 @@ function EvidencePack({ route }: { route: RouteIntelligenceOptionV2 }) {
         <div className="col-span-2">Status</div>
         <div className="col-span-2">Consequence</div>
       </div>
-      {route.evidenceGates.map((gate) => (
+      {gates.map((gate) => (
         <div key={`${gate.gate}-${gate.owner}`} className="grid grid-cols-12 gap-3 border-b border-border/10 px-4 py-4 text-sm last:border-b-0">
           <div className="col-span-12 font-medium text-foreground md:col-span-3">{routeDisplayText(gate.gate)}</div>
           <div className="col-span-12 text-muted-foreground md:col-span-2">{routeDisplayText(gate.owner)}</div>
@@ -1414,6 +1481,13 @@ function EvidencePack({ route }: { route: RouteIntelligenceOptionV2 }) {
 }
 
 function ResponsibilityAndRecords({ route }: { route: RouteIntelligenceOptionV2 }) {
+  const responsibilityRows = safeArray<RouteIntelligenceOptionV2['responsibilityTransfer'][number]>(
+    (route as { responsibilityTransfer?: unknown }).responsibilityTransfer,
+  );
+  const mismatchRows = safeArray<RouteIntelligenceOptionV2['recordMismatchMap'][number]>(
+    (route as { recordMismatchMap?: unknown }).recordMismatchMap,
+  );
+
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <div className="rounded-lg border border-border/25 bg-card/40 p-5">
@@ -1422,14 +1496,18 @@ function ResponsibilityAndRecords({ route }: { route: RouteIntelligenceOptionV2 
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Responsibility Transfer</p>
         </div>
         <div className="space-y-4">
-          {route.responsibilityTransfer.map((item) => (
+          {responsibilityRows.length ? responsibilityRows.map((item) => (
             <div key={item.action} className="border-b border-border/10 pb-4 last:border-b-0 last:pb-0">
               <p className="text-sm font-medium text-foreground">{routeDisplayText(item.action)}</p>
               <p className="mt-1 text-xs text-muted-foreground">Primary: {routeDisplayText(item.primaryOwner)}</p>
               <p className="mt-1 text-xs text-muted-foreground">Fallback: {routeDisplayText(item.fallbackOwner)}</p>
               <p className="mt-2 text-xs leading-relaxed text-gold/80">{routeDisplayText(item.releaseCondition)}</p>
             </div>
-          ))}
+          )) : (
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              No responsibility-transfer rows are available for this variant yet.
+            </p>
+          )}
         </div>
       </div>
       <div className="rounded-lg border border-border/25 bg-card/40 p-5">
@@ -1438,7 +1516,7 @@ function ResponsibilityAndRecords({ route }: { route: RouteIntelligenceOptionV2 
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Record Mismatch Map</p>
         </div>
         <div className="space-y-4">
-          {route.recordMismatchMap.map((item) => (
+          {mismatchRows.length ? mismatchRows.map((item) => (
             <div key={item.record} className="border-b border-border/10 pb-4 last:border-b-0 last:pb-0">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-medium text-foreground">{routeDisplayText(item.record)}</p>
@@ -1449,7 +1527,11 @@ function ResponsibilityAndRecords({ route }: { route: RouteIntelligenceOptionV2 
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Current: {routeDisplayText(item.currentRead)}</p>
               <p className="mt-1 text-xs leading-relaxed text-gold/80">Target: {routeDisplayText(item.targetRead)}</p>
             </div>
-          ))}
+          )) : (
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              No record-mismatch rows are available for this variant yet.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -1457,9 +1539,24 @@ function ResponsibilityAndRecords({ route }: { route: RouteIntelligenceOptionV2 
 }
 
 function CounselQuestions({ route }: { route: RouteIntelligenceOptionV2 }) {
+  const questions = safeArray<RouteIntelligenceOptionV2['counselQuestionPack'][number]>(
+    (route as { counselQuestionPack?: unknown }).counselQuestionPack,
+  );
+
+  if (!questions.length) {
+    return (
+      <div className="rounded-lg border border-border/25 bg-card/40 p-4">
+        <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Counsel Pack</p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          No route-specific counsel questions are available for this variant yet.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {route.counselQuestionPack.map((item) => (
+      {questions.map((item) => (
         <div key={`${item.desk}-${item.question}`} className="rounded-lg border border-border/25 bg-card/40 p-4">
           <p className="text-xs uppercase tracking-[0.18em] text-gold/70">{routeDisplayText(item.desk)}</p>
           <p className="mt-3 text-sm leading-relaxed text-foreground">{routeDisplayText(item.question)}</p>
