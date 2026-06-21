@@ -461,23 +461,8 @@ function PriorityBadge({ priority }: { priority: string }) {
 function ResilienceGauge({ score, rating = "Evidence gated" }: { score?: number; rating?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-50px" });
-  const [animatedScore, setAnimatedScore] = useState(0);
   const hasScore = typeof score === "number" && Number.isFinite(score);
   const scoreValue = hasScore ? score : 0;
-
-  useEffect(() => {
-    if (!inView || !hasScore) return;
-    let startTime = 0;
-    const duration = 1200;
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 4);
-      setAnimatedScore(Math.round(scoreValue * eased));
-      if (progress < 1) requestAnimationFrame(animate);
-    };
-    requestAnimationFrame(animate);
-  }, [hasScore, inView, scoreValue]);
 
   const ring = Math.PI * 54;
   const offset = ring - (ring * Math.max(0, Math.min(100, scoreValue))) / 100;
@@ -501,14 +486,9 @@ function ResilienceGauge({ score, rating = "Evidence gated" }: { score?: number;
           />
         </svg>
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
-          {hasScore ? (
-            <>
-              <span className={memoNumberClass('hero', 'default')}>{animatedScore}</span>
-              <span className="text-sm text-muted-foreground/60">/100</span>
-            </>
-          ) : (
-            <span className="text-xl font-medium tracking-tight text-foreground">Unscored</span>
-          )}
+          <span className="text-xl font-medium tracking-tight text-foreground">
+            {hasScore ? 'Evidence-gated' : 'Unscored'}
+          </span>
         </div>
       </div>
       <span className="mt-3 text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/80">

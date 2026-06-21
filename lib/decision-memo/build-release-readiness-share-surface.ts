@@ -187,7 +187,13 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bremains Proceed under signed gates\b/gi, "remains gated")
     .replace(/\bShould the family release the purchase route now,\s*Gated negotiation only,\s*hold,\s*or stop\?/gi, "Should the family advance under signed gates, hold, or stop?")
     .replace(/\bHouse Signal Rail\b/gi, "Route Control Summary")
-    .replace(/\bDecision EV\b/gi, "Internal model output - not release authority")
+    .replace(/\bDecision EV\b/gi, "Scenario discipline output - not release authority")
+    .replace(/\bExpected value creation\b/gi, "Scenario discipline output")
+    .replace(/\bExpected Net Worth\b/gi, "Scenario net position")
+    .replace(/\bNet Benefit\b/gi, "Route discipline read")
+    .replace(/\bScore\s+\d+\s*\/\s*100\.?/gi, "Readiness score evidence-gated.")
+    .replace(/\b50\s*\/\s*30\s*\/\s*20 probability scenarios\b/gi, "base, stress, and opportunity scenario discipline; not a forecast")
+    .replace(/\b50\s*\/\s*30\s*\/\s*20 probabilities\b/gi, "base / stress / opportunity scenario weights; not a forecast")
     .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")
     .replace(/\bOPEN GATES\b/gi, "Release Gate Status")
     .replace(/\bOpen Release Gates\b/gi, "Release Gate Status")
@@ -224,10 +230,21 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bcastle briefs?\b/gi, "source records")
     .replace(/\bCastle Briefs?\b/g, "Source records")
     .replace(/\bKGv3\b/g, "source register")
-    .replace(/\bDM64\b/g, "release-readiness compiler")
-    .replace(/\bGranthika\b/g, "source library")
-    .replace(/\bAquarium\b/g, "source-review memory")
+    .replace(/\bDM64\b/g, "release-readiness review")
+    .replace(/\bGranthika\b/g, "source register")
+    .replace(/\bAquarium\b/g, "source register")
     .replace(/\bAI banking crisis simulation\b/gi, "Bank compliance escalation simulation")
+    .replace(/\badvisor embarrassment\b/gi, "adviser coordination failure")
+    .replace(/\badviser embarrassment\b/gi, "adviser coordination failure")
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, "Technology-wealth exposure check")
+    .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, "Operating-income exposure check")
+    .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, "Digital-settlement exposure check")
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, "technology-wealth exposure")
+    .replace(/\bwar\s*\/\s*sanctions\b/gi, "geopolitical and sanctions exposure")
+    .replace(/\bstablecoin rail stress\b/gi, "digital-settlement rail exposure")
+    .replace(/\bBSA\/sanctions\b/gi, "sanctions and bank-compliance controls")
+    .replace(/\bBSA\b/g, "bank-compliance controls")
+    .replace(/\bshadow facilitators\b/gi, "unverified intermediaries")
     .replace(/\bg1[_-]g2[_-]g3\b/gi, "generation_to_generation")
     .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, "generation-to-generation")
     .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/gi, "generation-to-generation")
@@ -294,6 +311,10 @@ function sanitizeShareText(value: unknown): string {
     .replace(
       /\bThe Mayfair purchase is a family-base and continuity move, not a yield trade; release depends on written purpose, use boundaries, and who the asset is meant to serve across principal \/ named family user \/ next-generation record\.?/gi,
       "The Mayfair purchase is tested as London family use, not yield. Release depends on written use boundaries, named family user, named fairness owner, and decision record."
+    )
+    .replace(
+      /\bPrincipal\s*\/\s*named family user\s*\/\s*next-generation record\b/gi,
+      "principal authority, family-use boundary, fairness owner, and next-generation decision record"
     )
     .replace(/\bsocial or family promise\b/gi, "undocumented family expectation")
     .replace(/\bnext-generation decision memory\b/gi, "next-generation decision record")
@@ -716,7 +737,15 @@ function releasePacketList(value: unknown, fallback: string[]): string[] {
 function moneyText(value: unknown, fallback = "Release-gated"): string {
   const numeric = numberOr(value);
   if (!numeric) return fallback;
-  return `US$${Math.round(numeric).toLocaleString("en-US")}`;
+  const sign = numeric < 0 ? "-" : "";
+  const absolute = Math.abs(numeric);
+  if (absolute >= 1_000_000) {
+    return `${sign}~US$${(absolute / 1_000_000).toFixed(1)}M`;
+  }
+  if (absolute >= 1_000) {
+    return `${sign}~US$${Math.round(absolute / 1_000).toLocaleString("en-US")}K`;
+  }
+  return `${sign}~US$${Math.round(absolute).toLocaleString("en-US")}`;
 }
 
 function percentText(value: unknown, fallback = "Release-gated"): string {
@@ -1037,9 +1066,9 @@ function buildWealthProjectionSection(resolved: ResolvedDecisionMemoSurfaceData)
         body: sanitizeShareText(asRecord(wealth.cost_of_inaction).primary_driver),
       },
       {
-        label: "Expected value creation",
+        label: "Scenario discipline output",
         value: moneyText(asRecord(wealth.probability_weighted).expected_value_creation),
-        body: "Probability-weighted model after base, stress, and opportunity paths.",
+        body: "Scenario-discipline read across base, stress, and opportunity paths. This is not a forecast.",
       },
       {
         label: "Cost of hardening too early",
@@ -1048,7 +1077,7 @@ function buildWealthProjectionSection(resolved: ResolvedDecisionMemoSurfaceData)
       },
     ],
     table: {
-      columns: ["Scenario", "Probability", "Year 10 value", "Net result vs capital", "Memo read"],
+      columns: ["Scenario", "Scenario weight", "Year 10 range", "Net result vs capital", "Memo read"],
       rows: scenarioEntries.map(([, scenario]) => [
         text(scenario.name),
         percentText(numberOr(scenario.probability) * 100),
@@ -1086,7 +1115,15 @@ function buildCrisisSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseR
       {
         label: "Overall resilience",
         value: text(overall.rating, "Release-critical"),
-        body: `Score ${text(overall.score, "68")}/100. ${sanitizeShareText(overall.buffer_required)}`,
+        body:
+          sanitizeShareText(overall.buffer_required) ||
+          "Conditional crisis relevance must be tied to source wealth, bank rail, counterparties, settlement route, or operating income before it affects release.",
+      },
+      {
+        label: "Conditional relevance rule",
+        value: "Route-specific only",
+        body:
+          "AI, labor-income, conflict, sanctions, and digital-settlement scenarios affect release only where this family's source wealth, bank rail, counterparties, payment route, insurance, travel, or operating income touches the exposure.",
       },
       {
         label: "Worst-case loss boundary",
@@ -1098,7 +1135,9 @@ function buildCrisisSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseR
         title: text(risk.label),
         body: text(risk.detail),
         status: `${text(risk.decision_window_days, "7")} day window`,
-        releaseCondition: safeStringArray(risk.impact_channels).join(", "),
+        releaseCondition:
+          safeStringArray(risk.impact_channels).join(", ") ||
+          "Applies only if the source wealth, settlement rail, bank, counterparty, payment route, insurance, travel, or operating income touches this exposure.",
       })),
     ],
     table: {

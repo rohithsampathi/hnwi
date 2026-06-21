@@ -317,7 +317,7 @@ export function formatUsdCompact(value: number): string {
   const sign = value < 0 ? '-' : '';
   const absolute = Math.abs(value);
   if (absolute >= 1_000_000) {
-    return `${sign}US$${(absolute / 1_000_000).toFixed(2)}M`;
+    return `${sign}US$${(absolute / 1_000_000).toFixed(1)}M`;
   }
   if (absolute >= 1_000) {
     return `${sign}US$${Math.round(absolute / 1_000).toLocaleString('en-US')}K`;

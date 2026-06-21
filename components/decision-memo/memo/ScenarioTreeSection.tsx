@@ -45,7 +45,11 @@ function scenarioDisplayText(value?: string | null): string {
   return value
     .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
-    .replace(/\bDecision EV\b/gi, 'model output - not release authority')
+    .replace(/\bDecision EV\b/gi, 'scenario discipline output - not release authority')
+    .replace(/\bExpected Value\b/gi, 'Scenario discipline output')
+    .replace(/\bExpected ROI\b/gi, 'Scenario ROI read')
+    .replace(/\bExpected vs Reality\b/gi, 'Assumption vs market evidence')
+    .replace(/\bModeled route-outcome value\b/gi, 'Scenario-discipline route read')
     .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
     .replace(/\s+/g, ' ')
     .trim();
@@ -463,7 +467,7 @@ function buildStructuredScenarioTreeData(
       conditions: criticalGates.map((condition) => ({ condition, status: 'CONDITIONAL' as ConditionStatus })),
       outcomes: buildOutcomes(proceedModifiedExpected),
       expected_value: proceedModifiedExpected,
-      expected_value_note: 'Modeled route-outcome value if the validated route clears the full gate set.',
+      expected_value_note: 'Scenario-discipline route read if the selected route clears the full gate set.',
       verdict: 'Proceed only after the critical gates clear and the validated route remains intact.',
       verdict_conditions: criticalGates.slice(0, 4),
     },
@@ -473,7 +477,7 @@ function buildStructuredScenarioTreeData(
       conditions: criticalGates.slice(0, 3).map((condition) => ({ condition, status: 'MODELED' as ConditionStatus })),
       outcomes: buildOutcomes(proceedNowExpected),
       expected_value: proceedNowExpected,
-      expected_value_note: 'Modeled route-outcome value if the room hardens the unmodified route under live corridor stress.',
+      expected_value_note: 'Scenario-discipline route read if the room hardens the unmodified route under live corridor stress.',
       verdict: 'Only choose this if the room is explicitly accepting the unmodified route risk.',
       verdict_conditions: criticalGates.slice(0, 2),
     },
@@ -495,7 +499,7 @@ function buildStructuredScenarioTreeData(
         },
       ],
       expected_value: doNotProceedExpected,
-      expected_value_note: 'Modeled route-outcome value if capital stays outside the route and compounds conservatively.',
+      expected_value_note: 'Scenario-discipline route read if capital stays outside the route and compounds conservatively.',
       verdict: 'Do not proceed if any abort trigger remains unresolved.',
       verdict_conditions: abortTriggers,
     },
@@ -667,13 +671,13 @@ function BranchCard({
       {/* Value basis — hero treatment */}
       <div className="mb-4 pt-4">
         <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-4" />
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{valueBasisLabel || 'Expected Value'}</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{scenarioDisplayText(valueBasisLabel || 'Scenario discipline output')}</p>
         <p className={memoNumberClass('metric', expectedValue >= 0 ? 'default' : 'muted')}>
           {metricDisplay}
         </p>
         {shouldShowExpectedValueNote && (
           <p className="text-sm text-muted-foreground/60 italic mt-2 leading-relaxed">
-            {expectedValueNote}
+            {scenarioDisplayText(expectedValueNote)}
           </p>
         )}
       </div>
@@ -1063,13 +1067,13 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
   const extractDecisionMetrics = (text: string) => {
     const metrics: { label: string; value: string; type: 'good' | 'bad' | 'neutral' }[] = [];
     const evMatch = text.match(/EXPECTED\s+VALUE[:\s]+[\|\s]*\$?([\d,]+(?:\.\d+)?[KMB]?)/i);
-    if (evMatch) metrics.push({ label: 'Expected Value', value: `$${evMatch[1]}`, type: 'good' });
+    if (evMatch) metrics.push({ label: 'Scenario discipline output', value: `$${evMatch[1]}`, type: 'good' });
     const worstMatch = text.match(/Worst.*?(?:case|outcome).*?:\s*\$?([\d,]+)/i);
     if (worstMatch) metrics.push({ label: 'Worst Case', value: `$${worstMatch[1]}`, type: 'bad' });
     const bestMatch = text.match(/Best.*?(?:case|outcome).*?:\s*\$?([\d,]+)/i);
     if (bestMatch) metrics.push({ label: 'Best Case', value: `$${bestMatch[1]}`, type: 'good' });
     const roiMatch = text.match(/ROI[:\s]+([+-]?\d+(?:\.\d+)?%?)/i);
-    if (roiMatch) metrics.push({ label: 'Expected ROI', value: roiMatch[1].includes('%') ? roiMatch[1] : `${roiMatch[1]}%`, type: 'good' });
+    if (roiMatch) metrics.push({ label: 'Scenario ROI read', value: roiMatch[1].includes('%') ? roiMatch[1] : `${roiMatch[1]}%`, type: 'good' });
     return metrics;
   };
 
@@ -1154,10 +1158,10 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
           </div>
         </div>
 
-        {/* Expected Value — hero treatment */}
+        {/* Scenario discipline output — hero treatment */}
         <div className="mb-4 pt-4">
           <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-4" />
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Expected Value</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Scenario discipline output</p>
           <p className={memoNumberClass('metric', branch.expectedValue.includes('-') ? 'muted' : 'default')}>
             {branch.expectedValue}
           </p>
@@ -1447,9 +1451,9 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
     return null;
   }
   const recommendedBranch = typedBranches.find(b => b.name === typedData.recommended_branch);
-  const branchValueBasisLabel = typedData.value_basis_label || 'Expected Value';
-  const decisionEvLabel = (typedData.decision_ev_label || 'Model output - not release authority')
-    .replace(/\bDecision EV\b/gi, 'model output - not release authority')
+  const branchValueBasisLabel = scenarioDisplayText(typedData.value_basis_label || 'Scenario discipline output');
+  const decisionEvLabel = (typedData.decision_ev_label || 'Scenario discipline output - not release authority')
+    .replace(/\bDecision EV\b/gi, 'scenario discipline output - not release authority')
     .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only');
   const rationale = Array.isArray(typedData.rationale) ? typedData.rationale : [];

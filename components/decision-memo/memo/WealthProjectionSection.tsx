@@ -1284,8 +1284,6 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
   const weightedOutcome = pwOutcome;
   const weightedStayValue = ((weightedOutcome as any)?.vs_cash_at_4pct ?? weightedOutcome?.vs_stay_expected ?? 0) as number;
   const weightedRoiPct = (((weightedOutcome as any)?.true_roi_pct ?? weightedOutcome?.percentage_return ?? 0) as number);
-  const weightedProbabilitiesLabel = `${Math.round((baseScenario?.probability || 0) * 100)}/${Math.round((stressScenario?.probability || 0) * 100)}/${Math.round((opportunityScenario?.probability || 0) * 100)}`;
-
   // Dynamic metrics for the selected scenario (structured data)
   // Display backend data directly - no frontend calculations
   // Use final_value (new field) with fallback to final_total_value (legacy field)
@@ -1319,7 +1317,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
         </div>
         <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
         <p className="text-sm text-muted-foreground mt-3">
-          Scenario-based wealth trajectory. Base, stress, and opportunity views react to the selected case; the weighted route outcome below stays constant because it combines all three.
+          Scenario-discipline trajectory. Base, stress, and opportunity views react to the selected case; the route read below is a control model, not a forecast.
         </p>
       </motion.div>
 
@@ -1360,7 +1358,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                 {scenario.type === 'stress' && <TrendingDown className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />}
                 {scenario.type === 'opportunity' && <TrendingUp className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />}
                 <span className={isActive ? 'text-foreground' : 'text-muted-foreground'}>{scenario.name}</span>
-                <span className="text-[10px] text-muted-foreground ml-1">({(scenario.probability * 100).toFixed(0)}%)</span>
+                <span className="text-[10px] text-muted-foreground ml-1">scenario weight</span>
               </button>
             );
           })}
@@ -1479,13 +1477,13 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                     <ScenarioIcon type={scenario.type} color={isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'} />
                     <div>
                       <h4 className="text-sm font-semibold text-foreground">{scenario.name}</h4>
-                      <p className="text-[10px] text-muted-foreground">{(scenario.probability * 100).toFixed(0)}% probability</p>
+                      <p className="text-[10px] text-muted-foreground">scenario discipline</p>
                     </div>
                   </div>
                 </div>
 
                   <div className="bg-card/50 rounded-lg p-3 mb-4">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Gross Value Creation</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Gross scenario output</p>
                   <p className={`text-lg font-bold ${isActive ? 'text-primary' : 'text-foreground'}`}>{scenario.outcome}</p>
                   <p className="text-xs text-muted-foreground">{scenario.percentGain} asset growth · {scenario.trueRoi} ROI on deployed capital</p>
                 </div>
@@ -1556,7 +1554,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               <div className="flex items-center gap-2 mb-4">
                 <Zap className="w-5 h-5 text-primary" />
                 <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Overall Probability-Weighted Route Outcome
+                  Overall Scenario-Discipline Route Read
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wider">
                   Static Across Tabs
@@ -1564,16 +1562,16 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               </div>
 
               <p className="mb-4 text-xs text-muted-foreground">
-                This is the overall route summary across Base, Stress, and Opportunity. It does not change when you switch the selected scenario above.
+                This is the overall route-control summary across Base, Stress, and Opportunity. It is scenario discipline, not a forecast, and does not change when you switch the selected scenario above.
               </p>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center p-4 bg-card rounded-lg">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Net Worth</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Scenario net position</p>
                   <p className="text-xl font-bold text-foreground">{formatCurrency(((weightedOutcome as any).expected_total_value ?? weightedOutcome.expected_net_worth) as number)}</p>
                 </div>
                 <div className="text-center p-4 bg-card rounded-lg">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Value Creation</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Scenario discipline output</p>
                   <p className="text-xl font-bold text-primary">{formatSignedCurrency(weightedOutcome.expected_value_creation)}</p>
                 </div>
                 <div className="text-center p-4 bg-card rounded-lg">
@@ -1586,7 +1584,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                 </div>
               </div>
               <p className="mt-3 text-xs text-muted-foreground text-center">
-                Weighted across Base / Stress / Opportunity scenarios using {weightedProbabilitiesLabel} probabilities. True ROI on deployed capital: {weightedRoiPct.toFixed(1)}%.
+                Scenario-weighted across Base / Stress / Opportunity for route discipline only; not a validated forecast. True ROI on deployed capital: {weightedRoiPct.toFixed(1)}%.
               </p>
             </motion.div>
           )}

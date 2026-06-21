@@ -55,7 +55,12 @@ function numberValue(value: unknown): number {
 
 function money(value: unknown, fallback = "Release-gated"): string {
   const numeric = numberValue(value);
-  return numeric > 0 ? formatUsdCompact(numeric) : fallback;
+  if (numeric <= 0) return fallback;
+  const absolute = Math.abs(numeric);
+  const sign = numeric < 0 ? "-" : "";
+  if (absolute >= 1_000_000) return `${sign}~US$${(absolute / 1_000_000).toFixed(1)}M`;
+  if (absolute >= 1_000) return `${sign}~US$${Math.round(absolute / 1_000).toLocaleString("en-US")}K`;
+  return `${sign}~US$${Math.round(absolute).toLocaleString("en-US")}`;
 }
 
 function cleanDisplayText(value: unknown): string {
@@ -69,7 +74,13 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bremains Proceed under signed gates\b/gi, "remains gated")
     .replace(/\bShould the family release the purchase route now,\s*Gated negotiation only,\s*hold,\s*or stop\?/gi, "Should the family advance under signed gates, hold, or stop?")
     .replace(/\bHouse Signal Rail\b/gi, "Route Control Summary")
-    .replace(/\bDecision EV\b/gi, "Internal model output - not release authority")
+    .replace(/\bDecision EV\b/gi, "Scenario discipline output - not release authority")
+    .replace(/\bExpected value creation\b/gi, "Scenario discipline output")
+    .replace(/\bExpected Net Worth\b/gi, "Scenario net position")
+    .replace(/\bNet Benefit\b/gi, "Route discipline read")
+    .replace(/\bScore\s+\d+\s*\/\s*100\.?/gi, "Readiness score evidence-gated.")
+    .replace(/\b50\s*\/\s*30\s*\/\s*20 probability scenarios\b/gi, "base, stress, and opportunity scenario discipline; not a forecast")
+    .replace(/\b50\s*\/\s*30\s*\/\s*20 probabilities\b/gi, "base / stress / opportunity scenario weights; not a forecast")
     .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")
     .replace(/\bOPEN GATES\b/gi, "Release Gate Status")
     .replace(/\bOpen Release Gates\b/gi, "Release Gate Status")
@@ -111,7 +122,7 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bpressure\b/gi, "readiness")
     .replace(/\bNative Route Drivers\b/gi, "Route Drivers From Source Review")
     .replace(/\bg1[_-]g2[_-]g3\b/gi, "generation_to_generation")
-    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, "Principal / named family user / next-generation record")
+    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, "principal authority, family-use boundary, fairness owner, and next-generation decision record")
     .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/gi, "generation-to-generation")
     .replace(/\bG1\s*→\s*G2\s*→\s*G3\b/gi, "generation-to-generation")
     .replace(/\bG1 route control\b/gi, "current-owner route control")
@@ -160,11 +171,26 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\brelease-read sprint\b/gi, "release-readiness sprint")
     .replace(/\bSIX-BOOK OPENING\b/gi, "Decision Opening")
     .replace(/\bSix-book opening\b/gi, "Decision opening")
-    .replace(/\bDM64\b/g, "release-readiness compiler")
-    .replace(/\bGranthika\b/g, "source library")
-    .replace(/\bAquarium\b/g, "source-review memory")
+    .replace(/\bDM64\b/g, "release-readiness review")
+    .replace(/\bGranthika\b/g, "source register")
+    .replace(/\bAquarium\b/g, "source register")
     .replace(/\bCastle Briefs?\b/g, "Source records")
     .replace(/\bcastle briefs?\b/gi, "source records")
+    .replace(/\badvisor embarrassment\b/gi, "adviser coordination failure")
+    .replace(/\badviser embarrassment\b/gi, "adviser coordination failure")
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, "Technology-wealth exposure check")
+    .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, "Operating-income exposure check")
+    .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, "Digital-settlement exposure check")
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, "technology-wealth exposure")
+    .replace(/\bwar\s*\/\s*sanctions\b/gi, "geopolitical and sanctions exposure")
+    .replace(/\bstablecoin rail stress\b/gi, "digital-settlement rail exposure")
+    .replace(/\bBSA\/sanctions\b/gi, "sanctions and bank-compliance controls")
+    .replace(/\bBSA\b/g, "bank-compliance controls")
+    .replace(/\bshadow facilitators\b/gi, "unverified intermediaries")
+    .replace(
+      /\bPrincipal\s*\/\s*named family user\s*\/\s*next-generation record\b/gi,
+      "principal authority, family-use boundary, fairness owner, and next-generation decision record"
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
