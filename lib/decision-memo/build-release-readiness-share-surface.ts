@@ -1245,7 +1245,7 @@ function buildGenerationSection(_resolved: ResolvedDecisionMemoSurfaceData): Rel
           "Next-generation decision record",
           "A later reader cannot explain why the route advanced, held, or stopped without relying on memory.",
           "Family-office operator / CFO",
-          "Decision record location, retrieval owner, and explanation packet are indexed.",
+          "Decision record, source anchors, blockers, retrieval owner, and explanation packet are indexed.",
         ],
       ],
     },
