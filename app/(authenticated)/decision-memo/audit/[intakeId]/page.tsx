@@ -131,6 +131,16 @@ function cleanTranscriptText(value: string): string {
     .replace(/\bRisk level\b/gi, 'Release status')
     .replace(/\bData quality\b/gi, 'Evidence status')
     .replace(/\brelease-read sprint\b/gi, 'release-readiness review')
+    .replace(/\bDecision EV\b/gi, 'Scenario discipline output - not release authority')
+    .replace(/\bExpected value creation\b/gi, 'Scenario discipline output')
+    .replace(/\bExpected Net Worth\b/gi, 'Scenario net position')
+    .replace(/\bNet Benefit\b/gi, 'Route discipline read')
+    .replace(/\bScore\s+\d+\s*\/\s*100\.?/gi, 'Readiness score evidence-gated.')
+    .replace(/\b50\s*\/\s*30\s*\/\s*20 probability scenarios\b/gi, 'base, stress, and opportunity scenario discipline; not a forecast')
+    .replace(/\b50\s*\/\s*30\s*\/\s*20 probabilities\b/gi, 'base / stress / opportunity scenario weights; not a forecast')
+    .replace(/\bUS\$78,861,239\b/g, '~US$78.9M')
+    .replace(/\bUS\$12,494,114\b/g, '~US$12.5M')
+    .replace(/\bUS\$9,335,966\b/g, '~US$9.3M scenario-discipline output')
     .replace(/\binsurance\/security file\b/gi, 'insurance quote and security plan')
     .replace(/\bseller conditions\b/gi, 'seller identity, seller authority, exclusivity terms, deposit condition, and completion timetable')
     .replace(/\bdeposit rail\b/gi, 'deposit account, conveyancer client-account details, transfer path, and release condition')
@@ -172,6 +182,17 @@ function cleanTranscriptText(value: string): string {
     .replace(/\bspouse veto\b/gi, 'family-home rights position')
     .replace(/\bThe route must be retrievable six years later\b/gi, 'The route must be retrievable years later')
     .replace(/\bsix years later\b/gi, 'later')
+    .replace(/\badvisor embarrassment\b/gi, 'adviser coordination failure')
+    .replace(/\badviser embarrassment\b/gi, 'adviser coordination failure')
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, 'Technology-wealth exposure check')
+    .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, 'Operating-income exposure check')
+    .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, 'Digital-settlement exposure check')
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, 'technology-wealth exposure')
+    .replace(/\bwar\s*\/\s*sanctions\b/gi, 'geopolitical and sanctions exposure')
+    .replace(/\bstablecoin rail stress\b/gi, 'digital-settlement rail exposure')
+    .replace(/\bBSA\/sanctions\b/gi, 'sanctions and bank-compliance controls')
+    .replace(/\bBSA\b/g, 'bank-compliance controls')
+    .replace(/\bshadow facilitators\b/gi, 'unverified intermediaries')
     .replace(
       /\bLooks like prime London capital preservation even though the economics are control\/use-led after duty drag\.?/gi,
       'Appears like a capital-preservation purchase, but economics are family-use and control-led after duty drag.',
@@ -211,9 +232,13 @@ function textList(value: unknown, limit = 8): string[] {
 }
 
 function money(value: unknown): string {
-  if (typeof value === 'string' && value.trim()) return value;
+  if (typeof value === 'string' && value.trim()) return cleanTranscriptText(value);
   if (typeof value === 'number' && Number.isFinite(value)) {
-    return `US$${Math.round(value).toLocaleString('en-US')}`;
+    const absolute = Math.abs(value);
+    const sign = value < 0 ? '-' : '';
+    if (absolute >= 1_000_000) return `${sign}~US$${(absolute / 1_000_000).toFixed(1)}M`;
+    if (absolute >= 1_000) return `${sign}~US$${Math.round(absolute / 1_000).toLocaleString('en-US')}K`;
+    return `${sign}~US$${Math.round(absolute).toLocaleString('en-US')}`;
   }
   return '-';
 }
@@ -298,16 +323,24 @@ function EvidenceList({
   getSecondary?: (item: RecordLike, index: number) => string[];
 }) {
   if (!items.length) return null;
+  const rows = items
+    .map((item, index) => {
+      const primary = asString(getPrimary(item, index)).trim();
+      const secondary = getSecondary?.(item, index).map((line) => asString(line).trim()).filter(Boolean) ?? [];
+      return { item, index, primary, secondary };
+    })
+    .filter((row) => row.primary || row.secondary.length);
+
+  if (!rows.length) return null;
 
   return (
     <section>
       <h2>{title}</h2>
       <ol>
-        {items.map((item, index) => {
-          const secondary = getSecondary?.(item, index).filter(Boolean) ?? [];
+        {rows.map(({ index, primary, secondary }) => {
           return (
             <li key={`${title}-${index}`}>
-              <strong>{getPrimary(item, index)}</strong>
+              {primary ? <strong>{primary}</strong> : null}
               {secondary.map((line, lineIndex) => (
                 <p key={lineIndex}>{line}</p>
               ))}

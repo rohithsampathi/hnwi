@@ -929,6 +929,39 @@ function buildTaxSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseRead
   const realAsset = asRecord(pickSection(resolved, "real_asset_audit"));
   const destination = asRecord(realAsset["London / United Kingdom"]);
   const strategies = asArray(destination.loophole_strategies);
+  const strategyRows = strategies.length
+    ? strategies.map((strategy) => [
+        text(strategy.name),
+        text(strategy.mechanism),
+        text(strategy.tax_savings_potential),
+        safeStringArray(strategy.requirements).join("; "),
+      ])
+    : [
+        [
+          "Direct non-UK resident individual route",
+          "Base residential SDLT plus non-resident and additional-dwelling surcharge posture.",
+          `${moneyText(acquisition.total_stamp_duties_usd ?? model.direct_total_duties_usd)} duty drag accepted only for signed family-use and control purpose.`,
+          "UK tax counsel signs buyer profile, residence status, property-count position, relief exclusions, and filing responsibility.",
+        ],
+        [
+          "Main-residence or replacement route",
+          "Lower-duty route only if residence and disposal/replacement facts are true at the transaction date.",
+          "Not credited in the control case.",
+          "Signed day-count, previous main-residence disposal evidence, replacement timing, and counsel computation required before bid authority changes.",
+        ],
+        [
+          "Company / non-natural-person wrapper",
+          "Higher-duty and higher-disclosure route unless a non-tax governance, security, succession, or operating purpose survives counsel and bank review.",
+          `${moneyText(model.entity_total_duties_usd)} modeled duty plus ATED/disclosure/bank-friction review.`,
+          "Do not use as tax shortcut; use only if counsel signs non-tax purpose and bank/beneficial-owner files match.",
+        ],
+        [
+          "Hold or rent-first presence",
+          "No purchase duty until the family proves education, residence, use, and carry facts.",
+          "No capital deployed into SDLT while evidence remains incomplete.",
+          "Use if title, bank, tax, residence, family-use, or seller timing gates are not ready.",
+        ],
+      ];
 
   return reportSection({
     id: "tax-legal-route-readiness",
@@ -969,12 +1002,7 @@ function buildTaxSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseRead
     ],
     table: {
       columns: ["Route reviewed", "Mechanism", "Model effect", "Release requirement"],
-      rows: strategies.map((strategy) => [
-        text(strategy.name),
-        text(strategy.mechanism),
-        text(strategy.tax_savings_potential),
-        safeStringArray(strategy.requirements).join("; "),
-      ]),
+      rows: strategyRows,
     },
   });
 }
@@ -1221,74 +1249,105 @@ function buildAntifragilitySection(resolved: ResolvedDecisionMemoSurfaceData): R
   });
 }
 
-function buildGenerationSection(_resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
-  return reportSection({
+function buildGenerationSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
+  const market = asRecord(pickSection(resolved, "current_market_data"));
+  const model = asRecord(market.acquisition_duty_model);
+  const audit = asRecord(pickSection(resolved, "cross_border_audit_summary"));
+  const acquisition = asRecord(audit.acquisition_audit);
+  const propertyValue =
+    numberOr(acquisition.property_value_usd) ||
+    numberOr(model.price_usd);
+  const dutyDrag =
+    numberOr(acquisition.total_stamp_duties_usd) ||
+    numberOr(model.direct_total_duties_usd);
+  const retainedAfterDuty = propertyValue > 0 ? Math.max(propertyValue - dutyDrag, 0) : 0;
+  const allIn =
+    numberOr(acquisition.total_acquisition_cost_usd) ||
+    numberOr(model.direct_total_outlay_usd);
+
+  return {
     id: "g1-g2-g3-continuity",
-    eyebrow: "Responsibility transfer",
+    eyebrow: "G1 / G2 / G3 continuity chain",
     title: "The house should transfer responsibility before it transfers symbolism",
-    intro:
-      "The house should transfer responsibility, not just symbolism. Use, carry, veto, fairness, sale/refinance, and future explanation must be written before the asset becomes a family expectation.",
+    intro: sanitizeShareText(
+      "The route view keeps the full generation-to-generation read. G1 control, G2 use, fairness treatment, G3 decision memory, carry, veto, sale/refinance, and future explanation must be written before the asset becomes a family expectation.",
+    ),
     cards: [
       {
-        label: "Current authority",
+        label: "G1 route control",
+        value: "Release-gated",
         title: "Control before commitment",
-        body:
+        body: sanitizeShareText(
           "Principal authority, stop rights, and office retrieval must be written before seller timing turns intent into commitment.",
-        releaseCondition:
-          "Release only when approval, stop, signing, reporting, and retrieval rights are documented.",
+        ),
+        releaseCondition: sanitizeShareText(
+          "Release only when approval, stop, signing, reporting, and retrieval rights are written and retrievable.",
+        ),
       },
       {
-        label: "Family use",
-        title: "Use is not ownership",
-        body:
-          "The named family user can use the house only under written use, carry, security, guest, sale/refinance, and escalation rules.",
-        releaseCondition: "Use rights and carry owner are recorded before bid release or exchange.",
+        label: "G1 -> G2 retained value",
+        value: retainedAfterDuty ? moneyText(retainedAfterDuty) : "Evidence-gated",
+        title: "Retained value after duty drag",
+        body: sanitizeShareText(
+          `Control-case value after ${moneyText(dutyDrag)} duty drag, before annual carry and any family-use entitlement is allowed to harden.`,
+        ),
+        releaseCondition: sanitizeShareText(
+          "Use rights and carry owner are recorded before bid release or exchange.",
+        ),
       },
       {
-        label: "Fairness",
-        title: "No implied future entitlement",
-        body:
-          "Fairness, veto, and future-beneficiary treatment must be recorded before the asset becomes a family signal.",
-        releaseCondition: "Family-fairness owner and next-generation decision record are signed.",
+        label: "G2 -> G3 without governance lock",
+        value: "Uncontrolled continuity",
+        title: "Implied entitlement risk",
+        body: sanitizeShareText(
+          "Repeated use can become a family promise without matching title, tax, carry, guest, security, sale/refinance, veto, or fairness rules.",
+        ),
+        releaseCondition: sanitizeShareText(
+          "This path stays hold until the family-fairness owner and next-generation decision record are signed.",
+        ),
       },
       {
-        label: "Decision memory",
-        title: "The file must explain the decision later",
-        body:
-          "The family should be able to retrieve why the route advanced, held, or stopped without relying on memory or adviser fragments.",
-        releaseCondition: "Decision record location, retrieval owner, and explanation packet are indexed.",
+        label: "G2 -> G3 with governance lock",
+        value: allIn ? `${moneyText(allIn)} explained` : "Decision record required",
+        title: "Governed continuity",
+        body: sanitizeShareText(
+          "The family can explain later why the house accepted duty drag, annual carry, restricted liquidity, and family-use boundaries.",
+        ),
+        releaseCondition: sanitizeShareText(
+          "Decision record location, retrieval owner, source anchors, blockers, route alternatives, and explanation packet are indexed.",
+        ),
       },
     ],
     table: {
-      columns: ["Continuity layer", "Risk if unwritten", "Owner", "Release clearance"],
+      columns: ["Generation layer", "Capital / governance read", "Loss if unresolved", "Release record required"],
       rows: [
         [
-          "Principal authority",
-          "Seller timing or adviser momentum can become commitment before the principal's stop right is retrievable.",
-          "Principal + family-office operator",
-          "Approval, stop, signing, reporting, and retrieval rights are written.",
+          "G1 capital authority",
+          "Approves route, capital release, stop rights, adviser instruction, and retrieval owner.",
+          "Seller timing or adviser momentum can become commitment before stop authority is retrievable.",
+          "Authority minute naming approver, stop owner, signer, fallback signer, retrieval owner, and adviser-instruction owner.",
         ],
         [
-          "Named family-use boundary",
-          "Repeated use can become implied entitlement, carry ambiguity, or later sale/refinance conflict.",
-          "Family office + property operator",
-          "Use, carry, security, guest, sale/refinance, and escalation rules are written.",
+          "G2 use boundary",
+          "Use is not title, beneficial ownership, signing authority, sale right, refinance right, or carry entitlement.",
+          "Repeated occupation can become implied entitlement, carry ambiguity, or later sale/refinance conflict.",
+          "Family-use schedule covering occupants, guests, security access, costs, maintenance, sale/refinance permissions, and escalation.",
         ],
         [
-          "Family-fairness record",
-          "The house can become a visible benefit without a recorded fairness owner or future-beneficiary treatment.",
-          "Family-fairness owner + succession counsel",
-          "Fairness owner, veto position, and future-beneficiary treatment are recorded.",
+          "G2 fairness treatment",
+          "Non-user treatment, notice, veto position, and future-beneficiary explanation must be explicit.",
+          "One family-use asset can create later equivalence, notice, veto, or future-beneficiary conflict.",
+          "Family-fairness minute naming fairness owner, treatment of non-users, veto position, and next-generation explanation.",
         ],
         [
-          "Next-generation decision record",
-          "A later reader cannot explain why the route advanced, held, or stopped without relying on memory.",
-          "Family-office operator / CFO",
-          "Decision record, source anchors, blockers, retrieval owner, and explanation packet are indexed.",
+          "G3 decision memory",
+          "Later readers must retrieve why the route advanced, held, or stopped without relying on memory.",
+          "A later office cannot explain why the house accepted duty drag, annual carry, and restricted liquidity.",
+          "Decision packet with source anchors, signed gates, capital basis, route alternatives, blockers, annual review owner, and retrieval location.",
         ],
       ],
     },
-  });
+  };
 }
 
 function buildAuthoritySection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
