@@ -1116,6 +1116,43 @@ function buildCrisisSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseR
 function buildAntifragilitySection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
   const stressTests = asArray(pickSection(resolved, "crisis_resilience_stress_test"));
   const anti = asArray(pickSection(resolved, "antifragile_resilience_test"));
+  const antiCardCopy: Record<string, { body: string; releaseCondition: string }> = {
+    "72-hour absence drill": {
+      body:
+        "Confirms alternate signer, document retrieval, adviser contact tree, and stop authority work when the principal or a key adviser is unavailable.",
+      releaseCondition: "Alternate authority and evidence retrieval must work inside 72 hours.",
+    },
+    "Primary and fallback banking rail": {
+      body:
+        "Prevents a single receiving bank, relationship lead, or conveyancer client account from becoming the only completion path.",
+      releaseCondition: "Primary rail, fallback rail, signers, FX authority, and escalation contacts are accepted before exchange.",
+    },
+    "Decision-memory index": {
+      body:
+        "Locks why the route advanced, held, or stopped into a retrievable file before seller timing or family memory rewrites the decision.",
+      releaseCondition: "Release rule, evidence register, source anchors, blockers, and annual review owner are indexed.",
+    },
+    "Counsel question pack": {
+      body:
+        "Turns adviser disagreement into exact questions, owners, and release conditions instead of letting opinions sit in separate lanes.",
+      releaseCondition: "Open counsel questions have named owners and written answers before bid release or exchange.",
+    },
+    "Record mismatch map": {
+      body:
+        "Forces cash, title, buyer, tax, bank, and family authority records to describe the same route before transfer instruction.",
+      releaseCondition: "Unresolved mismatch holds release even if commercial terms look attractive.",
+    },
+    "Annual UK residence/tax review": {
+      body:
+        "Stops residence, FIG, IHT, school-use, and family-presence assumptions from becoming hidden tax or reporting positions.",
+      releaseCondition: "Residence and annual review owner are recorded before the house becomes a continuity anchor.",
+    },
+    "Security/privacy protocol": {
+      body:
+        "Separates legitimate family security and privacy controls from wrapper, prestige, or tax-shortcut narratives.",
+      releaseCondition: "Security/privacy purpose is written without changing the selected buyer route unless counsel signs it.",
+    },
+  };
 
   return reportSection({
     id: "anti-fragility",
@@ -1123,11 +1160,15 @@ function buildAntifragilitySection(resolved: ResolvedDecisionMemoSurfaceData): R
     title: "The route must get stronger when challenged, not merely documented",
     intro:
       "A Mayfair route is not resilient because advisers agree. It is resilient only if the room can stop, explain, retrieve, and reroute when bank, seller, family, or counsel conditions move against it.",
-    cards: anti.map((row) => ({
-      label: text(row.control),
-      body: text(row.stress_event),
-      releaseCondition: text(row.release_test),
-    })),
+    cards: anti.map((row) => {
+      const label = text(row.control);
+      const copy = antiCardCopy[label];
+      return {
+        label,
+        body: copy?.body ?? text(row.stress_event),
+        releaseCondition: copy?.releaseCondition ?? text(row.release_test),
+      };
+    }),
     table: {
       columns: ["Control", "Stress event", "Release test", "Owner", "Window"],
       rows: stressTests.map((row) => [
@@ -1279,6 +1320,28 @@ function buildResponsibilitySection(resolved: ResolvedDecisionMemoSurfaceData): 
 function buildRecordMismatchSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
   const mismatch = asRecord(pickSection(resolved, "record_mismatch_map"));
   const matrix = asArray(mismatch.matrix);
+  const targetForRecord = (record: string, fallback: unknown): string => {
+    const normalized = record.toLowerCase();
+    if (/cash/.test(normalized)) {
+      return "Source statements, distribution records, tax support, beneficial-owner chart, buyer route, and bank file match.";
+    }
+    if (/title/.test(normalized)) {
+      return "Title holder, buyer capacity, exchange documents, and seller authority match the selected direct-buyer route.";
+    }
+    if (/beneficial/.test(normalized)) {
+      return "Family minute, counsel memo, bank file, and buyer profile name the same controlling party and authority path.";
+    }
+    if (/tax/.test(normalized)) {
+      return "SDLT, non-resident, additional-dwelling, residence, and relief exclusions match the signed tax memo.";
+    }
+    if (/custody|account|bank/.test(normalized)) {
+      return "Source bank, receiving bank, fallback rail, FX authority, signer mandate, and reporting account match one movement path.";
+    }
+    if (/family/.test(normalized)) {
+      return "Family-use, carry, fairness, veto, sale/refinance, and next-generation decision record match the title and tax route.";
+    }
+    return text(fallback);
+  };
 
   return reportSection({
     id: "record-mismatch",
@@ -1292,7 +1355,7 @@ function buildRecordMismatchSection(resolved: ResolvedDecisionMemoSurfaceData): 
         text(row.record),
         routeSanitizedParty(row.current_record),
         text(row.mismatch_risk),
-        text(row.target_record),
+        targetForRecord(text(row.record), row.target_record),
         text(row.owner),
         text(row.release_status),
       ]),
