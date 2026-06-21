@@ -177,8 +177,25 @@ function numberOr(value: unknown, fallback = 0): number {
   return fallback;
 }
 
+function compactExactUsdText(value: string): string {
+  return value
+    .replace(/\bUS\$([0-9]{1,3}(?:,[0-9]{3})+)\b/g, (_match, raw: string) => {
+      const numeric = Number(raw.replace(/,/g, ""));
+      if (!Number.isFinite(numeric) || numeric <= 0) return `US$${raw}`;
+      const absolute = Math.abs(numeric);
+      if (absolute >= 1_000_000) return `~US$${(absolute / 1_000_000).toFixed(1)}M`;
+      if (absolute >= 1_000) return `~US$${Math.round(absolute / 1_000).toLocaleString("en-US")}K`;
+      return `~US$${Math.round(absolute).toLocaleString("en-US")}`;
+    })
+    .replace(/\bUS\$([0-9]+(?:\.[0-9]{2,}))([MB])\b/g, (_match, raw: string, suffix: string) => {
+      const numeric = Number(raw);
+      if (!Number.isFinite(numeric)) return `US$${raw}${suffix}`;
+      return `US$${numeric.toFixed(1).replace(/\.0$/, "")}${suffix}`;
+    });
+}
+
 function sanitizeShareText(value: unknown): string {
-  return text(value)
+  return compactExactUsdText(text(value))
     .replace(/\bRelease Differently\b/gi, "Gated negotiation only")
     .replace(/\bGated negotiation only only\b/gi, "Gated negotiation only")
     .replace(/\bproceed[-\s]modified\b/gi, "Proceed under signed gates")
@@ -192,6 +209,7 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bExpected Net Worth\b/gi, "Scenario net position")
     .replace(/\bNet Benefit\b/gi, "Route discipline read")
     .replace(/\bScore\s+\d+\s*\/\s*100\.?/gi, "Readiness score evidence-gated.")
+    .replace(/\b\d+\s*\/\s*100\b/g, "readiness score evidence-gated")
     .replace(/\b50\s*\/\s*30\s*\/\s*20 probability scenarios\b/gi, "base, stress, and opportunity scenario discipline; not a forecast")
     .replace(/\b50\s*\/\s*30\s*\/\s*20 probabilities\b/gi, "base / stress / opportunity scenario weights; not a forecast")
     .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")
@@ -236,12 +254,15 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bAI banking crisis simulation\b/gi, "Bank compliance escalation simulation")
     .replace(/\badvisor embarrassment\b/gi, "adviser coordination failure")
     .replace(/\badviser embarrassment\b/gi, "adviser coordination failure")
-    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, "Technology-wealth exposure check")
-    .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, "Operating-income exposure check")
-    .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, "Digital-settlement exposure check")
-    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, "technology-wealth exposure")
-    .replace(/\bwar\s*\/\s*sanctions\b/gi, "geopolitical and sanctions exposure")
-    .replace(/\bstablecoin rail stress\b/gi, "digital-settlement rail exposure")
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, "Conditional technology-wealth exposure check")
+    .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, "Conditional operating-income exposure check")
+    .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, "Conditional digital-settlement rail exposure check")
+    .replace(/\bTechnology-wealth exposure check\b/gi, "Conditional technology-wealth exposure check")
+    .replace(/\bOperating-income exposure check\b/gi, "Conditional operating-income exposure check")
+    .replace(/\bDigital-settlement exposure check\b/gi, "Conditional digital-settlement rail exposure check")
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, "conditional technology-wealth exposure")
+    .replace(/\bwar\s*\/\s*sanctions\b/gi, "conditional geopolitical and sanctions exposure")
+    .replace(/\bstablecoin rail stress\b/gi, "conditional digital-settlement rail exposure")
     .replace(/\bBSA\/sanctions\b/gi, "sanctions and bank-compliance controls")
     .replace(/\bBSA\b/g, "bank-compliance controls")
     .replace(/\bshadow facilitators\b/gi, "unverified intermediaries")
@@ -751,7 +772,7 @@ function moneyText(value: unknown, fallback = "Release-gated"): string {
 function percentText(value: unknown, fallback = "Release-gated"): string {
   const numeric = numberOr(value, Number.NaN);
   if (!Number.isFinite(numeric)) return fallback;
-  return `${numeric.toFixed(Math.abs(numeric) < 10 ? 2 : 1)}%`;
+  return `${numeric.toFixed(1)}%`;
 }
 
 function safeStringArray(value: unknown): string[] {

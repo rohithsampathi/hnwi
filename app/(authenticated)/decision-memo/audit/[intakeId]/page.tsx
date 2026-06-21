@@ -120,8 +120,25 @@ function asArray(value: unknown): RecordLike[] {
   return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 
-function cleanTranscriptText(value: string): string {
+function compactExactUsdForTranscript(value: string): string {
   return value
+    .replace(/\bUS\$([0-9]{1,3}(?:,[0-9]{3})+)\b/g, (_match, raw: string) => {
+      const numeric = Number(raw.replace(/,/g, ''));
+      if (!Number.isFinite(numeric) || numeric <= 0) return `US$${raw}`;
+      const absolute = Math.abs(numeric);
+      if (absolute >= 1_000_000) return `~US$${(absolute / 1_000_000).toFixed(1)}M`;
+      if (absolute >= 1_000) return `~US$${Math.round(absolute / 1_000).toLocaleString('en-US')}K`;
+      return `~US$${Math.round(absolute).toLocaleString('en-US')}`;
+    })
+    .replace(/\bUS\$([0-9]+(?:\.[0-9]{2,}))([MB])\b/g, (_match, raw: string, suffix: string) => {
+      const numeric = Number(raw);
+      if (!Number.isFinite(numeric)) return `US$${raw}${suffix}`;
+      return `US$${numeric.toFixed(1).replace(/\.0$/, '')}${suffix}`;
+    });
+}
+
+function cleanTranscriptText(value: string): string {
+  return compactExactUsdForTranscript(value)
     .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
     .replace(/\bGated negotiation only only\b/gi, 'Gated negotiation only')
     .replace(/\brelease differently\b/gi, 'gated negotiation only')
@@ -136,6 +153,7 @@ function cleanTranscriptText(value: string): string {
     .replace(/\bExpected Net Worth\b/gi, 'Scenario net position')
     .replace(/\bNet Benefit\b/gi, 'Route discipline read')
     .replace(/\bScore\s+\d+\s*\/\s*100\.?/gi, 'Readiness score evidence-gated.')
+    .replace(/\b\d+\s*\/\s*100\b/g, 'readiness score evidence-gated')
     .replace(/\b50\s*\/\s*30\s*\/\s*20 probability scenarios\b/gi, 'base, stress, and opportunity scenario discipline; not a forecast')
     .replace(/\b50\s*\/\s*30\s*\/\s*20 probabilities\b/gi, 'base / stress / opportunity scenario weights; not a forecast')
     .replace(/\bUS\$78,861,239\b/g, '~US$78.9M')
@@ -184,12 +202,15 @@ function cleanTranscriptText(value: string): string {
     .replace(/\bsix years later\b/gi, 'later')
     .replace(/\badvisor embarrassment\b/gi, 'adviser coordination failure')
     .replace(/\badviser embarrassment\b/gi, 'adviser coordination failure')
-    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, 'Technology-wealth exposure check')
-    .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, 'Operating-income exposure check')
-    .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, 'Digital-settlement exposure check')
-    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, 'technology-wealth exposure')
-    .replace(/\bwar\s*\/\s*sanctions\b/gi, 'geopolitical and sanctions exposure')
-    .replace(/\bstablecoin rail stress\b/gi, 'digital-settlement rail exposure')
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, 'Conditional technology-wealth exposure check')
+    .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, 'Conditional operating-income exposure check')
+    .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, 'Conditional digital-settlement rail exposure check')
+    .replace(/\bTechnology-wealth exposure check\b/gi, 'Conditional technology-wealth exposure check')
+    .replace(/\bOperating-income exposure check\b/gi, 'Conditional operating-income exposure check')
+    .replace(/\bDigital-settlement exposure check\b/gi, 'Conditional digital-settlement rail exposure check')
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, 'conditional technology-wealth exposure')
+    .replace(/\bwar\s*\/\s*sanctions\b/gi, 'conditional geopolitical and sanctions exposure')
+    .replace(/\bstablecoin rail stress\b/gi, 'conditional digital-settlement rail exposure')
     .replace(/\bBSA\/sanctions\b/gi, 'sanctions and bank-compliance controls')
     .replace(/\bBSA\b/g, 'bank-compliance controls')
     .replace(/\bshadow facilitators\b/gi, 'unverified intermediaries')
@@ -221,6 +242,11 @@ function asString(value: unknown, fallback = ''): string {
   if (typeof value === 'string') return cleanTranscriptText(value);
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   return cleanTranscriptText(fallback);
+}
+
+function strongText(value: unknown) {
+  const text = asString(value).trim();
+  return text ? <strong>{text}</strong> : null;
 }
 
 function textList(value: unknown, limit = 8): string[] {
@@ -610,14 +636,14 @@ function DecisionMemoServerAuditText({
         <ul>
           {continuityCards.map((card, index) => (
             <li key={`continuity-card-${index}`}>
-              <strong>{asString(card.label || card.title)}</strong>
+              {strongText(card.label || card.title)}
               {asString(card.value) ? `: ${asString(card.value)}` : ''}
               {asString(card.body) ? ` - ${asString(card.body)}` : ''}
             </li>
           ))}
           {continuityRows.map((row, index) => (
             <li key={`continuity-row-${index}`}>
-              <strong>{asString(row['Continuity layer'] || row.Layer || row.Stage)}</strong>
+              {strongText(row['Continuity layer'] || row.Layer || row.Stage)}
               {asString(row['Risk if unwritten']) ? `: ${asString(row['Risk if unwritten'])}` : ''}
               {asString(row.Owner) ? ` Owner: ${asString(row.Owner)}.` : ''}
               {asString(row['Release clearance'] || row['Release condition']) ? ` Release clearance: ${asString(row['Release clearance'] || row['Release condition'])}.` : ''}
@@ -655,13 +681,13 @@ function DecisionMemoServerAuditText({
         <ul>
           {bankingCards.map((card, index) => (
             <li key={`bank-card-${index}`}>
-              <strong>{asString(card.label || card.title)}</strong>
+              {strongText(card.label || card.title)}
               {asString(card.body || card.value) ? `: ${asString(card.body || card.value)}` : ''}
             </li>
           ))}
           {bankingRows.map((row, index) => (
             <li key={`bank-row-${index}`}>
-              <strong>{asString(row['Rail or proof class'] || row.Gate || row.Domain)}</strong>
+              {strongText(row['Rail or proof class'] || row.Gate || row.Domain)}
               {asString(row.Requirement || row.Condition) ? `: ${asString(row.Requirement || row.Condition)}` : ''}
               {asString(row.Owner) ? ` Owner: ${asString(row.Owner)}.` : ''}
             </li>
@@ -718,13 +744,13 @@ function DecisionMemoServerAuditText({
         <ul>
           {decisionMemoryCards.map((card, index) => (
             <li key={`decision-memory-card-${index}`}>
-              <strong>{asString(card.label || card.title)}</strong>
+              {strongText(card.label || card.title)}
               {asString(card.body || card.value) ? `: ${asString(card.body || card.value)}` : ''}
             </li>
           ))}
           {decisionMemoryRows.map((row, index) => (
             <li key={`decision-memory-row-${index}`}>
-              <strong>{asString(row.Report || row.Record || row.Gate)}</strong>
+              {strongText(row.Report || row.Record || row.Gate)}
               {asString(row.Cadence || row.Condition) ? `: ${asString(row.Cadence || row.Condition)}` : ''}
               {asString(row.Owner) ? ` Owner: ${asString(row.Owner)}.` : ''}
               {asString(row.Recipients) ? ` Recipients: ${asString(row.Recipients)}.` : ''}

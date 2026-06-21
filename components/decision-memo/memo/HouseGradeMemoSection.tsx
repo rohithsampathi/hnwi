@@ -75,10 +75,57 @@ function asArray<T = any>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+function compactExactUsdInHouseText(value: string): string {
+  return value
+    .replace(/\bUS\$([0-9]{1,3}(?:,[0-9]{3})+)\b/g, (_match, raw: string) => {
+      const numeric = Number(raw.replace(/,/g, ''));
+      if (!Number.isFinite(numeric) || numeric <= 0) return `US$${raw}`;
+      const absolute = Math.abs(numeric);
+      if (absolute >= 1_000_000) return `~US$${(absolute / 1_000_000).toFixed(1)}M`;
+      if (absolute >= 1_000) return `~US$${Math.round(absolute / 1_000).toLocaleString('en-US')}K`;
+      return `~US$${Math.round(absolute).toLocaleString('en-US')}`;
+    })
+    .replace(/\bUS\$([0-9]+(?:\.[0-9]{2,}))([MB])\b/g, (_match, raw: string, suffix: string) => {
+      const numeric = Number(raw);
+      if (!Number.isFinite(numeric)) return `US$${raw}${suffix}`;
+      return `US$${numeric.toFixed(1).replace(/\.0$/, '')}${suffix}`;
+    });
+}
+
+function publicHouseText(value: string): string {
+  return compactExactUsdInHouseText(value)
+    .replace(/\bExpected value creation\b/gi, 'Scenario discipline output')
+    .replace(/\bExpected Net Worth\b/gi, 'Scenario net position')
+    .replace(/\bNet Benefit\b/gi, 'Route discipline read')
+    .replace(/\bValue Creation\b/gi, 'Scenario discipline output')
+    .replace(/\bExpected Outcome\b/gi, 'Scenario outcome')
+    .replace(/\bScore\s+\d+\s*\/\s*100\.?/gi, 'Readiness score evidence-gated.')
+    .replace(/\b\d+\s*\/\s*100\b/g, 'readiness score evidence-gated')
+    .replace(/\b50\s*\/\s*30\s*\/\s*20 probability scenarios\b/gi, 'base, stress, and opportunity scenario discipline; not a forecast')
+    .replace(/\b50\s*\/\s*30\s*\/\s*20 probabilities\b/gi, 'base / stress / opportunity scenario weights; not a forecast')
+    .replace(/\badvisor embarrassment\b/gi, 'adviser coordination failure')
+    .replace(/\badviser embarrassment\b/gi, 'adviser coordination failure')
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, 'Conditional technology-wealth exposure check')
+    .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, 'Conditional operating-income exposure check')
+    .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, 'Conditional digital-settlement rail exposure check')
+    .replace(/\bTechnology-wealth exposure check\b/gi, 'Conditional technology-wealth exposure check')
+    .replace(/\bOperating-income exposure check\b/gi, 'Conditional operating-income exposure check')
+    .replace(/\bDigital-settlement exposure check\b/gi, 'Conditional digital-settlement rail exposure check')
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, 'conditional technology-wealth exposure')
+    .replace(/\bwar\s*\/\s*sanctions\b/gi, 'conditional geopolitical and sanctions exposure')
+    .replace(/\bGulf conflict,\s*sanctions\b/gi, 'conditional geopolitical and sanctions exposure')
+    .replace(/\bstablecoin rail stress\b/gi, 'conditional digital-settlement rail exposure')
+    .replace(/\bBSA\/sanctions\b/gi, 'sanctions and bank-compliance controls')
+    .replace(/\bBSA\b/g, 'bank-compliance controls')
+    .replace(/\bshadow facilitators\b/gi, 'unverified intermediaries')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function asText(value: unknown, fallback = '—'): string {
   if (typeof value === 'string') {
     const trimmed = value.trim();
-    return trimmed || fallback;
+    return trimmed ? publicHouseText(trimmed) : fallback;
   }
   if (typeof value === 'number' && Number.isFinite(value)) {
     return String(value);
@@ -137,10 +184,10 @@ function formatCompactCurrency(value: number): string {
   const absolute = Math.abs(value);
 
   if (absolute >= 1_000_000_000) {
-    return `${sign}$${(absolute / 1_000_000_000).toFixed(2).replace(/\.00$/, '')}B`;
+    return `${sign}$${(absolute / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
   }
   if (absolute >= 1_000_000) {
-    return `${sign}$${(absolute / 1_000_000).toFixed(2).replace(/\.00$/, '')}M`;
+    return `${sign}$${(absolute / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
   }
   if (absolute >= 1_000) {
     const precision = absolute >= 100_000 ? 0 : 1;
@@ -169,10 +216,10 @@ function formatUsdCompactValue(value: unknown, fallback = '—'): string {
   const absolute = Math.abs(numeric);
 
   if (absolute >= 1_000_000_000) {
-    return `${sign}US$${(absolute / 1_000_000_000).toFixed(2).replace(/\.00$/, '')}B`;
+    return `${sign}US$${(absolute / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
   }
   if (absolute >= 1_000_000) {
-    return `${sign}US$${(absolute / 1_000_000).toFixed(2).replace(/\.00$/, '')}M`;
+    return `${sign}US$${(absolute / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
   }
   if (absolute >= 1_000) {
     const precision = absolute >= 100_000 ? 0 : 1;
@@ -576,12 +623,12 @@ function fallbackContinuity(preview: Record<string, any>, releasePayload?: Relea
     },
     {
       label: 'G1 -> G2 retained value',
-      value: g2.net_to_heirs_formatted || compactOrNull(g2Net) || 'Release-gated',
+      value: asText(g2.net_to_heirs_formatted, '') || compactOrNull(g2Net) || 'Release-gated',
       detail: [g2.compatibility, g2.loss_point].filter(Boolean).join(' ') || 'Net continuity after estate drag and route friction.',
     },
     {
       label: 'G2 -> G3 without governance lock',
-      value: g3.without_structure_formatted || compactOrNull(g3Without) || 'Unwritten risk',
+      value: asText(g3.without_structure_formatted, '') || compactOrNull(g3Without) || 'Unwritten risk',
       detail:
         [g3.compatibility, g3.loss_point].filter(Boolean).join(' ') ||
         continuityRiskByLayer(
@@ -591,7 +638,7 @@ function fallbackContinuity(preview: Record<string, any>, releasePayload?: Relea
     },
     {
       label: 'G2 -> G3 with governance lock',
-      value: withStructure.with_structure_formatted || compactOrNull(g3With) || 'Governance-gated',
+      value: asText(withStructure.with_structure_formatted, '') || compactOrNull(g3With) || 'Governance-gated',
       detail:
         [withStructure.compatibility, withStructure.loss_point].filter(Boolean).join(' ') ||
         'Durable value is release-ready only after use, carry, fairness, veto, sale/refinance, retrieval owner, and decision-record location are written.',
@@ -2190,14 +2237,27 @@ export default function HouseGradeMemoSection({
     !Array.isArray(memo.continuity_and_g1_g2_g3_consequence)
       ? (memo.continuity_and_g1_g2_g3_consequence as Record<string, any>)
       : {};
+  const memoContinuityItems = asArray<Record<string, any>>(memoContinuity.items);
+  const hasUsefulContinuityItems = memoContinuityItems.some((item) => {
+    const value = asText(item.value || item.title || item.headline, '');
+    const detail = asText(item.detail || item.body || item.note, '');
+    return Boolean(value && value !== '—' && detail);
+  });
   const continuity: Record<string, any> = {
     ...fallbackContinuityData,
     ...memoContinuity,
-    items: asArray(memoContinuity.items).length ? memoContinuity.items : fallbackContinuityData.items,
+    items: hasUsefulContinuityItems ? memoContinuityItems : fallbackContinuityData.items,
     succession_layer_map: asArray(memoContinuity.succession_layer_map).length
       ? memoContinuity.succession_layer_map
       : fallbackContinuityData.succession_layer_map,
-    top_trigger: Object.keys(memoContinuity.top_trigger || {}).length ? memoContinuity.top_trigger : fallbackContinuityData.top_trigger,
+    top_trigger: asText(
+      (memoContinuity.top_trigger || {}).trigger ||
+        (memoContinuity.top_trigger || {}).name ||
+        (memoContinuity.top_trigger || {}).description,
+      '',
+    )
+      ? memoContinuity.top_trigger
+      : fallbackContinuityData.top_trigger,
     third_generation_problem: memoContinuity.third_generation_problem || fallbackContinuityData.third_generation_problem,
     beneficiary_map_note: memoContinuity.beneficiary_map_note || fallbackContinuityData.beneficiary_map_note,
   };
@@ -2719,7 +2779,7 @@ export default function HouseGradeMemoSection({
       detail: 'What the house originally asked the room to solve.',
     },
     {
-      label: 'Expected Outcome',
+      label: 'Intended outcome',
       value: asText(mandate.expected_outcome, expectedOutcomeFallback),
       detail: 'The pre-correction ambition the memo had to test.',
     },
@@ -2775,17 +2835,12 @@ export default function HouseGradeMemoSection({
   const resilienceRows = [
     {
       label: 'Overall Resilience',
-      value: typeof normalizedCrisis?.overall?.score === 'number'
-        ? `${normalizedCrisis.overall.score}/100`
-        : typeof crisis.overall_resilience?.score === 'number'
-          ? `${crisis.overall_resilience.score}/100`
-          : 'Evidence gated',
-      displayValue: typeof normalizedCrisis?.overall?.score === 'number'
-        ? `${normalizedCrisis.overall.score}/100`
-        : typeof crisis.overall_resilience?.score === 'number'
-          ? `${crisis.overall_resilience.score}/100`
-          : 'Evidence gated',
-      detail: asText(normalizedCrisis?.overall?.rating || crisis.overall_resilience?.rating, ''),
+      value: 'Evidence gated',
+      displayValue: 'Evidence gated',
+      detail: asText(
+        normalizedCrisis?.overall?.rating || crisis.overall_resilience?.rating,
+        'Conditional resilience posture depends on source wealth, bank rails, counterparties, insurance, and settlement path.',
+      ),
     },
     {
       label: 'Stress Drawdown Floor',

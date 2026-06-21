@@ -992,7 +992,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                   </div>
 
                   <div className="bg-card/50 rounded-lg p-3 mb-4">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Outcome</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Scenario outcome</p>
                     <p className={`text-sm font-semibold ${isActive ? 'text-primary' : 'text-foreground'}`}>{scenario.outcome}</p>
                   </div>
 
@@ -1043,7 +1043,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
             </div>
           </motion.div>
 
-          {/* Probability-Weighted Summary */}
+          {/* Scenario discipline summary */}
           <motion.div
             className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/30 rounded-xl p-5"
             initial={{ opacity: 0, y: 20 }}
@@ -1053,17 +1053,17 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
             <div className="flex items-center gap-2 mb-4">
               <Zap className="w-5 h-5 text-primary" />
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                Probability-Weighted Expected Outcome
+                Scenario Discipline Summary
               </h3>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-card rounded-lg">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Net Worth</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Scenario net position</p>
                 <p className="text-xl font-bold text-foreground">{fallbackWeighted ? formatCurrency(fallbackWeighted.expectedNetWorth) : metrics.year10Value}</p>
               </div>
               <div className="text-center p-4 bg-card rounded-lg">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Value Creation</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Scenario discipline output</p>
                 <p className="text-xl font-bold text-primary">{fallbackWeighted ? formatCurrency(fallbackWeighted.valueCreation) : metrics.totalCreation}</p>
               </div>
               <div className="text-center p-4 bg-card rounded-lg">
@@ -1071,7 +1071,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                 <p className="text-xl font-bold text-muted-foreground">{formatCurrency(fallbackStayValue)}</p>
               </div>
               <div className="text-center p-4 bg-primary/20 rounded-lg border-2 border-primary/50">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Net Benefit</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Route discipline read</p>
                 <p className="text-2xl font-bold text-primary">{fallbackWeighted ? formatSignedCurrency(fallbackWeighted.netBenefit) : metrics.costOfInaction}</p>
               </div>
             </div>
@@ -1086,7 +1086,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
           >
             <div className="w-1.5 h-1.5 rounded-full bg-primary" />
             <p className="text-[10px] text-muted-foreground">
-              Grounded in HNWI Chronicles KG Wealth Projection Models + Historical Precedents
+              Scenario model for release discipline only; not a validated forecast.
             </p>
           </motion.div>
         </div>
@@ -1405,7 +1405,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               <div className="grid grid-cols-3 gap-3">
                 <ValueGauge label="Starting Asset" value={startingValueFormatted} subtext={`Capital deployed ${capitalDeployedFormatted}`} />
                 <ValueGauge label="Year 10 Asset" value={structuredDynamicMetrics.year10Value} highlight />
-                <ValueGauge label="Gross Value Creation" value={structuredDynamicMetrics.valueCreation} subtext={activeNetCreation !== undefined ? `Net of entry costs ${structuredDynamicMetrics.netCreation}` : undefined} highlight />
+                <ValueGauge label="Scenario discipline output" value={structuredDynamicMetrics.valueCreation} subtext={activeNetCreation !== undefined ? `Net of entry costs ${structuredDynamicMetrics.netCreation}` : undefined} highlight />
               </div>
               {stampDutiesPaid > 0 && (
                 <p className="mt-3 text-xs text-muted-foreground">
@@ -1579,7 +1579,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                   <p className="text-xl font-bold text-muted-foreground">{formatCurrency(weightedStayValue)}</p>
                 </div>
                 <div className="text-center p-4 bg-primary/20 rounded-lg border-2 border-primary/50">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Net Benefit</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Route discipline read</p>
                   <p className="text-2xl font-bold text-primary">{formatSignedCurrency(weightedOutcome.net_benefit_of_move)}</p>
                 </div>
               </div>
@@ -1598,7 +1598,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
           >
             <div className="w-1.5 h-1.5 rounded-full bg-primary" />
             <p className="text-[10px] text-muted-foreground">
-              Grounded in HNWI Chronicles KG Wealth Projection Models + Historical Precedents
+              Scenario model for release discipline only; not a validated forecast.
             </p>
           </motion.div>
         </div>
