@@ -113,6 +113,21 @@ interface BackendAuditResponse {
 type AuditTier = 'single' | 'annual';
 type MemoViewMode = 'linear' | 'house' | 'route' | 'principal' | 'evidence';
 
+function resolveMemoViewMode(
+  requestedMemoView: string | null,
+  isReleaseReadinessReviewPath: boolean,
+): MemoViewMode {
+  if (isReleaseReadinessReviewPath) {
+    if (requestedMemoView === 'route' || requestedMemoView === 'v2') return 'route';
+    if (requestedMemoView === 'evidence' || requestedMemoView === 'methodology') return 'evidence';
+    return 'principal';
+  }
+
+  if (requestedMemoView === 'house') return 'house';
+  if (requestedMemoView === 'route' || requestedMemoView === 'v2') return 'route';
+  return 'linear';
+}
+
 const TIER_CONFIG = {
   single: {
     name: 'Single Audit',
@@ -839,20 +854,16 @@ export default function DecisionMemoAuditClientPage({
 
   // Check if user wants Personal mode (UHNWI navigation interface)
   const usePersonalMode = searchParams.get('personal') === 'true';
-  const requestedMemoView = searchParams.get('view');
-  const memoViewMode: MemoViewMode =
-    isReleaseReadinessReviewPath
-      ? requestedMemoView === 'route' || requestedMemoView === 'v2'
-        ? 'route'
-        : requestedMemoView === 'evidence' || requestedMemoView === 'methodology'
-          ? 'evidence'
-          : 'principal'
-      : requestedMemoView === 'house'
-        ? 'house'
-        : requestedMemoView === 'route' || requestedMemoView === 'v2'
-          ? 'route'
-          : 'linear';
+  const initialMemoViewMode = useMemo(
+    () => resolveMemoViewMode(searchParams.get('view'), isReleaseReadinessReviewPath),
+    [isReleaseReadinessReviewPath, searchParams],
+  );
+  const [memoViewMode, setMemoViewMode] = useState<MemoViewMode>(initialMemoViewMode);
   const canonicalMemoReference = resolveDecisionMemoDisplayReference(intakeId);
+
+  useEffect(() => {
+    setMemoViewMode(initialMemoViewMode);
+  }, [initialMemoViewMode]);
 
   useEffect(() => {
     const publicId = resolvePublicDecisionMemoId(intakeId);
@@ -923,6 +934,57 @@ export default function DecisionMemoAuditClientPage({
     const query = params.toString();
     return query ? `${pathname}?${query}` : pathname;
   }, [isReleaseReadinessReviewPath, pathname, searchParams]);
+
+  const replaceAuditViewHref = useCallback((personalMode: boolean, viewMode: MemoViewMode = 'linear') => {
+    const baseQuery =
+      typeof window !== 'undefined' && window.location.search
+        ? window.location.search
+        : searchParams.toString();
+    const params = new URLSearchParams(baseQuery);
+
+    if (personalMode) {
+      params.set('personal', 'true');
+    } else {
+      params.delete('personal');
+      params.delete('section');
+    }
+
+    if (isReleaseReadinessReviewPath) {
+      if (viewMode === 'route' || viewMode === 'evidence') {
+        params.set('view', viewMode);
+      } else {
+        params.delete('view');
+      }
+    } else if (viewMode === 'house' || viewMode === 'route') {
+      params.set('view', viewMode);
+    } else {
+      params.delete('view');
+    }
+
+    const query = params.toString();
+    const hash = typeof window !== 'undefined' ? window.location.hash : '';
+    const nextHref = `${pathname}${query ? `?${query}` : ''}${hash}`;
+    window.history.replaceState(window.history.state, '', nextHref);
+  }, [isReleaseReadinessReviewPath, pathname, searchParams]);
+
+  const changeMemoView = useCallback((viewMode: MemoViewMode) => {
+    if (memoViewMode === viewMode) return;
+
+    setMemoViewMode(viewMode);
+    replaceAuditViewHref(false, viewMode);
+  }, [memoViewMode, replaceAuditViewHref]);
+
+  useEffect(() => {
+    const syncMemoViewFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      setMemoViewMode(resolveMemoViewMode(params.get('view'), isReleaseReadinessReviewPath));
+    };
+
+    window.addEventListener('popstate', syncMemoViewFromUrl);
+    return () => {
+      window.removeEventListener('popstate', syncMemoViewFromUrl);
+    };
+  }, [isReleaseReadinessReviewPath]);
 
   useTheme();
   const initialDevelopmentCount =
@@ -1934,7 +1996,7 @@ export default function DecisionMemoAuditClientPage({
                   <>
                     <button
                       onClick={() => {
-                        router.push(buildAuditViewHref(false, 'principal'));
+                        changeMemoView('principal');
                       }}
                       type="button"
                       aria-label="Principal View"
@@ -1950,7 +2012,7 @@ export default function DecisionMemoAuditClientPage({
                     </button>
                     <button
                       onClick={() => {
-                        router.push(buildAuditViewHref(false, 'route'));
+                        changeMemoView('route');
                       }}
                       type="button"
                       aria-label="Route View"
@@ -1966,7 +2028,7 @@ export default function DecisionMemoAuditClientPage({
                     </button>
                     <button
                       onClick={() => {
-                        router.push(buildAuditViewHref(false, 'evidence'));
+                        changeMemoView('evidence');
                       }}
                       type="button"
                       aria-label="Evidence & Methodology"
@@ -1985,7 +2047,7 @@ export default function DecisionMemoAuditClientPage({
                   <>
                     <button
                       onClick={() => {
-                        router.push(buildAuditViewHref(false, 'route'));
+                        changeMemoView('route');
                       }}
                       type="button"
                       aria-label="Route View"
@@ -2001,7 +2063,7 @@ export default function DecisionMemoAuditClientPage({
                     </button>
                     <button
                       onClick={() => {
-                        router.push(buildAuditViewHref(false, 'house'));
+                        changeMemoView('house');
                       }}
                       type="button"
                       aria-label="House View"
@@ -2098,7 +2160,7 @@ export default function DecisionMemoAuditClientPage({
                     </p>
                     <button
                       type="button"
-                      onClick={() => router.push(buildAuditViewHref(false, 'principal'))}
+                      onClick={() => changeMemoView('principal')}
                       className="mt-5 rounded-md border border-border/40 px-4 py-2 text-sm text-foreground transition hover:border-border"
                     >
                       Open Principal View
