@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, type ReactNode } from 'react';
+import React, { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -166,8 +166,8 @@ function releaseRuleDisplay(rule: RouteIntelligenceOptionV2['releaseRule'] | str
 }
 
 function isOutcomeOnlyRoute(route: RouteIntelligenceOptionV2): boolean {
-  const routeName = route.routeName.toLowerCase();
-  const routeType = route.routeType.toLowerCase();
+  const routeName = String(route.routeName || '').toLowerCase();
+  const routeType = String(route.routeType || '').toLowerCase();
   return (
     route.id === 'hold_rent_first' ||
     route.id === 'stop_route' ||
@@ -176,6 +176,42 @@ function isOutcomeOnlyRoute(route: RouteIntelligenceOptionV2): boolean {
     routeType.includes('optionality-preservation') ||
     routeType.includes('capital-protection')
   );
+}
+
+class RouteFullMemoErrorBoundary extends React.Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-5 text-sm leading-relaxed text-muted-foreground">
+          The route read is available. The embedded full memo anchor is still warming; switch back to Principal View for the canonical full memo.
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function RouteFullMemoAnchor({
+  route,
+  fullMemo,
+}: {
+  route: RouteIntelligenceOptionV2;
+  fullMemo: FullMemoRenderer;
+}) {
+  return <>{typeof fullMemo === 'function' ? fullMemo(route) : fullMemo}</>;
 }
 
 function metricLabel(route: RouteIntelligenceOptionV2): string {
@@ -1497,9 +1533,14 @@ export default function RouteIntelligenceV2Report({
   sharePayload,
 }: RouteIntelligenceV2ReportProps) {
   const routes = useMemo(
-    () => (intelligence.pressureVariants?.length ? intelligence.pressureVariants : intelligence.routeOptions) ?? [],
+    () => {
+      const variants = Array.isArray(intelligence.pressureVariants) ? intelligence.pressureVariants : [];
+      const options = Array.isArray(intelligence.routeOptions) ? intelligence.routeOptions : [];
+      return variants.length ? variants : options;
+    },
     [intelligence.pressureVariants, intelligence.routeOptions],
   );
+  const [fullMemoReady, setFullMemoReady] = useState(false);
   const [selectedRouteId, setSelectedRouteId] = useState(intelligence.recommendedRouteId || routes[0]?.id || '');
   const selectedRoute = useMemo(
     () => routes.find((route) => route.id === selectedRouteId) ?? routes[0],
@@ -1510,12 +1551,10 @@ export default function RouteIntelligenceV2Report({
     [intelligence.recommendedRouteId, routes],
   );
   const isOutcomeOnlyTrack = selectedRoute ? isOutcomeOnlyRoute(selectedRoute) : false;
-  const selectedFullMemo = useMemo(() => {
-    if (!selectedRoute || !fullMemo) return null;
-    return typeof fullMemo === 'function' ? fullMemo(selectedRoute) : fullMemo;
-  }, [fullMemo, selectedRoute]);
+  const hasFullMemoAnchor = Boolean(selectedRoute && fullMemo && !isOutcomeOnlyTrack);
+  const showFullMemoAnchor = Boolean(fullMemoReady && hasFullMemoAnchor);
   const [sourceJurisdiction, destinationJurisdiction] = useMemo(() => {
-    const parts = intelligence.corridor.split(/\s*(?:->|→)\s*/);
+    const parts = String(intelligence.corridor || '').split(/\s*(?:->|→)\s*/);
     return [parts[0] || 'Source', parts[1] || 'Destination'];
   }, [intelligence.corridor]);
   const taxSection = reportSectionById(sharePayload, 'tax-legal-route-readiness');
@@ -1529,6 +1568,26 @@ export default function RouteIntelligenceV2Report({
   const crisisCitationIds = citationIdsFor(sharePayload, /bank|rail|source|kyc|sof|sow|crisis|war|sanction|technology|ai|insurance/i, 4);
   const marketCitationIds = citationIdsFor(sharePayload, /market|price|bid|mayfair|seller|trophy|property/i, 4);
   const primaryListingCitationIds = citationIdsFor(sharePayload, /rightmove|ob private|balfour place|target listing/i, 1);
+
+  useEffect(() => {
+    setFullMemoReady(false);
+    const handle =
+      typeof window.requestAnimationFrame === 'function'
+        ? window.requestAnimationFrame(() => {
+            setFullMemoReady(true);
+          })
+        : window.setTimeout(() => {
+            setFullMemoReady(true);
+          }, 0);
+
+    return () => {
+      if (typeof window.cancelAnimationFrame === 'function') {
+        window.cancelAnimationFrame(handle);
+      } else {
+        window.clearTimeout(handle);
+      }
+    };
+  }, [selectedRoute?.id]);
 
   if (!selectedRoute) {
     return (
@@ -1738,19 +1797,28 @@ export default function RouteIntelligenceV2Report({
           </div>
         </section>
 
-        {selectedFullMemo && !isOutcomeOnlyTrack ? (
+        {showFullMemoAnchor && selectedRoute && fullMemo ? (
           <section id="full-decision-memo" className="border-t border-border/40 pt-10">
             <SectionHeader
               label={`Full Release Readiness Memo · Route ${selectedRoute.rank}`}
               title={`${selectedRoute.routeName} release-readiness memo.`}
             />
             <div className="rounded-lg border border-border/25 bg-background/40 px-0 py-6 sm:px-2">
-              {selectedFullMemo}
+              <RouteFullMemoErrorBoundary key={selectedRoute.id}>
+                <RouteFullMemoAnchor route={selectedRoute} fullMemo={fullMemo} />
+              </RouteFullMemoErrorBoundary>
             </div>
           </section>
         ) : null}
 
-        {selectedFullMemo && !isOutcomeOnlyTrack ? null : (
+        {hasFullMemoAnchor && !showFullMemoAnchor ? (
+          <section className="rounded-lg border border-border/25 bg-card/40 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Full Memo Anchor</p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Preparing the route-scoped full memo anchor. Route intelligence remains available above.
+            </p>
+          </section>
+        ) : showFullMemoAnchor ? null : (
           <section className="relative overflow-hidden rounded-lg border border-primary/25 bg-card/50 p-6 sm:p-8">
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
             <div className="relative z-10 max-w-4xl">
