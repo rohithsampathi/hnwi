@@ -334,9 +334,14 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
   );
 }
 
-function sourceChipLabel(sourceId: string, citationMap?: Map<string, number>, index = 0): string {
-  const citationNumber = citationMap?.get(sourceId);
-  return citationNumber ? `[${citationNumber}]` : `[${index + 1}]`;
+function citationNumberFor(sourceId: string, citationMap?: Map<string, number>): number | null {
+  if (!citationMap) return null;
+  return citationMap.get(sourceId) ?? citationMap.get(sourceId.toLowerCase()) ?? null;
+}
+
+function sourceChipLabel(sourceId: string, citationMap?: Map<string, number>): string | null {
+  const citationNumber = citationNumberFor(sourceId, citationMap);
+  return citationNumber ? `[${citationNumber}]` : null;
 }
 
 function reportSectionById(
@@ -397,17 +402,24 @@ function InlineCitationButtons({
   onCitationClick?: (citationId: string) => void;
   citationMap?: Map<string, number>;
 }) {
-  if (!ids.length) return null;
+  const resolvedIds = ids
+    .map((sourceId) => ({
+      sourceId,
+      label: sourceChipLabel(sourceId, citationMap),
+    }))
+    .filter((item): item is { sourceId: string; label: string } => Boolean(item.label));
+
+  if (!resolvedIds.length) return null;
   return (
     <span className="ml-2 inline-flex flex-wrap gap-1 align-baseline">
-      {ids.map((sourceId, index) => (
+      {resolvedIds.map(({ sourceId, label }) => (
         <button
-          key={`${sourceId}-${index}`}
+          key={sourceId}
           type="button"
           onClick={() => onCitationClick?.(sourceId)}
           className="inline-flex h-6 items-center rounded-full border border-gold/30 px-2 text-[11px] font-semibold text-gold transition hover:border-gold hover:bg-gold/10"
         >
-          {sourceChipLabel(sourceId, citationMap, index)}
+          {label}
         </button>
       ))}
     </span>
@@ -519,18 +531,22 @@ function NativeRouteDriversPanel({
                   {driver.evidenceBasis ? <p><span className="font-semibold text-foreground/80">Evidence boundary:</span> {routeDisplayText(driver.evidenceBasis)}</p> : null}
                 </div>
               ) : null}
-              {driver.sourceIds.length ? (
+              {driver.sourceIds.some((sourceId) => sourceChipLabel(sourceId, citationMap)) ? (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {driver.sourceIds.slice(0, 3).map((sourceId, sourceIndex) => (
-                    <button
-                      key={sourceId}
-                      type="button"
-                      onClick={() => onCitationClick?.(sourceId)}
-                      className="rounded-full border border-gold/25 bg-gold/[0.04] px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-gold transition hover:border-gold/60 hover:bg-gold/[0.08]"
-                    >
-                      {sourceChipLabel(sourceId, citationMap, sourceIndex)}
-                    </button>
-                  ))}
+                  {driver.sourceIds.slice(0, 3).map((sourceId) => {
+                    const label = sourceChipLabel(sourceId, citationMap);
+                    if (!label) return null;
+                    return (
+                      <button
+                        key={sourceId}
+                        type="button"
+                        onClick={() => onCitationClick?.(sourceId)}
+                        className="rounded-full border border-gold/25 bg-gold/[0.04] px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-gold transition hover:border-gold/60 hover:bg-gold/[0.08]"
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>

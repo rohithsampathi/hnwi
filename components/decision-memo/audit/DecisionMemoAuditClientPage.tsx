@@ -50,6 +50,7 @@ import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import type { Citation } from '@/lib/parse-dev-citations';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import {
+  buildCitationSourceDevelopment,
   type CitationSourceDevelopment,
 } from '@/lib/development-citation';
 import { AnimatePresence } from 'framer-motion';
@@ -281,6 +282,44 @@ function isRemoteResolvableCitationId(value: string): boolean {
   return false;
 }
 
+function citationPayloadCandidate(record: Record<string, unknown>): Record<string, unknown> {
+  if (isPlainRecord(record.development)) return record.development;
+  if (isPlainRecord(record.data)) return record.data;
+  if (isPlainRecord(record.brief)) return record.brief;
+  return record;
+}
+
+function isFullCastleBriefCitationRecord(record: Record<string, unknown>): boolean {
+  const payload = citationPayloadCandidate(record);
+  const collection = firstText(payload, [
+    'source_collection',
+    '_source_collection',
+    'connection_collection',
+    'lineage_source_collection',
+    'collection',
+  ]).toLowerCase();
+  const id = remoteCitationId(payload) || sourceRecordId(payload, '');
+  const markerFields = [
+    'hbyte_summary',
+    'full_hbyte_summary',
+    'source_hbyte_summary',
+    'castle_original_brief',
+    'castle_brief_enriched',
+    'castle_brief',
+    'full_castle_brief',
+    'castle_quality_score',
+    'castle_source_fidelity_score',
+    'castle_content_audit_band',
+  ];
+
+  if (/^castle_[a-z0-9]+$/i.test(id)) return true;
+  if (collection.includes('castle_briefs')) return true;
+  return markerFields.some((field) => {
+    const value = payload[field];
+    return typeof value === 'string' && value.trim().length > 0;
+  });
+}
+
 function memoSourcePayload(record: Record<string, unknown>, fallbackId: string): Record<string, unknown> {
   const id = remoteCitationId(record) || sourceRecordId(record, fallbackId);
   const date = normalizeSourceDate(record.date ?? record.source_date ?? record.source_article_date ?? record.published_at);
@@ -366,30 +405,6 @@ function collectMemoSourceRecords(previewData: unknown): MemoSourceRecord[] {
   });
 
   return records;
-}
-
-function releaseReadinessPublicSourceDevelopment(
-  source: ReleaseReadinessSharePayload['publicSources'][number],
-): CitationSourceDevelopment {
-  const claim = source.claim || 'Supports a public claim used in this release-readiness review.';
-  const boundary = source.boundary || 'Public source anchor; private file clearance remains separate.';
-  const summary = [
-    `Claim supported: ${claim}`,
-    `Decision boundary: ${boundary}`,
-    source.url ? `Source URL: ${source.url}` : '',
-  ].filter(Boolean).join('\n\n');
-
-  return {
-    id: source.id,
-    title: source.title || source.institution || 'Public source evidence',
-    description: claim,
-    industry: source.category || 'Public source register',
-    product: source.institution || undefined,
-    date: source.date || undefined,
-    summary,
-    summaryLabel: 'Source Evidence',
-    url: source.url || undefined,
-  };
 }
 
 function sourcePayloadText(payload: Record<string, unknown>, fields: string[], fallback = ''): string {
@@ -1119,10 +1134,13 @@ export default function DecisionMemoAuditClientPage({
       }
     };
 
-    if (isReleaseReadinessReviewPath && principalSharePayload?.publicSources?.length) {
-      principalSharePayload.publicSources.forEach((source) => {
-        addDevId(source.id);
-        preloadedSources.set(source.id, releaseReadinessPublicSourceDevelopment(source));
+    if (isReleaseReadinessReviewPath) {
+      sourceRecords.forEach(({ id, payload }) => {
+        if (!isFullCastleBriefCitationRecord(payload)) return;
+        const sourceDevelopment = buildCitationSourceDevelopment(payload, id);
+        if (!sourceDevelopment) return;
+        addDevId(id);
+        preloadedSources.set(id, sourceDevelopment);
       });
     } else {
       sourceRecords.forEach(({ id }) => {
@@ -1180,9 +1198,7 @@ export default function DecisionMemoAuditClientPage({
 
   // Sync computed citations with useCitationManager (for EliteCitationPanel)
   useEffect(() => {
-    if (computedCitations.length > 0) {
-      setManagedCitations(computedCitations);
-    }
+    setManagedCitations(computedCitations);
   }, [computedCitations, setManagedCitations]);
 
   // Fetch session and artifact data. Browser access stays cookie-backed.
