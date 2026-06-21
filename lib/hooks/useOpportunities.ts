@@ -1,5 +1,6 @@
 // lib/hooks/useOpportunities.ts
-// Centralized hook for fetching opportunities for both Assessment and Home Dashboard maps
+// Centralized hook for fetching opportunities for assessment, Home Dashboard,
+// and War Room maps.
 
 import { useState, useEffect, useCallback } from 'react';
 import { secureApi } from '@/lib/secure-api';
@@ -50,6 +51,28 @@ interface Opportunity {
   castle_source_summary?: string;
   source_summary_structured?: unknown;
   castle_source_summary_structured?: unknown;
+  command_centre_analysis_contract?: string;
+  command_centre_reuse_contract?: string;
+  command_centre_analysis_structured?: unknown;
+  analysis_reuse_targets?: string[];
+  granthika_reuse_native?: boolean;
+  granthika_native?: boolean;
+  product_aquarium_native?: boolean;
+  product_aquarium_privacy?: string;
+  product_aquarium_packet?: unknown;
+  aquarium_learning_atoms?: unknown[];
+  source_lineage?: unknown;
+  granthika_graph_edges?: unknown[];
+  granthika_authority_packet?: unknown;
+  principal_decision_read?: string;
+  decision_memo_trigger?: string;
+  pressure_test_prompt?: string;
+  reusable_product_insight?: string;
+  validation_gaps?: unknown[];
+  outcome_atom?: string;
+  aquarium_writeback_status?: string;
+  kg_readback_status?: string;
+  kgv3_relation?: unknown;
   brief_title?: string;
   source_title?: string;
   source_url?: string;
@@ -280,21 +303,22 @@ const transformOpportunityToCity = (
      opp.elite_pulse_impact.katherine_ai_analysis.strategic_assessment.trim()) ||
     '';
   const devIdsFromSourceText = extractDevIds([
+    structuredOpportunitySummaryText(opp.command_centre_analysis_structured),
+    opp.principal_decision_read,
+    opp.reusable_product_insight,
+    opp.decision_memo_trigger,
+    opp.pressure_test_prompt,
+    opp.outcome_atom,
     opp.summary,
     opp.description,
     opp.hbyte_summary,
     opp.card_summary,
     opp.short_summary,
     opp.full_analysis,
-    opp.full_castle_brief,
-    opp.castle_brief,
-    opp.castle_brief_enriched,
     opp.brief_source_text,
     opp.public_mirror_excerpt,
     opp.source_summary,
-    opp.castle_source_summary,
     structuredOpportunitySummaryText(opp.source_summary_structured),
-    structuredOpportunitySummaryText(opp.castle_source_summary_structured),
     opportunitySummary,
     opportunityAnalysis,
     katherineAnalysisText,
@@ -365,7 +389,7 @@ const transformOpportunityToCity = (
     risk: opp.risk,
     analysis: opportunityAnalysisWithCitation,
     summary: opportunitySummaryWithCitation,
-    description: opp.description || opportunitySummaryWithCitation,
+    description: opportunitySummaryWithCitation || opp.description,
     hbyte_summary: opp.hbyte_summary,
     card_summary: opp.card_summary,
     short_summary: opp.short_summary,
@@ -375,6 +399,28 @@ const transformOpportunityToCity = (
     castle_brief_enriched: opp.castle_brief_enriched,
     brief_source_text: opp.brief_source_text,
     public_mirror_excerpt: opp.public_mirror_excerpt,
+    command_centre_analysis_contract: opp.command_centre_analysis_contract,
+    command_centre_reuse_contract: opp.command_centre_reuse_contract,
+    command_centre_analysis_structured: opp.command_centre_analysis_structured,
+    analysis_reuse_targets: opp.analysis_reuse_targets,
+    granthika_reuse_native: opp.granthika_reuse_native,
+    granthika_native: opp.granthika_native,
+    product_aquarium_native: opp.product_aquarium_native,
+    product_aquarium_privacy: opp.product_aquarium_privacy,
+    product_aquarium_packet: opp.product_aquarium_packet,
+    aquarium_learning_atoms: opp.aquarium_learning_atoms,
+    source_lineage: opp.source_lineage,
+    granthika_graph_edges: opp.granthika_graph_edges,
+    granthika_authority_packet: opp.granthika_authority_packet,
+    principal_decision_read: opp.principal_decision_read,
+    decision_memo_trigger: opp.decision_memo_trigger,
+    pressure_test_prompt: opp.pressure_test_prompt,
+    reusable_product_insight: opp.reusable_product_insight,
+    validation_gaps: opp.validation_gaps,
+    outcome_atom: opp.outcome_atom,
+    aquarium_writeback_status: opp.aquarium_writeback_status,
+    kg_readback_status: opp.kg_readback_status,
+    kgv3_relation: opp.kgv3_relation,
     brief_title: opp.brief_title,
     source_title: opp.source_title,
     source_url: opp.source_url,

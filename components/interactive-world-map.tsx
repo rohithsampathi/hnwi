@@ -64,6 +64,28 @@ export interface City {
   castle_brief_enriched?: string
   brief_source_text?: string
   public_mirror_excerpt?: string
+  command_centre_analysis_contract?: string
+  command_centre_reuse_contract?: string
+  command_centre_analysis_structured?: unknown
+  analysis_reuse_targets?: string[]
+  granthika_reuse_native?: boolean
+  granthika_native?: boolean
+  product_aquarium_native?: boolean
+  product_aquarium_privacy?: string
+  product_aquarium_packet?: unknown
+  aquarium_learning_atoms?: unknown[]
+  source_lineage?: unknown
+  granthika_graph_edges?: unknown[]
+  granthika_authority_packet?: unknown
+  principal_decision_read?: string
+  decision_memo_trigger?: string
+  pressure_test_prompt?: string
+  reusable_product_insight?: string
+  validation_gaps?: unknown[]
+  outcome_atom?: string
+  aquarium_writeback_status?: string
+  kg_readback_status?: string
+  kgv3_relation?: unknown
   brief_title?: string
   source_title?: string
   source_url?: string

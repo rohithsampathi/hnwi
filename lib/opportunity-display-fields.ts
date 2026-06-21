@@ -1,4 +1,12 @@
 type OpportunityDisplaySource = Partial<{
+  command_centre_analysis_structured: unknown
+  command_centre_analysis_contract: unknown
+  command_centre_reuse_contract: unknown
+  principal_decision_read: unknown
+  decision_memo_trigger: unknown
+  pressure_test_prompt: unknown
+  reusable_product_insight: unknown
+  outcome_atom: unknown
   analysis: unknown
   elite_pulse_analysis: unknown
   full_analysis: unknown
@@ -70,13 +78,28 @@ export const structuredOpportunitySummaryText = (value: unknown): string => {
   }
 
   const record = value as Record<string, unknown>
-  const lines = [
+  const rawLines = [
     record.summary_sentence,
     record.summary,
+    record.source_summary,
+    record.principal_decision_read,
+    record.decision_posture,
+    record.pattern_memory,
     record.rationale,
+    record.reusable_product_insight,
     record.next_action,
+    record.decision_memo_trigger,
+    record.pressure_test_prompt,
+    record.outcome_atom,
     record.evidence_basis ? `Evidence basis: ${asCleanText(record.evidence_basis)}` : '',
   ].map(asCleanText).filter(Boolean)
+  const seenLines = new Set<string>()
+  const lines = rawLines.filter(line => {
+    const key = line.toLowerCase()
+    if (seenLines.has(key)) return false
+    seenLines.add(key)
+    return true
+  })
 
   const moneyAnchors = Array.isArray(record.money_anchors)
     ? record.money_anchors
@@ -97,6 +120,12 @@ export const structuredOpportunitySummaryText = (value: unknown): string => {
 // Visible map analysis should stay on Command Centre display fields. Castle
 // bodies are evidence/source material and are intentionally not promoted here.
 export const resolveOpportunityAnalysisText = (opp: OpportunityDisplaySource): string => firstText(
+  structuredOpportunitySummaryText(opp.command_centre_analysis_structured),
+  opp.principal_decision_read,
+  opp.reusable_product_insight,
+  opp.decision_memo_trigger,
+  opp.pressure_test_prompt,
+  opp.outcome_atom,
   opp.analysis,
   opp.elite_pulse_analysis,
   opp.full_analysis,
@@ -104,9 +133,7 @@ export const resolveOpportunityAnalysisText = (opp: OpportunityDisplaySource): s
   opp.card_summary,
   opp.summary,
   opp.source_summary,
-  opp.castle_source_summary,
   structuredOpportunitySummaryText(opp.source_summary_structured),
-  structuredOpportunitySummaryText(opp.castle_source_summary_structured),
   opp.description,
   opp.public_mirror_excerpt,
 )
@@ -115,13 +142,14 @@ export const resolveOpportunitySummaryText = (
   opp: OpportunityDisplaySource,
   analysisText: string,
 ): string => firstText(
+  structuredOpportunitySummaryText(opp.command_centre_analysis_structured),
+  opp.principal_decision_read,
+  opp.reusable_product_insight,
   opp.card_summary,
   opp.hbyte_summary,
   opp.summary,
   opp.source_summary,
-  opp.castle_source_summary,
   structuredOpportunitySummaryText(opp.source_summary_structured),
-  structuredOpportunitySummaryText(opp.castle_source_summary_structured),
   opp.description,
   opp.public_mirror_excerpt,
   analysisText,
