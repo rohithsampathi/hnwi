@@ -1180,12 +1180,32 @@ function buildGenerationSection(_resolved: ResolvedDecisionMemoSurfaceData): Rel
       },
     ],
     table: {
-      columns: ["Layer", "Release condition"],
+      columns: ["Continuity layer", "Risk if unwritten", "Owner", "Release clearance"],
       rows: [
-        ["Current authority", "Approval, stop, signing, reporting, and retrieval rights are written."],
-        ["Family use", "Use, carry, security, guest, sale/refinance, and escalation rules are written."],
-        ["Fairness", "Family-fairness owner, veto position, and future-beneficiary treatment are recorded."],
-        ["Decision memory", "Decision record location, retrieval owner, and explanation packet are indexed."],
+        [
+          "Principal authority",
+          "Seller timing or adviser momentum can become commitment before the principal's stop right is retrievable.",
+          "Principal + family-office operator",
+          "Approval, stop, signing, reporting, and retrieval rights are written.",
+        ],
+        [
+          "Named family-use boundary",
+          "Repeated use can become implied entitlement, carry ambiguity, or later sale/refinance conflict.",
+          "Family office + property operator",
+          "Use, carry, security, guest, sale/refinance, and escalation rules are written.",
+        ],
+        [
+          "Family-fairness record",
+          "The house can become a visible benefit without a recorded fairness owner or future-beneficiary treatment.",
+          "Family-fairness owner + succession counsel",
+          "Fairness owner, veto position, and future-beneficiary treatment are recorded.",
+        ],
+        [
+          "Next-generation decision record",
+          "A later reader cannot explain why the route advanced, held, or stopped without relying on memory.",
+          "Family-office operator / CFO",
+          "Decision record location, retrieval owner, and explanation packet are indexed.",
+        ],
       ],
     },
   });

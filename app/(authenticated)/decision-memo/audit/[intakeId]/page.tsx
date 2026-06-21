@@ -584,8 +584,10 @@ function DecisionMemoServerAuditText({
           ))}
           {continuityRows.map((row, index) => (
             <li key={`continuity-row-${index}`}>
-              <strong>{asString(row.Layer || row.Stage || `Continuity gate ${index + 1}`)}</strong>
-              {asString(row['Release condition']) ? `: ${asString(row['Release condition'])}` : ''}
+              <strong>{asString(row['Continuity layer'] || row.Layer || row.Stage)}</strong>
+              {asString(row['Risk if unwritten']) ? `: ${asString(row['Risk if unwritten'])}` : ''}
+              {asString(row.Owner) ? ` Owner: ${asString(row.Owner)}.` : ''}
+              {asString(row['Release clearance'] || row['Release condition']) ? ` Release clearance: ${asString(row['Release clearance'] || row['Release condition'])}.` : ''}
               {asString(row.Consequence) ? ` Consequence: ${asString(row.Consequence)}.` : ''}
             </li>
           ))}
@@ -626,8 +628,8 @@ function DecisionMemoServerAuditText({
           ))}
           {bankingRows.map((row, index) => (
             <li key={`bank-row-${index}`}>
-              <strong>{asString(row.Gate || row.Domain || `Banking gate ${index + 1}`)}</strong>
-              {asString(row.Condition) ? `: ${asString(row.Condition)}` : ''}
+              <strong>{asString(row['Rail or proof class'] || row.Gate || row.Domain)}</strong>
+              {asString(row.Requirement || row.Condition) ? `: ${asString(row.Requirement || row.Condition)}` : ''}
               {asString(row.Owner) ? ` Owner: ${asString(row.Owner)}.` : ''}
             </li>
           ))}
@@ -639,27 +641,33 @@ function DecisionMemoServerAuditText({
 
       <EvidenceList
         title="Bank Compliance Escalation Simulation"
-        items={bankSimulation.length ? bankSimulation : releaseCrisisItems}
-        getPrimary={(item, index) => asString(item.scenario || item.label || item.Event || item.Scenario, `Simulation ${index + 1}`)}
+        items={releaseCrisisItems.length ? releaseCrisisItems : bankSimulation}
+        getPrimary={(item) => asString(item.scenario || item.label || item.Event || item.Scenario)}
         getSecondary={(item) => [
           asString(item.breakpoint) ? `Breakpoint: ${asString(item.breakpoint)}` : '',
           asString(item.body) ? asString(item.body) : '',
           asString(item['Route failure mode']) ? `Failure mode: ${asString(item['Route failure mode'])}` : '',
+          asString(item['Decision consequence']) ? `Decision consequence: ${asString(item['Decision consequence'])}` : '',
           asString(item['Release response']) ? `Release response: ${asString(item['Release response'])}` : '',
           asString(item.required_response) ? `Required response: ${asString(item.required_response)}` : '',
+          asString(item.Owner) ? `Owner: ${asString(item.Owner)}` : '',
         ]}
       />
 
       <EvidenceList
         title="Antifragile Resilience Review"
-        items={antifragile.length ? antifragile : releaseAntiFragilityItems}
-        getPrimary={(item, index) => asString(item.control || item.Control || item.label || item.Gate, `Control ${index + 1}`)}
+        items={releaseAntiFragilityItems.length ? releaseAntiFragilityItems : antifragile}
+        getPrimary={(item) => asString(item.control || item.Control || item.label || item.Gate)}
         getSecondary={(item) => [
           asString(item.stress_event) ? `Stress event: ${asString(item.stress_event)}` : '',
+          asString(item['Stress event']) ? `Stress event: ${asString(item['Stress event'])}` : '',
           asString(item.release_test) ? `Release review: ${asString(item.release_test)}` : '',
+          asString(item['Release test']) ? `Release review: ${asString(item['Release test'])}` : '',
           asString(item.body) ? asString(item.body) : '',
           asString(item['What gets stronger']) ? `What gets stronger: ${asString(item['What gets stronger'])}` : '',
           asString(item['Failure if missing']) ? `Failure if missing: ${asString(item['Failure if missing'])}` : '',
+          asString(item.Owner) ? `Owner: ${asString(item.Owner)}` : '',
+          asString(item.Window) ? `Window: ${asString(item.Window)}` : '',
         ]}
       />
 
@@ -683,8 +691,11 @@ function DecisionMemoServerAuditText({
           ))}
           {decisionMemoryRows.map((row, index) => (
             <li key={`decision-memory-row-${index}`}>
-              <strong>{asString(row.Record || row.Gate || `Decision memory ${index + 1}`)}</strong>
-              {asString(row.Condition) ? `: ${asString(row.Condition)}` : ''}
+              <strong>{asString(row.Report || row.Record || row.Gate)}</strong>
+              {asString(row.Cadence || row.Condition) ? `: ${asString(row.Cadence || row.Condition)}` : ''}
+              {asString(row.Owner) ? ` Owner: ${asString(row.Owner)}.` : ''}
+              {asString(row.Recipients) ? ` Recipients: ${asString(row.Recipients)}.` : ''}
+              {asString(row['Release relevance']) ? ` Release relevance: ${asString(row['Release relevance'])}.` : ''}
             </li>
           ))}
           {!decisionMemoryCards.length && !decisionMemoryRows.length
