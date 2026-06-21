@@ -193,6 +193,30 @@ function textList(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function recordArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value.filter(isRecord) as T[]) : [];
+}
+
+function routeEvidenceGates(route: RouteIntelligenceOptionV2): RouteEvidenceGate[] {
+  return recordArray<RouteEvidenceGate>((route as { evidenceGates?: unknown }).evidenceGates);
+}
+
+function routeResponsibilityTransfer(route: RouteIntelligenceOptionV2): RouteIntelligenceOptionV2['responsibilityTransfer'] {
+  return recordArray<RouteIntelligenceOptionV2['responsibilityTransfer'][number]>(
+    (route as { responsibilityTransfer?: unknown }).responsibilityTransfer,
+  );
+}
+
+function routeRecordMismatchMap(route: RouteIntelligenceOptionV2): RouteIntelligenceOptionV2['recordMismatchMap'] {
+  return recordArray<RouteIntelligenceOptionV2['recordMismatchMap'][number]>(
+    (route as { recordMismatchMap?: unknown }).recordMismatchMap,
+  );
+}
+
+function routeScenarios(route: RouteIntelligenceOptionV2): RouteScenarioPoint[] {
+  return recordArray<RouteScenarioPoint>((route as { scenarios?: unknown }).scenarios);
+}
+
 function normalizeKey(value: unknown, fallback: string): string {
   const raw = text(value, fallback);
   return raw
@@ -652,6 +676,7 @@ function isReleaseRoute(route: RouteIntelligenceOptionV2): boolean {
 }
 
 function routeStructure(route: RouteIntelligenceOptionV2, selectedRouteId: string): RecordLike {
+  const gates = routeEvidenceGates(route);
   const selected = route.id === selectedRouteId;
   const isExecutable = route.metrics.totalAcquisitionCostUsd > 0;
   const incrementalDuty = Math.abs(route.metrics.incrementalDutyVsRecommendedUsd);
@@ -672,46 +697,50 @@ function routeStructure(route: RouteIntelligenceOptionV2, selectedRouteId: strin
     tax_savings_pct: 0,
     setup_cost: isExecutable ? route.metrics.totalDutiesUsd : undefined,
     annual_cost: isExecutable ? route.metrics.annualCarryingCostUsd : undefined,
-    warnings: route.evidenceGates.map((gate) => `${gate.gate}: ${gate.consequenceIfMissing}`),
+    warnings: gates.map((gate) => `${text(gate.gate, 'Release gate')}: ${text(gate.consequenceIfMissing, 'Evidence required')}`),
   };
 }
 
 function buildRouteChecklist(route: RouteIntelligenceOptionV2): RecordLike {
+  const gates = routeEvidenceGates(route);
   const criticalStatus = /stop|hold|missing|blocked|unless|required before commitment/i;
   return {
-    total_items: route.evidenceGates.length,
-    items: route.evidenceGates.map((gate) => ({
-      category: gate.gate,
-      item: gate.evidenceRequired,
-      status: gate.releaseStatus,
+    total_items: gates.length,
+    items: gates.map((gate) => ({
+      category: text(gate.gate, 'Release gate'),
+      item: text(gate.evidenceRequired, 'Evidence required before release'),
+      status: text(gate.releaseStatus, 'release-gated'),
       priority: criticalStatus.test(gate.releaseStatus) ? 'critical' : 'high',
       timeline: route.metrics.mitigationTimeline,
-      owner: gate.owner,
-      owner_label: gate.owner,
-      responsible: gate.owner,
-      responsible_label: gate.owner,
+      owner: text(gate.owner, 'Family office'),
+      owner_label: text(gate.owner, 'Family office'),
+      responsible: text(gate.owner, 'Family office'),
+      responsible_label: text(gate.owner, 'Family office'),
     })),
   };
 }
 
 function buildRouteExecutionSequence(route: RouteIntelligenceOptionV2): RecordLike[] {
-  return route.responsibilityTransfer.map((step, index) => ({
+  return routeResponsibilityTransfer(route).map((step, index) => ({
     step: index + 1,
-    phase: step.action,
-    action: step.releaseCondition,
-    owner: step.primaryOwner,
-    responsible: step.primaryOwner,
-    fallback_owner: step.fallbackOwner,
+    phase: text(step.action, 'Release gate'),
+    action: text(step.releaseCondition, 'Evidence must be signed before release.'),
+    owner: text(step.primaryOwner, 'Family office'),
+    responsible: text(step.primaryOwner, 'Family office'),
+    fallback_owner: text(step.fallbackOwner, 'Principal'),
     timeline: index === 0 ? '72 hours' : '7 days',
     status: 'release-gated',
   }));
 }
 
 function buildRouteScenarioTree(route: RouteIntelligenceOptionV2): RecordLike {
+  const gates = routeEvidenceGates(route);
+  const mismatches = routeRecordMismatchMap(route);
+  const scenarios = routeScenarios(route);
   const verdictCode = routeVerdictCode(route);
   const releaseRoute = isReleaseRoute(route);
   const holdRoute = text(route.releaseRule).toLowerCase().includes('hold');
-  const weightedNetOutcome = route.scenarios.reduce((sum, scenario, index) => {
+  const weightedNetOutcome = scenarios.reduce((sum, scenario, index) => {
     const weight = index === 0 ? 0.6 : index === 1 ? 0.25 : 0.15;
     return sum + (scenario.netOutcomeUsd * weight);
   }, 0);
@@ -725,18 +754,18 @@ function buildRouteScenarioTree(route: RouteIntelligenceOptionV2): RecordLike {
       : 'Weighted consequence if this route is forced',
     recommended_route: route.routeName,
     route_read: route.releaseEffect,
-    critical_gates: route.evidenceGates.map((gate) => gate.gate),
+    critical_gates: gates.map((gate) => text(gate.gate, 'Release gate')),
     doctrine_metadata: {
-      failure_mode_count: route.evidenceGates.length,
-      risk_flags_total: route.evidenceGates.length + route.recordMismatchMap.length,
+      failure_mode_count: gates.length,
+      risk_flags_total: gates.length + mismatches.length,
       antifragility_assessment: releaseRoute
         ? 'Conditional resilience: route can strengthen the family system only if authority, banking, source, and succession records match before release.'
         : 'Fragile route state: the selected route converts uncertainty into capital drag unless the blocking evidence changes.',
-      failure_modes: route.evidenceGates.map((gate) => ({
-        mode: gate.gate,
+      failure_modes: gates.map((gate) => ({
+        mode: text(gate.gate, 'Release gate'),
         doctrine_book: 'Decision Release Rule',
         severity: criticalStatusFromGate(gate.releaseStatus),
-        description: gate.consequenceIfMissing,
+        description: text(gate.consequenceIfMissing, 'Evidence required before release.'),
       })),
     },
   };
@@ -752,7 +781,8 @@ function buildRouteWealthProjection(route: RouteIntelligenceOptionV2): RecordLik
   const annualCarry = route.metrics.annualCarryingCostUsd;
   const probabilities = [0.6, 0.25, 0.15];
   const scenarioNames = ['BASE_CASE', 'STRESS_CASE', 'OPPORTUNITY_CASE'];
-  const scenarios = route.scenarios.map((scenario, index) => {
+  const routeScenarioRows = routeScenarios(route);
+  const scenarios = routeScenarioRows.map((scenario, index) => {
     const year10Value = scenario.year10ValueUsd || capitalDeployed;
     const yearByYear = [0, 1, 5, 10].map((year) => {
       const value = capitalDeployed + ((year10Value - capitalDeployed) * (year / 10));
@@ -817,8 +847,10 @@ function buildRouteWealthProjection(route: RouteIntelligenceOptionV2): RecordLik
 }
 
 function buildRouteRiskAssessment(route: RouteIntelligenceOptionV2): RecordLike {
-  const criticalItems = route.evidenceGates.filter((gate) => criticalStatusFromGate(gate.releaseStatus) === 'CRITICAL').length;
-  const highItems = Math.max(0, route.evidenceGates.length - criticalItems);
+  const gates = routeEvidenceGates(route);
+  const mismatches = routeRecordMismatchMap(route);
+  const criticalItems = gates.filter((gate) => criticalStatusFromGate(gate.releaseStatus) === 'CRITICAL').length;
+  const highItems = Math.max(0, gates.length - criticalItems);
   return {
     risk_level: routeRiskLevel(route),
     total_exposure_formatted: formatUsdCompact(
@@ -827,8 +859,8 @@ function buildRouteRiskAssessment(route: RouteIntelligenceOptionV2): RecordLike 
     critical_items: criticalItems,
     high_items: highItems,
     high_priority: highItems,
-    priority_risks_total: route.evidenceGates.length,
-    risk_factors_count: route.evidenceGates.length + route.recordMismatchMap.length,
+    priority_risks_total: gates.length,
+    risk_factors_count: gates.length + mismatches.length,
     verdict: route.verdict,
     recommendation: route.releaseEffect,
     verdict_note: route.failureMode,
@@ -880,7 +912,7 @@ export function buildRouteScopedDecisionMemoSurface({
     cross_border_audit_summary: routeTaxAudit,
   };
   const routeScenarioTree = buildRouteScenarioTree(route);
-  const executableRoutes = (routes?.length ? routes : [route]).filter((option) => option.metrics.totalAcquisitionCostUsd > 0);
+  const executableRoutes = (routes?.length ? routes : [route]).filter((option) => option.metrics?.totalAcquisitionCostUsd > 0);
   const selectedStructure = routeStructure(route, route.id);
   const structuresAnalyzed = executableRoutes.length
     ? executableRoutes.map((option) => routeStructure(option, route.id))
@@ -958,15 +990,15 @@ export function buildRouteScopedDecisionMemoSurface({
   preview.scenario_tree_analysis =
     preview.scenario_tree_analysis ??
     asRecord(scopedFullArtifact.preview_data).scenario_tree_analysis;
-  preview.all_mistakes = route.evidenceGates.map((gate, index) => ({
+  preview.all_mistakes = routeEvidenceGates(route).map((gate, index) => ({
     id: `${route.id}-gate-${index + 1}`,
-    title: gate.gate,
-    mistake: gate.evidenceRequired,
-    cost: gate.consequenceIfMissing,
+    title: text(gate.gate, 'Release gate'),
+    mistake: text(gate.evidenceRequired, 'Evidence required before release'),
+    cost: text(gate.consequenceIfMissing, 'Evidence required before release.'),
     cost_numeric: route.metrics.totalDutiesUsd || Math.abs(route.metrics.incrementalDutyVsRecommendedUsd),
     urgency: criticalStatusFromGate(gate.releaseStatus),
-    mitigation: gate.releaseStatus,
-    owner: gate.owner,
+    mitigation: text(gate.releaseStatus, 'release-gated'),
+    owner: text(gate.owner, 'Family office'),
   }));
   scopedBackendData.risk_assessment = routeRiskAssessment;
   scopedBackendData.mitigationTimeline = route.metrics.mitigationTimeline;
