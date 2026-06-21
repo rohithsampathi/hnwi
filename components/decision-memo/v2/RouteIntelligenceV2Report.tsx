@@ -690,6 +690,248 @@ function RouteShareSectionPanel({
   );
 }
 
+function RouteContinuityDeepDive({
+  route,
+  section,
+  citationIds,
+  onCitationClick,
+  citationMap,
+}: {
+  route: RouteIntelligenceOptionV2;
+  section?: ReleaseReadinessShareReportSection;
+  citationIds: string[];
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
+}) {
+  const retainedAfterDutyUsd = Math.max(route.metrics.propertyValueUsd - route.metrics.totalDutiesUsd, 0);
+  const title = section?.title || 'The house should transfer responsibility before it transfers symbolism';
+  const intro =
+    section?.intro ||
+    'Use, carry, veto, fairness, sale/refinance, and future explanation must be written before the asset becomes a family expectation.';
+  const continuityRows = section?.table?.rows?.length
+    ? section.table.rows
+    : [
+        [
+          'Principal authority',
+          'Seller timing or adviser momentum can become commitment before the principal stop right is retrievable.',
+          'Principal + family-office operator',
+          'Approval, stop, signing, reporting, and retrieval rights are written.',
+        ],
+        [
+          'Named family-use boundary',
+          'Repeated use can become implied entitlement, carry ambiguity, or later sale/refinance conflict.',
+          'Family office + property operator',
+          'Use, carry, security, guest, sale/refinance, and escalation rules are written.',
+        ],
+        [
+          'Family-fairness record',
+          'The house can become a visible benefit without a recorded fairness owner or future-beneficiary treatment.',
+          'Family-fairness owner + succession counsel',
+          'Fairness owner, veto position, and future-beneficiary treatment are recorded.',
+        ],
+        [
+          'Next-generation decision record',
+          'A later reader cannot explain why the route advanced, held, or stopped without relying on memory.',
+          'Family-office operator / CFO',
+          'Decision record, source anchors, blockers, retrieval owner, and explanation packet are indexed.',
+        ],
+      ];
+  const gateNames = route.evidenceGates
+    .map((gate) => routeDisplayText(gate.gate))
+    .filter((gate) => /authority|family|succession|fairness|decision|carry|use|title|bank|source/i.test(gate))
+    .slice(0, 8);
+
+  const releaseChain = [
+    {
+      label: 'G1 Route Control',
+      value: 'Release-gated',
+      body:
+        'Principal authority remains intact only if approval, stop, signing, reporting, retrieval, and escalation rights are written before bid release.',
+    },
+    {
+      label: 'G1 -> G2 Retained Value',
+      value: formatUsdCompact(retainedAfterDutyUsd),
+      body:
+        `Route value after ${formatUsdCompact(route.metrics.totalDutiesUsd)} duty drag, before annual carry and any family-use entitlement is allowed to harden.`,
+    },
+    {
+      label: 'G2 Use Boundary',
+      value: 'Use is not ownership',
+      body:
+        'The named family user receives use only. Title, beneficial ownership, signing authority, sale right, refinance right, and carry entitlement remain blocked unless written.',
+    },
+    {
+      label: 'G2 -> G3 Decision Memory',
+      value: 'Record before close',
+      body:
+        'The next-generation record must explain purpose, cost, rights, veto, carry, blocked assumptions, and why the route advanced or held.',
+    },
+  ];
+
+  const successionMap = [
+    {
+      layer: 'Principal capacity changes before exchange',
+      consequence:
+        'The purchase can lose stop authority, bank signer clarity, and counsel instruction control while seller timing continues.',
+      releaseRecord:
+        'Authority minute naming approver, stop owner, signer, fallback signer, retrieval owner, and adviser-instruction owner.',
+    },
+    {
+      layer: 'Use rights become informal',
+      consequence:
+        'Repeated occupation can become a family promise without matching title, tax, carry, guest, security, or exit rules.',
+      releaseRecord:
+        'Family-use schedule covering occupants, guests, security access, costs, maintenance, sale/refinance permissions, and escalation.',
+    },
+    {
+      layer: 'Fairness remains implied',
+      consequence:
+        'One family-use asset can create later equivalence, notice, veto, or future-beneficiary conflict.',
+      releaseRecord:
+        'Family-fairness minute naming fairness owner, treatment of non-users, veto position, and next-generation explanation.',
+    },
+    {
+      layer: 'Decision memory is not retrievable',
+      consequence:
+        'A later office cannot explain why the house accepted duty drag, annual carry, and restricted liquidity.',
+      releaseRecord:
+        'Decision packet with source anchors, signed gates, capital basis, route alternatives, blockers, and retrieval location.',
+    },
+  ];
+
+  const roleReads = [
+    {
+      role: 'Principal',
+      legalTax: 'Buyer profile, SDLT posture, stop rights, signer authority, and incapacity fallback must be signed before exchange.',
+      governance: 'Controls approval, stop, adviser instruction, reporting cadence, and decision-record owner.',
+      educationResidence:
+        'Education and residence claims stay separate gates; they do not create purchase authority by themselves.',
+    },
+    {
+      role: 'Named family user',
+      legalTax: 'Use does not create title, beneficial ownership, sale right, refinance right, or carry entitlement unless written.',
+      governance: 'Receives access under written use, guest, security, carry, escalation, and exit rules.',
+      educationResidence:
+        'School, guardian, residence, day-count, and immigration facts remain counsel-led evidence gates.',
+    },
+    {
+      role: 'Family-fairness owner',
+      legalTax: 'Reviews whether use, notice, funding, and future-beneficiary treatment create later tax or estate friction.',
+      governance: 'Owns fairness minute, veto position, non-user treatment, and next-generation explanation.',
+      educationResidence:
+        'Keeps family-purpose claims separate from entitlement, inheritance, or informal promise language.',
+    },
+    {
+      role: 'Family-office operator / CFO',
+      legalTax: 'Maintains title, tax, bank, source, carry, insurance, and decision-memory retrieval file.',
+      governance: 'Ensures the office can explain the decision without founder memory or adviser fragments.',
+      educationResidence:
+        'Indexes residence, education, and use evidence as gates, not as narrative support.',
+    },
+  ];
+
+  return (
+    <section className="rounded-lg border border-gold/25 bg-card/40 p-4 sm:p-6">
+      <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
+        <div>
+          <p className="text-xs uppercase tracking-[0.22em] text-gold/80">G1 / G2 / G3 continuity chain</p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+            {routeDisplayText(title)}
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            {routeDisplayText(intro)}
+            <InlineCitationButtons ids={citationIds} onCitationClick={onCitationClick} citationMap={citationMap} />
+          </p>
+          <div className="mt-5 rounded-md border border-border/25 bg-background/35 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">Top succession trigger</p>
+            <p className="mt-3 text-sm leading-relaxed text-foreground">
+              If the principal, source-bank lead, UK counsel, or family-office operator is unavailable before option, exchange, or completion, the route should not depend on memory, adviser fragments, or informal family consent.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-gold/90">
+              Release only when authority, use, fairness, veto, carry, and decision-memory records are signed and retrievable.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid min-w-0 gap-3 md:grid-cols-2">
+          {releaseChain.map((item) => (
+            <article key={item.label} className="rounded-md border border-border/25 bg-background/35 p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{item.label}</p>
+              <p className="mt-3 text-xl font-semibold tracking-tight text-foreground">{item.value}</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">Succession compatibility and loss map</p>
+        <RouteShareTable
+          table={{
+            columns: ['Succession layer', 'Loss if unresolved', 'Release record required'],
+            rows: successionMap.map((row) => [row.layer, row.consequence, row.releaseRecord]),
+          }}
+        />
+      </div>
+
+      <div className="mt-6">
+        <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">Heir-by-heir legal, tax, governance, and education read</p>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {roleReads.map((row) => (
+            <article key={row.role} className="rounded-md border border-border/25 bg-background/35 p-4">
+              <h3 className="text-base font-semibold text-foreground">{row.role}</h3>
+              <div className="mt-4 space-y-3 text-sm leading-relaxed">
+                <p className="text-muted-foreground"><span className="font-semibold text-foreground/85">Legal / tax:</span> {row.legalTax}</p>
+                <p className="text-muted-foreground"><span className="font-semibold text-foreground/85">Governance:</span> {row.governance}</p>
+                <p className="text-muted-foreground"><span className="font-semibold text-foreground/85">Education / residence:</span> {row.educationResidence}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_0.95fr]">
+        <div className="rounded-md border border-amber-500/20 bg-amber-500/[0.035] p-4">
+          <p className="text-xs uppercase tracking-[0.18em] text-amber-500/80">Third generation problem</p>
+          <p className="mt-3 text-sm leading-relaxed text-foreground">
+            The asset can outlive the people who remember why it was bought. If the route is not written, the next generation inherits duty drag, carry burden, use ambiguity, and fairness questions without the original decision logic.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            The required record is not decorative: purpose, approved route, rejected routes, capital basis, annual carry owner, veto position, family-use boundary, and retrieval location must be signed before close.
+          </p>
+        </div>
+        <div className="rounded-md border border-border/25 bg-background/35 p-4">
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">Release gates tied to continuity</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(gateNames.length
+              ? gateNames
+              : ['Title and buyer capacity', 'SDLT and residence posture', 'Bank rails and source evidence', 'Authority and family-use minute', 'Decision memory record']
+            ).map((gate) => (
+              <span key={gate} className="rounded-full border border-border/25 bg-card/45 px-3 py-1.5 text-xs leading-relaxed text-muted-foreground">
+                {gate}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {continuityRows.length ? (
+        <div className="mt-6">
+          <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">Release clearances by continuity layer</p>
+          <RouteShareTable
+            table={{
+              columns: section?.table?.columns?.length
+                ? section.table.columns
+                : ['Continuity layer', 'Risk if unwritten', 'Owner', 'Release clearance'],
+              rows: continuityRows,
+            }}
+          />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function TaxDutyPanel({
   route,
   taxSection,
@@ -1375,6 +1617,14 @@ export default function RouteIntelligenceV2Report({
             </section>
 
             <RouteShareSectionPanel
+              section={continuitySection}
+              citationIds={continuityCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteContinuityDeepDive
+              route={selectedRoute}
               section={continuitySection}
               citationIds={continuityCitationIds}
               onCitationClick={onCitationClick}
