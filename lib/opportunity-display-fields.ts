@@ -38,6 +38,13 @@ type OpportunityDisplaySource = Partial<{
   brief_title: unknown
   source_title: unknown
   product: unknown
+  location: unknown
+  city: unknown
+  state: unknown
+  address: unknown
+  country: unknown
+  latitude: unknown
+  longitude: unknown
   value: unknown
   minimum_investment_display: unknown
   value_original: unknown
@@ -72,6 +79,105 @@ const firstText = (...values: unknown[]): string => {
 }
 
 const CENTRAL_SUMMARY_PENDING = 'Command Centre summary pending from centralized backend packet.'
+
+const SARASOTA_SOURCE_FIDELITY_SUMMARY =
+  'Source fidelity conflict: the source body references 8501 Midnight Pass Road / Crystal Waters in Sarasota at $29,995,000, while the opportunity label references Palm Beach or Aspen. Treat this as validation_gap_due; do not underwrite until the source URL, asset address, comp set, buyer-depth signal, discount path, and downside trigger are re-read from the central Castle brief.'
+
+const inlineReferenceSuffix = (value: unknown): string => {
+  const text = asCleanText(value)
+  if (!text) return ''
+  const match = text.match(/\s(\[(?:\d+|(?:Dev\s*ID|DEVID|Article\s*ID|Source\s*ID|Evidence\s*ID|Route\s*Witness|Witness\s*ID|Pattern\s*ID)\s*[:\-–—][^\]\r\n]+)\])\s*$/i)
+  return match?.[1] || ''
+}
+
+const hasSarasotaPalmBeachSourceMix = (opp: OpportunityDisplaySource): boolean => {
+  const labelText = [
+    opp.title,
+    opp.name,
+    opp.brief_title,
+    opp.source_title,
+    opp.product,
+    opp.location,
+    opp.city,
+    opp.state,
+    opp.address,
+    opp.country,
+  ].map(asCleanText).join(' ').toLowerCase()
+  const bodyText = [
+    opp.command_centre_display_summary,
+    commandCentreStructuredDisplayText(opp.command_centre_analysis_structured),
+    opp.principal_decision_read,
+    opp.reusable_product_insight,
+    opp.decision_memo_trigger,
+    opp.pressure_test_prompt,
+    opp.analysis,
+    opp.elite_pulse_analysis,
+    opp.full_analysis,
+    opp.hbyte_summary,
+    opp.card_summary,
+    opp.summary,
+    opp.description,
+    opp.source_summary,
+    opp.brief_source_text,
+    opp.public_mirror_excerpt,
+  ].map(asCleanText).join(' ').toLowerCase()
+  const allText = `${labelText} ${bodyText}`
+
+  const hasSarasotaAsset =
+    bodyText.includes('8501 midnight pass') ||
+    bodyText.includes('crystal waters') ||
+    bodyText.includes('siesta key') ||
+    bodyText.includes('sarasota')
+  const hasWrongLane =
+    labelText.includes('palm beach') ||
+    allText.includes('palm beach trophy homes') ||
+    allText.includes('aspen estate auction')
+
+  return hasSarasotaAsset && hasWrongLane
+}
+
+export const sanitizeCommandCentreOpportunityDisplaySource = <T extends OpportunityDisplaySource>(
+  opp: T,
+): T => {
+  if (!hasSarasotaPalmBeachSourceMix(opp)) {
+    return opp
+  }
+
+  const citationSuffix = inlineReferenceSuffix(
+    firstText(
+      opp.command_centre_display_summary,
+      opp.analysis,
+      opp.summary,
+      opp.description,
+      opp.card_summary,
+      opp.hbyte_summary,
+    ),
+  )
+  const displaySummary = `${SARASOTA_SOURCE_FIDELITY_SUMMARY}${citationSuffix ? ` ${citationSuffix}` : ''}`
+
+  return {
+    ...opp,
+    name: 'Sarasota',
+    location: 'Sarasota, Florida',
+    city: 'Sarasota',
+    state: 'Florida',
+    country: 'United States',
+    latitude: 27.3364,
+    longitude: -82.5307,
+    command_centre_display_summary: displaySummary,
+    principal_decision_read: displaySummary,
+    analysis: displaySummary,
+    summary: displaySummary,
+    description: displaySummary,
+    card_summary: displaySummary,
+    hbyte_summary: displaySummary,
+    source_fidelity_status: 'source_fidelity_due',
+    source_fidelity_warnings: [
+      'palm_beach_label_mixed_with_sarasota_asset',
+      'aspen_label_mixed_with_florida_asset',
+    ],
+  } as T
+}
 
 const isCitationOnlyText = (value: string): boolean => {
   const stripped = value.replace(/\[(?:Dev\s*ID|DEVID|Article\s*ID|Source\s*ID|Evidence\s*ID|Route\s*Witness|Witness\s*ID|Pattern\s*ID)\s*[:\-–—]?\s*[^\]\r\n]+\]/gi, '').trim()
@@ -261,27 +367,29 @@ const legacyNonCastleOpportunityText = (opp: OpportunityDisplaySource): string =
 
 // Visible map analysis should stay on Command Centre display fields. Castle
 // bodies are evidence/source material and are intentionally not promoted here.
-export const resolveOpportunityAnalysisText = (opp: OpportunityDisplaySource): string => (
-  centralOpportunityText(opp) ||
-  (isCastleBackedCommandCentreRow(opp) ? CENTRAL_SUMMARY_PENDING : legacyNonCastleOpportunityText(opp))
-)
+export const resolveOpportunityAnalysisText = (opp: OpportunityDisplaySource): string => {
+  const displayOpp = sanitizeCommandCentreOpportunityDisplaySource(opp)
+  return centralOpportunityText(displayOpp) ||
+    (isCastleBackedCommandCentreRow(displayOpp) ? CENTRAL_SUMMARY_PENDING : legacyNonCastleOpportunityText(displayOpp))
+}
 
 export const resolveOpportunitySummaryText = (
   opp: OpportunityDisplaySource,
   analysisText: string,
-): string => (
-  centralOpportunityText(opp) ||
-  (isCastleBackedCommandCentreRow(opp) ? CENTRAL_SUMMARY_PENDING : firstText(
-    opp.card_summary,
-    opp.hbyte_summary,
-    opp.summary,
-    opp.source_summary,
-    structuredOpportunitySummaryText(opp.source_summary_structured),
-    opp.description,
-    opp.public_mirror_excerpt,
+): string => {
+  const displayOpp = sanitizeCommandCentreOpportunityDisplaySource(opp)
+  return centralOpportunityText(displayOpp) ||
+  (isCastleBackedCommandCentreRow(displayOpp) ? CENTRAL_SUMMARY_PENDING : firstText(
+    displayOpp.card_summary,
+    displayOpp.hbyte_summary,
+    displayOpp.summary,
+    displayOpp.source_summary,
+    structuredOpportunitySummaryText(displayOpp.source_summary_structured),
+    displayOpp.description,
+    displayOpp.public_mirror_excerpt,
     analysisText,
   ))
-)
+}
 
 export const resolveOpportunityTitle = (
   opp: OpportunityDisplaySource,

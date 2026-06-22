@@ -70,6 +70,7 @@ const COORDINATE_ALIASES: CoordinateAlias[] = [
 
   { label: "New York", latitude: 40.7128, longitude: -74.0060, precision: "locality", aliases: ["new york", "new york city", "nyc", "manhattan"] },
   { label: "Palm Beach", latitude: 26.7056, longitude: -80.0364, precision: "locality", aliases: ["palm beach"] },
+  { label: "Sarasota", latitude: 27.3364, longitude: -82.5307, precision: "locality", aliases: ["sarasota", "siesta key", "midnight pass"] },
   { label: "Miami", latitude: 25.7617, longitude: -80.1918, precision: "locality", aliases: ["miami", "south florida"] },
   { label: "Los Angeles", latitude: 34.0522, longitude: -118.2437, precision: "locality", aliases: ["los angeles", "la"] },
   { label: "Beverly Hills", latitude: 34.0736, longitude: -118.4004, precision: "locality", aliases: ["beverly hills"] },

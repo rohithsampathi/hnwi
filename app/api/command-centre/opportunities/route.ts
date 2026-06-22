@@ -7,6 +7,7 @@ import { cookies } from 'next/headers';
 import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 import { resolveCanonicalUserId } from '@/lib/auth-user-normalization';
+import { sanitizeCommandCentreOpportunityDisplaySource } from '@/lib/opportunity-display-fields';
 
 // Force dynamic rendering - this route uses request.nextUrl.searchParams
 export const dynamic = 'force-dynamic';
@@ -110,7 +111,9 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    const opportunities = Array.isArray(data.opportunities) ? data.opportunities : [];
+    const opportunities = Array.isArray(data.opportunities)
+      ? data.opportunities.map((opportunity: any) => sanitizeCommandCentreOpportunityDisplaySource(opportunity))
+      : [];
     const filteredOpportunities = opportunities.filter((opportunity: any) => {
       if (opportunity?.source !== 'User Crown Vault' && !opportunity?.isCrownVault) {
         return true;
