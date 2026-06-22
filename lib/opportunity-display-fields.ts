@@ -2,6 +2,9 @@ type OpportunityDisplaySource = Partial<{
   command_centre_analysis_structured: unknown
   command_centre_analysis_contract: unknown
   command_centre_reuse_contract: unknown
+  command_centre_display_summary: unknown
+  source_fidelity_status: unknown
+  source_fidelity_warnings: unknown
   principal_decision_read: unknown
   decision_memo_trigger: unknown
   pressure_test_prompt: unknown
@@ -184,8 +187,36 @@ export const structuredOpportunitySummaryText = (value: unknown): string => {
   return lines.join('\n')
 }
 
+const commandCentreStructuredDisplayText = (value: unknown): string => {
+  if (!value || typeof value !== 'object') {
+    return asCleanText(value)
+  }
+
+  const record = value as Record<string, unknown>
+  const displaySummary = asCleanText(record.display_summary)
+  if (displaySummary) {
+    return displaySummary
+  }
+
+  const sourceSummary = asCleanText(record.source_summary)
+  const fidelityStatus = asCleanText(record.source_fidelity_status)
+  const warnings = Array.isArray(record.source_fidelity_warnings)
+    ? record.source_fidelity_warnings.map(asCleanText).filter(Boolean)
+    : []
+  if (sourceSummary && (fidelityStatus === 'source_fidelity_due' || warnings.length > 0)) {
+    return `${sourceSummary} Source fidelity due: ${warnings.join(', ') || 'validation_due'}.`
+  }
+
+  return firstText(
+    sourceSummary,
+    record.principal_decision_read,
+    record.reusable_product_insight,
+  )
+}
+
 const centralOpportunityText = (opp: OpportunityDisplaySource): string => firstText(
-  structuredOpportunitySummaryText(opp.command_centre_analysis_structured),
+  opp.command_centre_display_summary,
+  commandCentreStructuredDisplayText(opp.command_centre_analysis_structured),
   opp.principal_decision_read,
   opp.reusable_product_insight,
   opp.decision_memo_trigger,

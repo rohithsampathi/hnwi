@@ -66,7 +66,10 @@ export interface City {
   public_mirror_excerpt?: string
   command_centre_analysis_contract?: string
   command_centre_reuse_contract?: string
+  command_centre_display_summary?: string
   command_centre_analysis_structured?: unknown
+  source_fidelity_status?: string
+  source_fidelity_warnings?: string[]
   analysis_reuse_targets?: string[]
   granthika_reuse_native?: boolean
   granthika_native?: boolean

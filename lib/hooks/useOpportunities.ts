@@ -53,7 +53,10 @@ interface Opportunity {
   castle_source_summary_structured?: unknown;
   command_centre_analysis_contract?: string;
   command_centre_reuse_contract?: string;
+  command_centre_display_summary?: string;
   command_centre_analysis_structured?: unknown;
+  source_fidelity_status?: string;
+  source_fidelity_warnings?: string[];
   analysis_reuse_targets?: string[];
   granthika_reuse_native?: boolean;
   granthika_native?: boolean;
@@ -410,7 +413,10 @@ const transformOpportunityToCity = (
     public_mirror_excerpt: opp.public_mirror_excerpt,
     command_centre_analysis_contract: opp.command_centre_analysis_contract,
     command_centre_reuse_contract: opp.command_centre_reuse_contract,
+    command_centre_display_summary: opp.command_centre_display_summary,
     command_centre_analysis_structured: opp.command_centre_analysis_structured,
+    source_fidelity_status: opp.source_fidelity_status,
+    source_fidelity_warnings: opp.source_fidelity_warnings,
     analysis_reuse_targets: opp.analysis_reuse_targets,
     granthika_reuse_native: opp.granthika_reuse_native,
     granthika_native: opp.granthika_native,
