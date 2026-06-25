@@ -44,13 +44,17 @@ function scenarioDisplayText(value?: string | null): string {
   if (!value) return '';
   return value
     .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
-    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
+    .replace(/\bRelease Differently\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\bGated negotiation only\b/gi, 'Approved to negotiate under signed gates; no capital release')
     .replace(/\bDecision EV\b/gi, 'scenario discipline output - not release authority')
     .replace(/\bExpected Value\b/gi, 'Scenario discipline output')
     .replace(/\bExpected ROI\b/gi, 'Scenario ROI read')
     .replace(/\bExpected vs Reality\b/gi, 'Assumption vs market evidence')
     .replace(/\bModeled route-outcome value\b/gi, 'Scenario-discipline route read')
     .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
+    .replace(/\bHold pending signed gates\b/gi, 'Hold under signed-gate control')
+    .replace(/\bEvidence pending\b/gi, 'Evidence mapped')
+    .replace(/\bpending\b/gi, 'gate-controlled')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -94,6 +98,17 @@ function recommendationStrengthLabel(strength: number): string {
 
 function formatScenarioMetricValue(value: number): string {
   return formatCurrency(value);
+}
+
+function hasMaterialScenarioMetric(value: unknown): boolean {
+  const numeric = toNumericValue(value);
+  return numeric !== undefined && Math.abs(numeric) >= 1;
+}
+
+function scenarioRouteRead(value: unknown, releaseLabel = 'Route advances only after signed gates'): string {
+  const numeric = toNumericValue(value);
+  if (numeric === undefined || Math.abs(numeric) < 1) return releaseLabel;
+  return formatScenarioMetricValue(numeric);
 }
 
 function routeSignalLabelFromDecisionEv(value: unknown, branchName: BranchName): string | undefined {
@@ -211,7 +226,7 @@ function normalizeClassicScenarioTreeData(raw: Record<string, any>): ScenarioTre
       ? branch.conditions.map((condition: unknown) => {
           const record = asRecord(condition);
           return {
-            condition: readString(record?.condition ?? record?.text ?? condition) || 'Condition pending confirmation.',
+            condition: readString(record?.condition ?? record?.text ?? condition) || 'Condition gate-controlled until counsel and evidence sign-off.',
             status: normalizeConditionStatus(record?.status, 'CONDITIONAL'),
           };
         })
@@ -223,14 +238,14 @@ function normalizeClassicScenarioTreeData(raw: Record<string, any>): ScenarioTre
             scenario: readString(record.scenario) || 'ROUTE_OUTCOME',
             probability: toNumericValue(record.probability) ?? 1,
             net_outcome: toNumericValue(record.net_outcome) ?? toNumericValue(branch.expected_value) ?? 0,
-            description: readString(record.description) || readString(branch.verdict) || 'Route outcome pending confirmation.',
+            description: readString(record.description) || readString(branch.verdict) || 'Route outcome controlled by signed evidence and adviser sign-off.',
             stress_calibration: readString(record.stress_calibration),
           };
         })
       : [],
     expected_value: toNumericValue(branch.expected_value) ?? 0,
     expected_value_note: readString(branch.expected_value_note),
-    verdict: readString(branch.verdict) || 'Decision branch pending final confirmation.',
+    verdict: readString(branch.verdict) || 'Decision branch controlled by final signed confirmation.',
     verdict_conditions: collectStrings(branch.verdict_conditions),
   }));
 
@@ -414,10 +429,12 @@ function buildStructuredScenarioTreeData(
   const valueBasisNote = typeof raw.value_basis_note === 'string'
     ? raw.value_basis_note
     : 'Branch values below use one comparable basis: modeled route-outcome value under the corridor benchmark, separate from the dedicated 10-year wealth projection surface.';
-  const decisionEvLabel = (typeof raw.decision_ev_label === 'string' ? raw.decision_ev_label : 'Model output - not release authority')
-    .replace(/\bDecision EV\b/gi, 'model output - not release authority')
+  const decisionEvLabel = (typeof raw.decision_ev_label === 'string' ? raw.decision_ev_label : 'Route outcome read - not release authority')
+    .replace(/\bDecision EV\b/gi, 'route outcome read - not release authority')
+    .replace(/\bModel\s+output\b/gi, 'route outcome read')
     .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
-    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only');
+    .replace(/\bRelease Differently\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\bGated negotiation only\b/gi, 'Approved to negotiate under signed gates; no capital release');
   const decisionEvNote = typeof raw.decision_ev_note === 'string'
     ? raw.decision_ev_note
     : 'Weighted across base / stress / opportunity cases using the validated route probabilities.';
@@ -516,7 +533,9 @@ function buildStructuredScenarioTreeData(
     rationale: [
       rawAnalysis?.match(/\*\*Verdict Rationale:\*\*\s*([^\n]+)/i)?.[1]?.trim() ||
         'The route should only harden after structure, tax, banking, and underwriting gates are cleared.',
-      `Validated route decision EV is ${formatCurrency(decisionEvUsd)} across the base / stress / opportunity mix.`,
+      hasMaterialScenarioMetric(decisionEvUsd)
+        ? `Scenario-discipline route read is ${formatCurrency(decisionEvUsd)} across the base / stress / opportunity mix.`
+        : 'Scenario discipline remains qualitative until signed gates establish a defensible financial outcome.',
       `${criticalGates.length} critical gates govern the route before capital moves.`,
       `Decision window holds for ${decisionWindowDays} days before the route must be re-underwritten.`,
     ].filter(Boolean),
@@ -537,20 +556,20 @@ function buildStructuredScenarioTreeData(
     },
     decision_matrix: [
       {
-        branch: 'Proceed under signed gates',
-        expected_value: formatCurrency(proceedModifiedExpected),
+        branch: 'Approved to negotiate under signed gates; no capital release',
+        expected_value: scenarioRouteRead(proceedModifiedExpected, 'Signed-gate route'),
         risk_level: 'MEDIUM',
         recommended_if: 'All critical gates clear inside the live decision window.',
       },
       {
         branch: 'Proceed Now',
-        expected_value: formatCurrency(proceedNowExpected),
+        expected_value: scenarioRouteRead(proceedNowExpected, 'Unreleased route'),
         risk_level: 'HIGH',
         recommended_if: 'Only if the room knowingly accepts the unmodified route risk.',
       },
       {
         branch: 'Do Not Proceed',
-        expected_value: formatCurrency(doNotProceedExpected),
+        expected_value: scenarioRouteRead(doNotProceedExpected, 'Capital preserved'),
         risk_level: 'LOW',
         recommended_if: 'Choose this if any abort trigger survives remediation.',
       },
@@ -626,7 +645,7 @@ function BranchCard({
   const expectedValueNote = readString(branch.expected_value_note);
   const shouldShowExpectedValueNote = Boolean(expectedValueNote && expectedValueNote !== metricDisplay);
   const strength = toNumericValue(branch.recommendation_strength) ?? 0.5;
-  const verdict = readString(branch.verdict) || 'Decision branch pending final confirmation.';
+  const verdict = readString(branch.verdict) || 'Decision branch controlled by final signed confirmation.';
 
   return (
     <motion.div
@@ -1434,7 +1453,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
           transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
           <p className="text-xs text-muted-foreground/60 leading-relaxed">
-            Grounded in HNWI Chronicles KG Decision Framework + Game Theory Models
+            Scenario model for release discipline only; not a forecast.
           </p>
         </motion.div>
       </div>
@@ -1455,7 +1474,8 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
   const decisionEvLabel = (typedData.decision_ev_label || 'Scenario discipline output - not release authority')
     .replace(/\bDecision EV\b/gi, 'scenario discipline output - not release authority')
     .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
-    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only');
+    .replace(/\bRelease Differently\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\bGated negotiation only\b/gi, 'Approved to negotiate under signed gates; no capital release');
   const rationale = Array.isArray(typedData.rationale) ? typedData.rationale : [];
   const decisionGates = Array.isArray(typedData.decision_gates) ? typedData.decision_gates : [];
   const decisionMatrix = Array.isArray(typedData.decision_matrix) ? typedData.decision_matrix : [];
@@ -1561,7 +1581,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
               ))}
             </div>
 
-            {typedData.decision_ev_usd !== undefined && (
+            {hasMaterialScenarioMetric(typedData.decision_ev_usd) && typedData.decision_ev_usd !== undefined && (
               <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-5 mb-5">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{scenarioDisplayText(decisionEvLabel)}</p>
                 <p className={memoNumberClass('metric', 'default')}>
@@ -1961,7 +1981,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
           transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
           <p className="text-xs text-muted-foreground/60 leading-relaxed">
-            Grounded in HNWI Chronicles KG Decision Framework + Game Theory Models
+            Scenario model for release discipline only; not a forecast.
           </p>
         </motion.div>
       </div>

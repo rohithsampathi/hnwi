@@ -32,6 +32,7 @@ interface DecisionMemoLinearReportProps {
   showPrintChrome?: boolean;
   motionEnabled?: boolean;
   releaseReadinessSharePayload?: ReleaseReadinessSharePayload | null;
+  hideEvidenceAppendix?: boolean;
 }
 
 interface RevealConfig {
@@ -91,6 +92,7 @@ export default function DecisionMemoLinearReport({
   showPrintChrome = false,
   motionEnabled = false,
   releaseReadinessSharePayload,
+  hideEvidenceAppendix = false,
 }: DecisionMemoLinearReportProps) {
   const printContainerRef = useRef<HTMLDivElement>(null);
   const canonicalReference = resolveDecisionMemoDisplayReference(intakeId);
@@ -168,6 +170,7 @@ export default function DecisionMemoLinearReport({
           onCitationClick={onCitationClick}
           citationMap={citationMap}
           releaseReadinessSharePayload={releaseReadinessSharePayload}
+          hideEvidenceAppendix={hideEvidenceAppendix}
         />
       </ReportSection>
 
@@ -191,7 +194,7 @@ export default function DecisionMemoLinearReport({
                 ) : (
                   <>
                     <Share2 className="w-4 h-4" />
-                    Share This Audit
+                    Share This Review
                   </>
                 )}
               </button>

@@ -24,13 +24,14 @@ export interface ReleaseReadinessShareRouteOption {
   releaseEffect: string;
   metrics: {
     propertyValueUsd: number;
-    bsdUsd: number;
-    absdUsd: number;
-    totalDutiesUsd: number;
-    totalAcquisitionCostUsd: number;
-    incrementalDutyVsRecommendedUsd: number;
-    dutyDragPct: number;
-    annualCarryingCostUsd: number;
+    baseSdltUsd: number | null;
+    nrAndAdditionalDwellingSurchargeUsd: number | null;
+    totalSdltUsd: number | null;
+    totalDutiesUsd: number | null;
+    totalAcquisitionCostUsd: number | null;
+    incrementalDutyVsRecommendedUsd: number | null;
+    dutyDragPct: number | null;
+    annualCarryingCostUsd: number | null;
     dataQuality: string;
     mitigationTimeline: string;
   };
@@ -73,6 +74,11 @@ export interface ReleaseReadinessMethodDriver {
   title: string;
   driver: string;
   releaseRead: string;
+  familyAction?: string;
+  testApplied?: string;
+  testResult?: string;
+  principalInstruction?: string;
+  capitalConsequence?: string;
   sources: ReleaseReadinessMethodSource[];
 }
 
@@ -119,12 +125,51 @@ export interface ReleaseReadinessShareReportSection {
   chart?: ReleaseReadinessShareChartSeries[];
 }
 
+export interface ReleaseReadinessPrincipalTable {
+  columns: string[];
+  rows: string[][];
+}
+
+export interface ReleaseReadinessPrincipalActionTest {
+  label: string;
+  familyAction: string;
+  testApplied: string;
+  testResult: string;
+  principalInstruction: string;
+  capitalConsequence: string;
+}
+
+export interface ReleaseReadinessPrincipalRouteSummary {
+  routeName: string;
+  currentDecision: string;
+  useCase: string;
+  capitalConsequence: string;
+  releaseConsequence: string;
+}
+
+export interface ReleaseReadinessPrincipalView {
+  decisionMinute: ReleaseReadinessPrincipalTable;
+  familyActionAnswer: ReleaseReadinessPrincipalTable;
+  capitalTruth: ReleaseReadinessPrincipalTable;
+  purposeBoundary: ReleaseReadinessPrincipalTable;
+  releaseRule: ReleaseReadinessPrincipalTable;
+  signedGateMap: ReleaseReadinessPrincipalTable;
+  whatChanged: ReleaseReadinessPrincipalTable;
+  whatCaught: ReleaseReadinessPrincipalTable;
+  routeAlternatives: ReleaseReadinessPrincipalRouteSummary[];
+  familyActionTests: ReleaseReadinessPrincipalActionTest[];
+  sevenDayInstruction: ReleaseReadinessPrincipalTable;
+  evidenceBoundary: ReleaseReadinessPrincipalTable;
+  finalInstruction: ReleaseReadinessPrincipalTable;
+}
+
 export interface ReleaseReadinessSharePayload {
   surfaceContract: typeof SHARE_SURFACE_CONTRACT;
   reference: string;
   title: string;
   corridor: string;
   move: string;
+  user_inputs: RecordLike;
   decision: string;
   releaseRule: string;
   purpose: string;
@@ -143,6 +188,7 @@ export interface ReleaseReadinessSharePayload {
   methodDrivers: ReleaseReadinessMethodDriver[];
   citations: ReleaseReadinessShareCitation[];
   reportSections: ReleaseReadinessShareReportSection[];
+  principalView?: ReleaseReadinessPrincipalView;
 }
 
 function isRecord(value: unknown): value is RecordLike {
@@ -196,9 +242,63 @@ function compactExactUsdText(value: string): string {
 
 function sanitizeShareText(value: unknown): string {
   return compactExactUsdText(text(value))
-    .replace(/\bRelease Differently\b/gi, "Gated negotiation only")
-    .replace(/\bGated negotiation only only\b/gi, "Gated negotiation only")
+    .replace(/\bRequired evidence\b/gi, "Release gate")
+    .replace(/\bRelease Differently\b/gi, "Approved to negotiate under signed gates; no capital release")
+    .replace(/\bGated negotiation only only\b/gi, "Approved to negotiate under signed gates; no capital release")
+    .replace(/\bGated negotiation only\b/gi, "Approved to negotiate under signed gates; no capital release")
     .replace(/\bproceed[-\s]modified\b/gi, "Proceed under signed gates")
+    .replace(/\bHold Until Release Evidence Clears\b/gi, "Hold under signed-gate control")
+    .replace(/\bEntity\/trustee duty spread\b/gi, "Structure-route duty spread")
+    .replace(/\bReviewed for release readiness;\s*signed gate required before capital release\b/gi, "Gate mapped for release-readiness review; signed gate controls capital release")
+    .replace(/\bReviewed for release readiness\b/gi, "Gate mapped for release-readiness review")
+    .replace(
+      /\bFallback UK rail is pre-cleared for receipt if the primary rail delays,\s*with identical SoW\/SoF index,\s*escalation owner,\s*and cut-off timing\.\s*It cannot change buyer route or source narrative\.?/gi,
+      "Required evidence: fallback UK rail must provide written conditional acceptance before release; same SoW / SoF index, escalation owner, and cut-off timing must match the buyer route and source narrative.",
+    )
+    .replace(/\bfallback rail is pre-cleared\b/gi, "fallback rail must provide written conditional acceptance before release")
+    .replace(/\bpre-cleared fallback rail\b/gi, "fallback rail with bank acceptance evidence")
+    .replace(
+      /\bCounsel confirms the control case:\s*direct non-UK resident additional-dwelling individual treatment;\s*no first-time-buyer relief;\s*no main-residence replacement claim;\s*company\/trust route not preferred unless a later non-tax purpose justifies register\/ATED\/SDLT and bank burden\.?/gi,
+      "Required evidence: UK tax counsel must sign the control-case buyer treatment before release.",
+    )
+    .replace(
+      /\bTitle pack confirms a freehold residential townhouse in Mayfair \/ Westminster with no foreign-buyer ownership prohibition identified by counsel;\s*private title reference,\s*seller identity,\s*and searches remain private but were indexed in the data room\.?/gi,
+      "Required evidence: UK property counsel must confirm title class, tenure, seller identity, seller authority, searches, restrictions, and any foreign-buyer/title constraints before bid, deposit, exchange, or transfer authority.",
+    )
+    .replace(
+      /\bSeller asks for 10 business-day exclusivity,\s*exchange only after bank\/counsel release,\s*10% deposit at exchange,\s*and 40 business-day completion\.\s*Deposit cannot be sent before source and receiving bank acceptance\.?/gi,
+      "Required evidence: seller timetable, exclusivity terms, deposit amount, deposit conditions, exchange sequence, completion timetable, and release conditions must be verified by property counsel before any seller-facing commitment.",
+    )
+    .replace(
+      /\bCounsel confirms property ownership does not decide residence;\s*UK day-count,\s*FIG,\s*IHT long-term-residence,\s*remittance,\s*wills,\s*and trust interaction remain monitored separately,\s*with no UK-residence benefit assumed in the purchase model\.?/gi,
+      "Required evidence: UK residence/tax counsel must confirm that ownership, day count, FIG, IHT, remittance, will/trust interaction, and residence assumptions are separately reviewed before the property is treated as a continuity anchor.",
+    )
+    .replace(
+      /\bImmigration adviser confirms ownership gives no right to reside;\s*child\/parent\/student\/visitor routes and school admission remain separate\.\s*Education adviser confirms the current school timetable can run without forcing exchange\.?/gi,
+      "Required evidence: immigration and education advisers must confirm whether ownership, child/parent routes, school timing, guardian model, term dates, and accommodation plan create any residence or exchange-timing pressure.",
+    )
+    .replace(
+      /\bOperating pack includes council-tax anchor,\s*service-charge\/estate-management range,\s*insurance\/security quotes,\s*maintenance reserve,\s*legal\/admin budget,\s*FX spread policy,\s*and opportunity-cost sensitivity\.\s*(?:G1|principal) liquidity account funds first 24 months of carry\.?/gi,
+      "Required evidence: operating pack must confirm council-tax/local charges, service or management costs, insurance/security, maintenance reserve, legal/admin budget, FX spread policy, opportunity-cost sensitivity, liquidity source, and carry owner before completion.",
+    )
+    .replace(
+      /\bPrimary and fallback rail written conditional acceptances,\s*KYC\/SoW\/SoF index,\s*sanctions\/adverse-media clearance state,\s*signer mandate,\s*FX authority,\s*transfer limits,\s*timetable,\s*and escalation contacts\.?/gi,
+      "Required evidence: primary and fallback rails must provide written conditional acceptance of KYC, SoW/SoF, sanctions/adverse-media, signer mandate, FX authority, transfer limits, timetable, and escalation contacts before exchange.",
+    )
+    .replace(
+      /\bAudited accounts,\s*distribution minutes,\s*sale-completion evidence,\s*tax-residency support,\s*bank statements,\s*beneficial-owner chart,\s*and liquidity schedule\.?/gi,
+      "Required evidence: SoW/SoF pack must evidence audited accounts where relevant, distribution minutes, sale-completion evidence, tax-residency support, bank statements, beneficial-owner chart, and liquidity schedule before exchange.",
+    )
+    .replace(
+      /\bProperty,\s*tax\/private-client,\s*immigration,\s*education,\s*source-tax,\s*bank,\s*insurance\/security,\s*and operator confirmations reconciled into a single contradiction log\.?/gi,
+      "Required evidence: adviser confirmations across property, tax/private-client, immigration, education, source-tax, bank, insurance/security, and operator desks must be reconciled into a contradiction log before release.",
+    )
+    .replace(/\bBank acceptance is conditional but documented before exchange\.?/gi, "Required evidence: bank acceptance must be conditionally documented before exchange.")
+    .replace(/\bFamily continuity is documented without hardening inheritance ambiguity\.?/gi, "Required evidence: family continuity must be documented without hardening inheritance ambiguity.")
+    .replace(/\bring-fenced liquidity schedule\b/gi, "liquidity schedule")
+    .replace(/\bas a London family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi, "as a proposed London family-use acquisition, with education, residence, succession, and capital-preservation claims treated as separate gates")
+    .replace(/\bcurrent the corridor read\b/gi, "current corridor read")
+    .replace(/\bcurrent the corridor\b/gi, "current corridor")
     .replace(/\bPreferred modified route only if\b/gi, "Preferred direct route only if")
     .replace(/\bPreferred modified route\b/gi, "Preferred direct route under signed gates")
     .replace(/\bremains Proceed under signed gates\b/gi, "remains gated")
@@ -215,10 +315,11 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")
     .replace(/\bOPEN GATES\b/gi, "Release Gate Status")
     .replace(/\bOpen Release Gates\b/gi, "Release Gate Status")
-    .replace(/\b0\s+to\s+close\b/gi, "Evidence pending")
-    .replace(/\bAll listed release gates have assigned owners\b/gi, "Gate ownership assigned; release evidence pending")
+    .replace(/\b0\s+to\s+close\b/gi, "Evidence mapped")
+    .replace(/\bAll listed release gates have assigned owners\b/gi, "Gate ownership assigned; release evidence mapped")
     .replace(/\bDOCUMENTED\b/g, "Indexed for review")
     .replace(/\bDocumented\b/g, "Indexed for review")
+    .replace(/\brelease-gated\b/gi, "signed-gate controlled")
     .replace(/\breleased differently\b/gi, "advanced under signed gates")
     .replace(/\brelease differently\b/gi, "advance under signed gates")
     .replace(/\bSIX-BOOK OPENING\b/gi, "Decision Opening")
@@ -251,59 +352,57 @@ function sanitizeShareText(value: unknown): string {
     .replace(/\bDM64\b/g, "release-readiness review")
     .replace(/\bGranthika\b/g, "source register")
     .replace(/\bAquarium\b/g, "source register")
+    .replace(/\bcompiler internals\b/gi, "private build details")
     .replace(/\bAI banking crisis simulation\b/gi, "Bank compliance escalation simulation")
     .replace(/\badvisor embarrassment\b/gi, "adviser coordination failure")
     .replace(/\badviser embarrassment\b/gi, "adviser coordination failure")
-    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, "Conditional technology-wealth exposure check")
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, "Source-wealth concentration check")
     .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, "Conditional operating-income exposure check")
     .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, "Conditional digital-settlement rail exposure check")
-    .replace(/\bTechnology-wealth exposure check\b/gi, "Conditional technology-wealth exposure check")
+    .replace(/\bTechnology-wealth exposure check\b/gi, "Source-wealth concentration check")
+    .replace(/\bsource-wealth concentration\/technology exposure\b/gi, "documented source-wealth concentration exposure")
+    .replace(/\bsource-wealth concentration\/technology wealth repricing or platform dependency\b/gi, "source-wealth concentration or liquidity repricing before source liquidity is proven")
+    .replace(/\btechnology wealth repricing or platform dependency\b/gi, "source-wealth concentration or liquidity repricing")
+    .replace(/\btechnology wealth repricing\b/gi, "source-wealth concentration repricing")
+    .replace(/\btechnology exposure\b/gi, "source-concentration exposure")
+    .replace(/\bplatform dependency\b/gi, "source-concentration dependency")
     .replace(/\bOperating-income exposure check\b/gi, "Conditional operating-income exposure check")
     .replace(/\bDigital-settlement exposure check\b/gi, "Conditional digital-settlement rail exposure check")
-    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, "conditional technology-wealth exposure")
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, "source-wealth concentration exposure")
+    .replace(/\bAI or technology exposed\b/gi, "exposed to a documented source-wealth concentration")
+    .replace(/\bAI platform dependency\b/gi, "documented platform concentration")
+    .replace(/\bAI\b/g, "source-wealth concentration")
     .replace(/\bwar\s*\/\s*sanctions\b/gi, "conditional geopolitical and sanctions exposure")
     .replace(/\bstablecoin rail stress\b/gi, "conditional digital-settlement rail exposure")
     .replace(/\bBSA\/sanctions\b/gi, "sanctions and bank-compliance controls")
     .replace(/\bBSA\b/g, "bank-compliance controls")
     .replace(/\bshadow facilitators\b/gi, "unverified intermediaries")
+    .replace(/\bConditional\s+Conditional\b/gi, "Conditional")
     .replace(/\bg1[_-]g2[_-]g3\b/gi, "generation_to_generation")
-    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, "generation-to-generation")
-    .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/gi, "generation-to-generation")
-    .replace(/\bG1\s*→\s*G2\s*→\s*G3\b/gi, "generation-to-generation")
-    .replace(/\bG1 route control\b/gi, "current-owner route control")
-    .replace(/\bG1\s*->\s*G2 operating transfer\b/gi, "operating transfer to named family user")
-    .replace(/\bG2\s*->\s*G3 without governance lock\b/gi, "next-generation record without governance lock")
-    .replace(/\bG2\s*->\s*G3 with governance lock\b/gi, "next-generation record with governance lock")
-    .replace(/\bG1 principal\b/gi, "principal")
-    .replace(/\bG1 founder\s*\/\s*principal\b/gi, "principal")
-    .replace(/\bG1\b/gi, "principal")
-    .replace(/(^|[_-])g1(?=$|[_-])/gi, "$1principal")
-    .replace(/\bG2 son\b/gi, "named family user")
-    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
-    .replace(/\bG2 fairness owner\b/gi, "family-fairness owner")
-    .replace(/\bG2\b/gi, "named family user")
-    .replace(/(^|[_-])g2(?=$|[_-])/gi, "$1named_family_user")
-    .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
-    .replace(/\bdaughter fairness\b/gi, "family-fairness")
-    .replace(/\bG3\/grandchild\b/gi, "next-generation continuity")
-    .replace(/\bG3 grandson\b/gi, "next-generation continuity")
-    .replace(/\bG3 memory rules\b/gi, "next-generation decision record rules")
-    .replace(/\bG3 decision memory\b/gi, "next-generation decision record")
-    .replace(/\bG3 memory\b/gi, "next-generation decision record")
-    .replace(/\bG3\b/gi, "next-generation record")
-    .replace(/(^|[_-])g3(?=$|[_-])/gi, "$1next_generation_record")
+    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, "G1 / G2 / G3 continuity chain")
+    .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/gi, "G1 -> G2 -> G3 continuity chain")
+    .replace(/\bG1\s*→\s*G2\s*→\s*G3\b/gi, "G1 -> G2 -> G3 continuity chain")
+    .replace(/\bG1\s*->\s*G2 operating transfer\b/gi, "G1 -> G2 operating transfer")
+    .replace(/\bG1 founder\s*\/\s*principal\b/gi, "G1 principal")
+    .replace(/\bG2 son\b/gi, "G2 named family user")
+    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, "G2 fairness owner")
+    .replace(/\bG2 fairness owner\b/gi, "G2 fairness owner")
+    .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, "G2 fairness owner")
+    .replace(/\bdaughter fairness\b/gi, "G2 fairness")
+    .replace(/\bG3\/grandchild\b/gi, "G3 next-generation continuity")
+    .replace(/\bG3 grandson\b/gi, "G3 next-generation continuity")
+    .replace(/\bG3 memory rules\b/gi, "G3 decision-record rules")
+    .replace(/\bG3 decision memory\b/gi, "G3 decision record")
+    .replace(/\bG3 memory\b/gi, "G3 decision record")
     .replace(/\bfuture-grandchild\b/gi, "next-generation")
-    .replace(/\bgrandson\b/gi, "next-generation record")
-    .replace(/\bson\b/gi, "named family user")
-    .replace(/\bdaughter\b/gi, "named family-fairness owner")
-    .replace(/\bson-use\b/gi, "named family-user")
-    .replace(/\bson use\b/gi, "named family-user")
-    .replace(/\bnamed family user-use\b/gi, "named family-user use")
-    .replace(/\bdaughter\/fairness\b/gi, "family-fairness")
-    .replace(/\bspouse veto if relevant\b/gi, "family-home rights position recorded before bid release or exchange")
+    .replace(/\bgrandson\b/gi, "G3 next-generation record")
+    .replace(/\bson-use\b/gi, "G2 use")
+    .replace(/\bson use\b/gi, "G2 use")
+    .replace(/\bdaughter\/fairness\b/gi, "G2 fairness")
+    .replace(/\bspouse veto if relevant\b/gi, "family-home rights position gate mapped before bid release or exchange")
     .replace(/\bspouse if relevant\b/gi, "family-home rights holder where recorded")
     .replace(/\bspouse veto\b/gi, "family-home rights position")
-    .replace(/\bfamily-use veto position where recorded\b/gi, "family-home rights position recorded before bid release or exchange")
+    .replace(/\bfamily-use veto position where recorded\b/gi, "family-home rights position gate mapped before bid release or exchange")
     .replace(/\bFamily-home veto position\b/gi, "Family-home rights position")
     .replace(/\bfamily-home veto position\b/gi, "family-home rights position")
     .replace(/\bFamily-home veto holder\b/gi, "Family-home rights holder")
@@ -331,14 +430,14 @@ function sanitizeShareText(value: unknown): string {
     )
     .replace(
       /\bThe Mayfair purchase is a family-base and continuity move, not a yield trade; release depends on written purpose, use boundaries, and who the asset is meant to serve across principal \/ named family user \/ next-generation record\.?/gi,
-      "The Mayfair purchase is tested as London family use, not yield. Release depends on written use boundaries, named family user, named fairness owner, and decision record."
+      "The Mayfair purchase is tested as London family use, not yield. Release depends on written G1 purpose, G2 use boundary, G2 fairness owner, and G3 decision record."
     )
     .replace(
       /\bPrincipal\s*\/\s*named family user\s*\/\s*next-generation record\b/gi,
-      "principal authority, family-use boundary, fairness owner, and next-generation decision record"
+      "G1 authority, G2 use boundary, G2 fairness owner, and G3 decision record"
     )
     .replace(/\bsocial or family promise\b/gi, "undocumented family expectation")
-    .replace(/\bnext-generation decision memory\b/gi, "next-generation decision record")
+    .replace(/\bnext-generation decision memory\b/gi, "G3 decision record")
     .replace(
       /\bLooks like prime London capital preservation even though the economics are control\/use-led after duty drag\.?/gi,
       "Appears like a capital-preservation purchase, but economics are family-use and control-led after duty drag."
@@ -358,6 +457,32 @@ function sanitizeShareText(value: unknown): string {
       /\bThe purchase must remain legible six years later without relying on founder memory\.?/gi,
       "The purchase must remain explainable later without relying on memory or informal understandings."
     )
+    .replace(/\bHold pending signed gates\b/gi, "Hold under signed-gate control")
+    .replace(/\bEvidence pending; no capital release\b/gi, "Evidence mapped; no capital release until signed approval gates")
+    .replace(/\bEvidence Pending\b/g, "Evidence mapped")
+    .replace(/\bevidence pending\b/gi, "evidence mapped")
+    .replace(/\bRequired evidence\s*:\s*/gi, "Gate mapped: ")
+    .replace(/\bEvidence required before release\b/gi, "Evidence mapped; sign-off controls release")
+    .replace(/\bRequired for release readiness;\s*signed gate required before capital release\b/gi, "Gate mapped for release-readiness review; signed gate controls capital release")
+    .replace(/\bRequired for release readiness\b/gi, "Gate mapped for release-readiness review")
+    .replace(/\bSigned evidence required before capital release\b/gi, "Evidence mapped; signed gate controls capital release")
+    .replace(/\bSigned evidence required before release\b/gi, "Evidence mapped; signed gate controls release")
+    .replace(/\bSigned gate required\b/gi, "Signed gate controls release")
+    .replace(/\bsigned gate required\b/gi, "signed gate controls release")
+    .replace(/\bRequired before ([^.;,\n]+)/gi, "Gate mapped for $1")
+    .replace(/\brequired before ([^.;,\n]+)/gi, "gate mapped for $1")
+    .replace(/\bQuestions and confirmations required before release\b/gi, "Questions and confirmations gate mapped for release review")
+    .replace(/\bEvidence item required before release\b/gi, "Evidence item gate mapped for release review")
+    .replace(/\brequired evidence gates\b/gi, "mapped evidence gates")
+    .replace(/\bOfficial school-admissions guidance is required when\b/gi, "Official school-admissions guidance is recorded when")
+    .replace(/\bWritten advice required\b/gi, "Written advice recorded")
+    .replace(/\bWritten rail acceptance required\b/gi, "Written rail acceptance recorded")
+    .replace(/\bSoW\/SoF and signer acceptance required\b/gi, "SoW/SoF and signer acceptance recorded")
+    .replace(/\bis required above\b/gi, "is controlled above")
+    .replace(/\bfallback signer\b/gi, "alternate signer")
+    .replace(/\bfallback rails\b/gi, "alternate rails")
+    .replace(/\bfallback rail\b/gi, "alternate rail")
+    .replace(/\bfallback\b/gi, "alternate")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -376,7 +501,7 @@ function normalizeMitigationTimeline(value: unknown): string {
 function normalizeMoveStatement(value: unknown): string {
   const normalized = sanitizeShareText(value);
   if (/Balfour Place/i.test(normalized) && /Mayfair/i.test(normalized)) {
-    return "A Dubai/GCC family is reviewing a GBP 49.5M Mayfair townhouse at Balfour Place, London W1K. Approved route: gated direct-buyer negotiation only. No capital release. Education, residence, succession, and capital-preservation claims are not release authority; they remain separate evidence gates.";
+    return "A Dubai/GCC family is reviewing a GBP 49.5M Mayfair townhouse at Balfour Place, London W1K. Approved route: approved direct-buyer negotiation under signed gates. No capital release. Education, residence, succession, and capital-preservation claims are not release authority; they remain separate evidence gates.";
   }
   return normalized;
 }
@@ -444,28 +569,10 @@ function sourceCitationId(source: RouteDriverSourceRecord | RecordLike): string 
   );
 }
 
-function publicSourceDate(source: RecordLike): string {
-  const candidate = source.source_date ?? source.date ?? source.published_at ?? source.created_at;
-  if (typeof candidate === "string") return candidate;
-  if (isRecord(candidate) && typeof candidate.$date === "string") return candidate.$date.slice(0, 10);
+function methodSourceDate(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (isRecord(value)) return text(value.$date);
   return "";
-}
-
-function sanitizeDriverSource(source: RouteDriverSourceRecord): RouteDriverSourceRecord {
-  const id = sourceCitationId(source);
-  return {
-    id,
-    source_development_id: id,
-    citation_id: id,
-    title: sanitizeShareText(source.title ?? "Source record"),
-    url: text(source.url ?? source.source_url),
-    source_url: text(source.source_url ?? source.url),
-    date: publicSourceDate(source),
-    source_date: publicSourceDate(source),
-    industry: sanitizeShareText(source.industry ?? "Source Review"),
-    decision_posture: sanitizeShareText(source.decision_posture),
-    quality_score: typeof source.quality_score === "number" ? source.quality_score : undefined,
-  };
 }
 
 function sanitizeRouteOption(option: RouteIntelligenceOptionV2): RouteIntelligenceOptionV2 {
@@ -475,7 +582,7 @@ function sanitizeRouteOption(option: RouteIntelligenceOptionV2): RouteIntelligen
     routeName: sanitizeShareText(option.routeName),
     routeType: sanitizeShareText(option.routeType),
     verdict: sanitizeShareText(option.verdict),
-    releaseRule: option.releaseRule,
+    releaseRule: sanitizeShareText(option.releaseRule),
     bestUse: sanitizeShareText(option.bestUse),
     economicRead: sanitizeShareText(option.economicRead),
     failureMode: sanitizeShareText(option.failureMode),
@@ -523,15 +630,23 @@ function buildSafeRouteIntelligence(route: RouteIntelligenceV2, reference: strin
     nativeRouteDriverNote: sanitizeShareText(route.nativeRouteDriverNote),
     routeDriverRegister: route.routeDriverRegister
       ? {
-          items: route.routeDriverRegister.items.map((driver) => ({
-            id: text(driver.id),
-            title: sanitizeShareText(driver.title),
-            driver: sanitizeShareText(driver.driver),
-            releaseRead: sanitizeShareText(driver.releaseRead),
-            evidenceBasis: sanitizeShareText(driver.evidenceBasis),
-            sourceIds: driver.sources.map(sourceCitationId).filter(Boolean),
-            sources: [],
-          })),
+          items: route.routeDriverRegister.items.map((driver) => {
+            const driverRecord = driver as unknown as RecordLike;
+            return {
+              id: text(driver.id),
+              title: sanitizeShareText(driver.title),
+              driver: sanitizeShareText(driver.driver),
+              releaseRead: sanitizeShareText(driver.releaseRead ?? driverRecord.release_read),
+              evidenceBasis: sanitizeShareText(driver.evidenceBasis ?? driverRecord.evidence_basis),
+              familyAction: sanitizeShareText(driver.familyAction ?? driverRecord.family_action),
+              testApplied: sanitizeShareText(driver.testApplied ?? driverRecord.test_applied),
+              testResult: sanitizeShareText(driver.testResult ?? driverRecord.test_result),
+              principalInstruction: sanitizeShareText(driver.principalInstruction ?? driverRecord.principal_instruction),
+              capitalConsequence: sanitizeShareText(driver.capitalConsequence ?? driverRecord.capital_consequence),
+              sourceIds: driver.sources.map(sourceCitationId).filter(Boolean),
+              sources: [],
+            };
+          }),
         }
       : undefined,
     selectorLabel: "Route Being Released",
@@ -551,20 +666,20 @@ function buildSafeRouteIntelligence(route: RouteIntelligenceV2, reference: strin
     buyerProfileMatrix: sanitizeObject(route.buyerProfileMatrix),
     principalValueGate: route.principalValueGate ? sanitizeObject(route.principalValueGate) : undefined,
     sourceRead:
-      "This share surface reads the stored release-readiness review and shows the decision packet, evidence boundary, route gates, and source citations without exposing private records or compiler internals.",
+      "This release-readiness surface shows the decision packet, evidence boundary, route gates, and source citations without exposing private records.",
   };
 }
 
 function buildDefaultPrivateEvidence() {
   return [
-    ["Buyer profile", "Required before bid", "Principal / FO operator", "Identity class, residence posture, property count, and buyer capacity."],
-    ["Title pack", "Indexed if available; counsel sign-off required before exchange", "UK property counsel", "Title, searches, survey, restrictions, seller authority, insurance quote and security plan, and exchange mechanics."],
-    ["SDLT computation", "Required before bid / counsel-confirmed", "UK tax counsel", "Signed SDLT treatment, surcharges, relief exclusions, and filing responsibility."],
-    ["SoW / SoF file", "Required before exchange", "Source bank", "Corroborated source narrative, account path, adverse-media checks, and transfer authority."],
-    ["Receiving and fallback rails", "Required before exchange", "Receiving bank", "Primary rail, fallback rail, KYC acceptance, FX authority, limits, and timetable."],
-    ["Family authority minute", "Indexed if available; signed authority minute required before bid release or exchange", "Family office / principal", "Use boundary, family-home rights position, title authority, carry owner, sale/refinance limits, and decision memory."],
-    ["Family fairness minute", "Required before bid release or exchange", "Family fairness owner", "Notice, fairness protection, beneficiary treatment, and next-generation record."],
-    ["Operating file", "Required before completion", "FO operator", "Insurance quote, security plan, service contracts, initial carry budget, and reporting cadence."],
+    ["Buyer profile", "Gate mapped for bid gate", "Principal / FO operator", "Identity class, residence posture, property count, and buyer capacity."],
+    ["Title pack", "Indexed in input pack; counsel sign-off controls exchange", "UK property counsel", "Title, searches, survey, restrictions, seller authority, insurance quote and security plan, and exchange mechanics."],
+    ["SDLT computation", "Gate mapped for bid gate / counsel-confirmed", "UK tax counsel", "Signed SDLT treatment, surcharges, relief exclusions, and filing responsibility."],
+    ["SoW / SoF file", "Gate mapped for exchange gate", "Source bank", "Corroborated source narrative, account path, adverse-media checks, and transfer authority."],
+    ["Receiving and alternate rails", "Gate mapped for exchange gate", "Receiving bank", "Primary rail, alternate rail, KYC acceptance, FX authority, limits, and timetable."],
+    ["Family authority minute", "Indexed in input pack; signed authority minute controls bid release or exchange", "Family office / principal", "Use boundary, family-home rights position, title authority, carry owner, sale/refinance limits, and decision memory."],
+    ["Family fairness minute", "Gate mapped for bid release or exchange gate", "Family fairness owner", "Notice, fairness protection, beneficiary treatment, and next-generation record."],
+    ["Operating file", "Gate mapped for completion gate", "FO operator", "Insurance quote, security plan, service contracts, initial carry budget, and reporting cadence."],
   ].map(([label, status, owner, detail]) => ({
     label,
     status,
@@ -578,7 +693,7 @@ function buildSafeReleasePacket(data: ResolvedDecisionMemoSurfaceData) {
 
   return sanitizeObject({
     rationale:
-      "Proceed to gated negotiation only. The house is approved for London family use only after title, SDLT, source, bank, authority, family-use, fairness, and decision-memory evidence clears.",
+      "Approved to negotiate under signed gates; no capital release. The house is approved for London family use only after title, SDLT, source, bank, authority, family-use, fairness, and decision-memory gates are signed.",
     advance_conditions:
       Array.isArray(releasePacket.advance_conditions) && releasePacket.advance_conditions.length
         ? releasePacket.advance_conditions
@@ -607,40 +722,52 @@ function buildSafeGates() {
   return {
     critical_gates: [
       {
-        gate: "Buyer profile and SDLT treatment",
-        state: "Required before bid release",
-        evidence: "Signed buyer profile, non-resident status, additional-dwelling treatment, relief exclusions, and counsel computation.",
+        gate: "Title and seller authority",
+        state: "Gate mapped for bid or exchange gate",
+        evidence: "Title class, seller identity, seller authority, searches, restrictions, deposit terms, exclusivity terms, and completion timetable.",
+        why_it_matters: "No bid, deposit, exchange, or transfer signal before property counsel signs the route.",
+      },
+      {
+        gate: "SDLT and tax treatment",
+        state: "Gate mapped for bid-release gate",
+        evidence: "Buyer profile, non-resident status, additional-dwelling treatment, relief exclusions, ATED and structure position, and counsel computation.",
         why_it_matters: "The route cannot rely on relief, refund, wrapper, or residence benefit unless counsel signs the facts at trigger date.",
       },
       {
-        gate: "Title and seller timetable",
-        state: "Required before exchange",
-        evidence: "Title, searches, survey, restrictions, insurance quote and security plan, seller identity, seller authority, exclusivity terms, deposit condition, deposit account, conveyancer client-account details, transfer path, release condition, and completion timetable.",
-        why_it_matters: "Seller timing cannot outrun title readiness or convert a review into a capital commitment.",
+        gate: "Source wealth and source funds",
+        state: "Gate mapped for exchange gate",
+        evidence: "Source wealth, source funds, liquidity source, beneficial-owner chart, funds trail, and selected buyer-route narrative.",
+        why_it_matters: "Capital that exists is not treated as movable until the source file matches the selected buyer route.",
       },
       {
-        gate: "SoW / SoF and bank rails",
-        state: "Required before exchange",
-        evidence: "Source bank, receiving bank, fallback bank rail, KYC, sanctions/adverse-media clearance, FX authority, transfer limits, and timetable.",
-        why_it_matters: "Capital remains blocked until the transfer path is bank-accepted in writing.",
+        gate: "Primary and alternate bank rail",
+        state: "Gate mapped for exchange gate",
+        evidence: "Source bank, UK receiving bank, alternate rail, KYC, SoW/SoF, sanctions/adverse-media clearance, signer condition, and timetable.",
+        why_it_matters: "No exchange if one bank lead or one account is the only route to completion.",
       },
       {
-        gate: "Authority and veto map",
-        state: "Required before bid or exchange",
-        evidence: "Principal authority, named family-user boundary, family-home rights position recorded before bid release or exchange, sale/refinance rights, and carry owner.",
+        gate: "FX and transfer authority",
+        state: "Gate mapped for exchange gate",
+        evidence: "Signer mandate, FX quote protocol, transfer limits, rate-refresh rule, sanctions/KYC state, settlement timetable, and escalation owner.",
+        why_it_matters: "No transfer authority before signer, FX, timing, and receiving-route conditions align.",
+      },
+      {
+        gate: "Family authority minute",
+        state: "Gate mapped for bid or exchange gate",
+        evidence: "Who can see, stop, sign, move, retrieve, and explain the route.",
+        why_it_matters: "No family-office execution if authority lives only in oral instruction.",
+      },
+      {
+        gate: "Family-use and fairness record",
+        state: "Gate mapped for bid or exchange gate",
+        evidence: "Named family-user boundary, family-home rights position, family-fairness owner, carry owner, stop rights, and next-generation explanation.",
         why_it_matters: "Use rights, carry, and veto must be written so the property does not become an implied future entitlement.",
       },
       {
-        gate: "Family fairness and next-generation record",
-        state: "Required before bid or exchange",
-        evidence: "Named family-fairness owner, notice minute, beneficiary treatment, and decision record location.",
-        why_it_matters: "The purchase must remain explainable later without relying on memory or informal understandings.",
-      },
-      {
-        gate: "Bid discipline",
-        state: "Required before bid release",
-        evidence: "Closed comps, failed-sale history, price-cut history, seller motivation, capex adjustment, first-offer range, and walk-away price.",
-        why_it_matters: "The guide price is not bid authority.",
+        gate: "Decision record packet",
+        state: "Gate mapped for bid or exchange gate",
+        evidence: "Verdict, rejected route options, accepted duty drag, evidence index, stop triggers, adviser gate records, and retrieval owner.",
+        why_it_matters: "No release if the room cannot later explain why capital moved.",
       },
     ],
   };
@@ -653,6 +780,299 @@ function gateRowsFromSafeGates(gates: ReturnType<typeof buildSafeGates>): Releas
     condition: sanitizeShareText(gate.evidence),
     consequence: sanitizeShareText(gate.why_it_matters),
   }));
+}
+
+function principalTable(columns: string[], rows: string[][]): ReleaseReadinessPrincipalTable {
+  return {
+    columns: columns.map(sanitizeShareText),
+    rows: cleanRows(rows),
+  };
+}
+
+function buildPrincipalRouteSummary(option: ReleaseReadinessShareRouteOption): ReleaseReadinessPrincipalRouteSummary {
+  const hasPurchaseDuties = numberOr(option.metrics.totalDutiesUsd) > 0;
+  const totalExposure = moneyText(option.metrics.totalAcquisitionCostUsd, "No capital deployed");
+  const dutyRead = hasPurchaseDuties
+    ? `${moneyText(option.metrics.totalDutiesUsd)} day-one duty drag`
+    : "No purchase duty while capital remains blocked";
+  return {
+    routeName: sanitizeShareText(option.routeName),
+    currentDecision: sanitizeShareText(option.releaseRule || option.verdict),
+    useCase: sanitizeShareText(option.bestUse),
+    capitalConsequence: sanitizeShareText(hasPurchaseDuties ? `${totalExposure}; ${dutyRead}.` : dutyRead),
+    releaseConsequence: sanitizeShareText(option.releaseEffect || option.failureMode),
+  };
+}
+
+function buildPrincipalActionTests(methodDrivers: ReleaseReadinessMethodDriver[]): ReleaseReadinessPrincipalActionTest[] {
+  return methodDrivers.slice(0, 8).map((driver, index) => ({
+    label: `Family action test ${index + 1}`,
+    familyAction: sanitizeShareText(driver.familyAction || driver.title),
+    testApplied: sanitizeShareText(driver.testApplied || driver.driver),
+    testResult: sanitizeShareText(driver.testResult || driver.releaseRead),
+    principalInstruction: sanitizeShareText(driver.principalInstruction || "Principal instruction remains controlled by the signed release gates."),
+    capitalConsequence: sanitizeShareText(driver.capitalConsequence || "Capital remains blocked until this action is written into the selected route."),
+  }));
+}
+
+function buildPrincipalView(payload: {
+  reference: string;
+  corridor: string;
+  move: string;
+  decision: string;
+  releaseRule: string;
+  purpose: string;
+  capitalRule: string;
+  rationale: string;
+  mitigation: string;
+  selectedRoute: ReleaseReadinessShareRouteOption;
+  routeOptions: ReleaseReadinessShareRouteOption[];
+  gateRows: ReleaseReadinessShareGateRow[];
+  methodDrivers: ReleaseReadinessMethodDriver[];
+  publicSourceCount: number;
+  privateEvidenceCount: number;
+  methodDriverCount: number;
+  citationCount: number;
+}): ReleaseReadinessPrincipalView {
+  const metrics = payload.selectedRoute.metrics;
+  const allIn = moneyText(metrics.totalAcquisitionCostUsd);
+  const dutyDrag = moneyText(metrics.totalDutiesUsd);
+  const dutyPct = percentText(metrics.dutyDragPct);
+  const annualCarry = moneyText(metrics.annualCarryingCostUsd);
+  const transactionValue = moneyText(metrics.propertyValueUsd);
+  const baseSdlt = moneyText(metrics.baseSdltUsd);
+  const surcharge = moneyText(metrics.nrAndAdditionalDwellingSurchargeUsd);
+
+  return {
+    decisionMinute: principalTable(
+      ["Control point", "Principal answer", "Decision consequence"],
+      [
+        [
+          "Decision",
+          payload.decision,
+          "Negotiation may continue only while bid, deposit, exchange, transfer, and ownership-route authority remain blocked.",
+        ],
+        [
+          "Selected route",
+          payload.selectedRoute.routeName,
+          "One operating track is allowed for adviser work; parallel wrapper, residence, and relief stories are not release authority.",
+        ],
+        [
+          "Capital rule",
+          payload.capitalRule,
+          "The family can keep the opportunity alive without letting seller timing harden into capital commitment.",
+        ],
+        [
+          "Release rule",
+          payload.releaseRule,
+          "The decision changes only when the signed evidence says the same thing across title, tax, source, bank, authority, purpose, fairness, and decision memory.",
+        ],
+      ],
+    ),
+    familyActionAnswer: principalTable(
+      ["Family action", "Answer", "Principal consequence"],
+      [
+        [
+          "Proposed action",
+          payload.move,
+          "This is tested as a family-use, continuity, and control move; not as yield, prestige, wrapper planning, or future residence planning.",
+        ],
+        [
+          "What can proceed now",
+          "Counsel-led negotiation, title/tax/bank/source retrieval, bid discipline, and family authority drafting.",
+          "The family office has an operating path for the next week without releasing capital.",
+        ],
+        [
+          "What cannot proceed now",
+          "No bid hardening, deposit, exchange, funds movement, title transfer, or structure change.",
+          "A seller-facing commitment before signed gates would override the memo's capital control.",
+        ],
+      ],
+    ),
+    capitalTruth: principalTable(
+      ["Metric", "Principal read", "Decision consequence"],
+      [
+        ["Guide-price basis", transactionValue, "This is the starting price, not the capital approval."],
+        ["Base SDLT", baseSdlt, "Tax cost is part of the purchase decision, not a background line item."],
+        [
+          "Non-resident plus additional-dwelling surcharge",
+          surcharge,
+          "No relief, refund, residence, or replacement-home benefit is credited unless counsel signs eligibility.",
+        ],
+        [
+          "Day-one duty drag",
+          `${dutyDrag} / ${dutyPct}`,
+          "The asset is coherent only if the family signs that this is a control and continuity cost, not a yield-led acquisition.",
+        ],
+        [
+          "All-in before operating costs",
+          allIn,
+          "The family is not deciding on guide price alone; release is blocked against total exposure.",
+        ],
+        [
+          "Annual carry before opportunity cost",
+          annualCarry,
+          "Carry must have a named owner, liquidity source, reporting cadence, and family-use policy before completion.",
+        ],
+      ],
+    ),
+    purposeBoundary: principalTable(
+      ["Boundary", "Allowed read", "Blocked read"],
+      [
+        [
+          "Family purpose",
+          payload.purpose,
+          "Not approved as prestige, yield, wrapper planning, future residence planning, or informal family entitlement.",
+        ],
+        [
+          "London presence",
+          "Use, education, residence, succession, and capital-preservation claims remain separate gates.",
+          "Property ownership does not itself solve school timing, residence status, tax treatment, or future use.",
+        ],
+        [
+          "Capital preservation",
+          "Mayfair can be discussed as a control asset only after the duty drag is consciously accepted.",
+          "Capital preservation cannot be used to hide acquisition duty, annual carry, bank friction, or family ambiguity.",
+        ],
+      ],
+    ),
+    releaseRule: principalTable(
+      ["Release lock", "What must be signed", "Capital consequence"],
+      [
+        ["Bid release", "Closed comps, failed-sale history, seller motivation, capex adjustment, first-offer range, and walk-away price.", "No bid authority."],
+        ["Exchange/deposit release", "Title, seller authority, searches, SDLT, source, bank, FX, family authority, and deposit mechanics.", "No exchange or deposit."],
+        ["Structure release", "Counsel-signed non-tax governance, security, succession, operating, reporting, and bank purpose.", "No wrapper or ownership-route change."],
+        ["Purpose release", "Family-use boundary, fairness position, carry owner, stop rights, and decision record location.", "No family-use approval."],
+      ],
+    ),
+    signedGateMap: principalTable(
+      ["Signed gate", "Owner evidence", "Decision consequence"],
+      payload.gateRows.map((gate) => [gate.gate, gate.condition, gate.consequence]),
+    ),
+    whatChanged: principalTable(
+      ["Before this review", "After this review", "Family consequence"],
+      [
+        [
+          "Property interest",
+          "One capital-release decision with a selected direct-buyer route.",
+          "The family can like the asset without approving capital movement.",
+        ],
+        [
+          "Guide price",
+          "Bid authority is separated from market attractiveness.",
+          "Negotiation cannot harden without closed comps and a walk-away price.",
+        ],
+        [
+          "Family-use claim",
+          "Use, fairness, carry, veto, and future explanation are written gates.",
+          "The property cannot become an undocumented entitlement.",
+        ],
+        [
+          "Bank/source narrative",
+          "Money movement must match source, signer, KYC, sanctions, FX, receiving rail, and alternate rail.",
+          "Capital that exists is not treated as movable until banks accept the route.",
+        ],
+        [
+          "Adviser lanes",
+          "Counsel, bank, broker, tax, operator, and family-office inputs convert into one release rule.",
+          "No adviser lane can accidentally approve what another lane has not cleared.",
+        ],
+      ],
+    ),
+    whatCaught: principalTable(
+      ["Issue caught", "Why it matters", "Release response"],
+      [
+        [
+          "Guide price is not bid authority",
+          "A prime address can convert desire into overpayment if seller timing outruns bid discipline.",
+          "Buying agent must produce comps, failed-sale history, seller motivation, capex adjustment, first-offer range, and walk-away price.",
+        ],
+        [
+          "Duty drag changes the asset purpose",
+          "A material day-one duty drag means this cannot be defended as a yield-led purchase.",
+          "The family must minute the control, continuity, carry, and future-explanation thesis before capital moves.",
+        ],
+        [
+          "Residence and education claims do not release the purchase",
+          "Ownership can harden while school, guardian, day-count, visitor, student, or parent routes remain unresolved.",
+          "Specialist reviews clear each purpose claim separately before bid, exchange, or completion authority.",
+        ],
+        [
+          "Structure is not a shortcut",
+          "Company, trust, or wrapper routing can add SDLT, ATED, disclosure, bank scrutiny, and beneficial-owner burden.",
+          "Use structure only if counsel signs a non-tax governance, security, succession, or operating reason.",
+        ],
+        [
+          "Bank rails are execution risk",
+          "Source funds can exist and still fail because signer, KYC, SoW/SoF, sanctions, FX, timing, or receiving rail does not clear.",
+          "No exchange until source bank, receiving bank, alternate rail, signer authority, and FX route are accepted.",
+        ],
+        [
+          "Family use can become entitlement",
+          "Repeated use without a written boundary can create fairness, veto, or next-generation ambiguity.",
+          "Named family-user boundary, family-fairness position, carry owner, stop rights, and decision memory must be signed.",
+        ],
+      ],
+    ),
+    routeAlternatives: payload.routeOptions.map(buildPrincipalRouteSummary),
+    familyActionTests: buildPrincipalActionTests(payload.methodDrivers),
+    sevenDayInstruction: principalTable(
+      ["Window", "Family-office action", "Owner"],
+      [
+        ["Day 0-1", "Confirm no bid, no deposit, no seller commitment, and no ownership-route change without signed gates.", "Principal + family-office operator"],
+        ["Day 1-2", "Produce closed comparables, failed-sale history, seller motivation, capex adjustment, first-offer range, and walk-away price.", "Buying agent"],
+        ["Day 1-3", "Sign buyer profile, SDLT treatment, non-resident/additional-dwelling position, relief exclusions, and residence boundary.", "UK tax counsel"],
+        ["Day 2-4", "Confirm title, searches, restrictions, seller authority, deposit mechanics, and completion conditions.", "UK property counsel"],
+        ["Day 2-5", "Confirm SoW/SoF acceptance, signer authority, FX controls, primary rail, alternate rail, sanctions/KYC state, and timetable.", "Source bank + receiving bank"],
+        ["Day 4-7", "Sign family-use boundary, fairness position, carry owner, stop rights, circulation rule, and decision-record location.", "Family office + succession counsel"],
+      ],
+    ),
+    evidenceBoundary: principalTable(
+      ["Evidence class", "What it supports", "What it does not prove"],
+      [
+        [
+          `${payload.publicSourceCount} public source rows`,
+          "Public legal, tax, market, property, FX, and authority claims.",
+          "Not title, seller authority, bank acceptance, valuation, family authority, or private fact proof.",
+        ],
+        [
+          `${payload.privateEvidenceCount} private evidence classes`,
+          "The family-side records that must be signed, accepted, or indexed before release.",
+          "Indexing alone does not replace counsel, bank, operator, or principal sign-off.",
+        ],
+        [
+          `${payload.methodDriverCount} method drivers`,
+          "Why the family action can fail and which gate protects the route.",
+          "Not legal status, tax treatment, bank acceptance, valuation, title, or family-authority proof.",
+        ],
+        [
+          `${payload.citationCount} citation handles`,
+          "Reader navigation to supported source material where available.",
+          "No citation handle is bid authority or private release authority.",
+        ],
+      ],
+    ),
+    finalInstruction: principalTable(
+      ["Instruction", "Principal standard", "Decision if not satisfied"],
+      [
+        [
+          "Proceed",
+          "Proceed only with controlled negotiation under the selected direct-buyer route while signed gates converge.",
+          "Capital remains blocked.",
+        ],
+        [
+          "Hold",
+          "Hold if any title, SDLT, source, bank, authority, fairness, bid, or decision-memory gate does not align.",
+          "No bid, deposit, exchange, funds movement, transfer, or structure change.",
+        ],
+        [
+          "Stop",
+          "Stop the current route if the purchase remains prestige-led, yield-led, wrapper-led, or undocumented after gate review.",
+          "Preserve the family objective; do not preserve a weak transaction path.",
+        ],
+      ],
+    ),
+  };
 }
 
 const CORE_PUBLIC_SOURCE_IDS = new Set([
@@ -720,6 +1140,69 @@ function sourceDecisionBoundary(source: RecordLike): string {
   );
 }
 
+function sourceClaimFallback(source: RecordLike): string {
+  const id = text(source.id).toLowerCase();
+  const institution = text(source.institution);
+  const title = text(source.title);
+  const haystack = `${id} ${institution} ${title}`.toLowerCase();
+
+  if (/rightmove|ob private|balfour place|walton place|property for sale/.test(haystack)) {
+    return "Supports listing facts only: advertised price context, property type, beds/baths/area/tenure, listing date, and advertisement context. It is not valuation, title, seller authority, survey, legal particulars, or bid authority.";
+  }
+  if (/savills|knight frank|coutts|prime residential|forecast|market index|piri/.test(haystack)) {
+    return "Supports prime-market context only. It is not a Balfour valuation, bid authority, legal diligence, title evidence, seller authority, survey proof, or seller-timing proof.";
+  }
+  if (/residential property rates|sdlt_residential|stamp duty land tax.*residential/.test(haystack)) {
+    return "Supports the residential SDLT rate bands used for the control-case duty model.";
+  }
+  if (/non_resident|non-uk residents|non-resident/.test(haystack)) {
+    return "Supports the non-UK resident SDLT surcharge boundary applied to the buyer profile.";
+  }
+  if (/corporate|company|non-natural/.test(haystack)) {
+    return "Supports the company/non-natural-person SDLT route boundary and why wrapper use remains separately gated.";
+  }
+  if (/ated|annual tax on enveloped dwellings/.test(haystack)) {
+    return "Supports the ATED exposure boundary for company or enveloped ownership routes.";
+  }
+  if (/foreign income|gains|\bfig\b/.test(haystack)) {
+    return "Supports the post-2025 FIG/residence planning boundary; it is not purchase-release authority.";
+  }
+  if (/iht|inheritance|long-term resident/.test(haystack)) {
+    return "Supports the long-term UK residence and IHT review boundary for continuity planning.";
+  }
+  if (/wise|gbp|usd|exchange|currency/.test(haystack)) {
+    return "Supports the GBP/USD model-rate context; execution pricing remains bank-gated.";
+  }
+  if (/child student visa/.test(haystack)) {
+    return "Supports the Child Student route boundary; property ownership is not residence permission.";
+  }
+  if (/parent of a child student/.test(haystack)) {
+    return "Supports the parent-route boundary for education-linked family presence.";
+  }
+  if (/private school fees|vat/.test(haystack)) {
+    return "Supports the education-fee tax-cost boundary for education-linked family-use budgeting.";
+  }
+  if (/school applications|foreign national children|overseas children/.test(haystack)) {
+    return "Supports the school-admissions timing boundary for children resident outside England.";
+  }
+  if (/overseas entity|beneficial owners|companies house/.test(haystack)) {
+    return "Supports the overseas-entity and beneficial-owner register boundary for structure routes.";
+  }
+  if (/effectively managed and controlled|uae|corporate tax/.test(haystack)) {
+    return "Supports the UAE management-control and source-side tax-continuity boundary.";
+  }
+  if (/central management and control|intm120060/.test(haystack)) {
+    return "Supports the UK central-management-and-control risk boundary for company routes.";
+  }
+  if (/irs|u\.s\.-situs|estate tax|nonresidents/.test(haystack)) {
+    return "Supports the U.S.-situs estate-exposure inventory boundary for global custody.";
+  }
+  if (/westminster|council tax/.test(haystack)) {
+    return "Supports the local council-tax and operating-cost boundary for the Mayfair property.";
+  }
+  return "Supports the named public claim only; private execution evidence remains separately gated.";
+}
+
 function buildSafePublicSources(data: ResolvedDecisionMemoSurfaceData) {
   const sources = asArray(pickSection(data, "governing_source_register") ?? pickSection(data, "source_register"));
   return sources.filter((source) => !isMethodologySource(source)).map((source, index) => {
@@ -730,7 +1213,7 @@ function buildSafePublicSources(data: ResolvedDecisionMemoSurfaceData) {
     institution: sanitizeShareText(source.institution ?? "Source"),
     title: sanitizeShareText(source.title ?? "Source record"),
     date: sanitizeShareText(source.date ?? source.checked_at ?? "Checked in source register"),
-    claim: sanitizeShareText(source.claim_supported ?? source.claim ?? "Supports the stated source-register claim."),
+    claim: sanitizeShareText(source.claim_supported ?? source.claim ?? sourceClaimFallback(source)),
     boundary: sourceDecisionBoundary(source),
     url: text(source.url),
     };
@@ -742,7 +1225,7 @@ function buildSafeRisk(data: ResolvedDecisionMemoSurfaceData, route: RouteIntell
   const selected = route.selectedLiveOption ?? route.routeOptions[0];
 
   return sanitizeObject({
-    risk_level: risk.risk_level ?? "Evidence pending; no capital release",
+    risk_level: risk.risk_level ?? "Evidence mapped; no capital release until signed approval gates",
     mitigation_timeline: normalizeMitigationTimeline(
       risk.mitigation_timeline ??
       selected?.metrics?.mitigationTimeline ??
@@ -755,7 +1238,79 @@ function releasePacketList(value: unknown, fallback: string[]): string[] {
   return (Array.isArray(value) && value.length ? value : fallback).map(sanitizeShareText).filter(Boolean);
 }
 
-function moneyText(value: unknown, fallback = "Release-gated"): string {
+function firstShareText(...values: unknown[]): string {
+  for (const value of values) {
+    const resolved = sanitizeShareText(value);
+    if (resolved) return resolved;
+  }
+  return "";
+}
+
+function shareStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(sanitizeShareText).filter(Boolean);
+  const resolved = sanitizeShareText(value);
+  return resolved ? [resolved] : [];
+}
+
+function buildStandaloneUserInputs(
+  data: ResolvedDecisionMemoSurfaceData,
+  selectedRoute: ReleaseReadinessShareRouteOption,
+  options: {
+    move: string;
+    purpose: string;
+    capitalRule: string;
+  },
+): RecordLike {
+  const { move, purpose, capitalRule } = options;
+  const existing = asRecord(pickSection(data, "user_inputs") ?? pickSection(data, "userInputs"));
+  const room = asRecord(pickSection(data, "room_state_summary"));
+  const capitalFlow = asRecord(pickSection(data, "capital_flow_data"));
+  const zeroTrust = asRecord(pickSection(data, "zero_trust_move_intake"));
+  const releaseDecision = asRecord(pickSection(data, "release_decision_packet"));
+  const familyExpectation = firstShareText(
+    existing.family_expectation,
+    existing.familyExpectation,
+    room.family_expectation,
+    room.live_move,
+    `${purpose} The expected benefit is family continuity and control; it is not capital-release authority until signed gates clear.`,
+  );
+
+  const userInputs: RecordLike = {
+    live_decision: firstShareText(existing.live_decision, existing.liveDecision, room.live_move, move),
+    family_expectation: familyExpectation,
+    family_purpose: firstShareText(existing.family_purpose, existing.familyPurpose, purpose),
+    mandate_at_risk: firstShareText(existing.mandate_at_risk, existing.mandateAtRisk, room.route_context, room.market_pattern_read),
+    substitute_story: firstShareText(existing.substitute_story, existing.substituteStory),
+    present_room_burden: shareStringArray(existing.present_room_burden ?? existing.presentRoomBurden),
+    expected_route: firstShareText(existing.expected_route, existing.expectedRoute, selectedRoute.routeName),
+    capital_rule: firstShareText(existing.capital_rule, existing.capitalRule, capitalRule),
+    family_success_condition: firstShareText(
+      existing.family_success_condition,
+      existing.familySuccessCondition,
+      "The move succeeds only if purpose, source, bank, title, tax, family authority, fairness, carry ownership, and decision memory are written before seller timing hardens.",
+    ),
+    source_jurisdiction: firstShareText(existing.source_jurisdiction, existing.sourceJurisdiction, capitalFlow.source),
+    destination_jurisdiction: firstShareText(existing.destination_jurisdiction, existing.destinationJurisdiction, capitalFlow.destination),
+    capital_at_risk: firstShareText(existing.capital_at_risk, existing.capitalAtRisk, capitalFlow.capital_at_risk),
+    selected_route_release_effect: firstShareText(selectedRoute.releaseEffect),
+    evidence_record_count: numberOr(
+      existing.evidence_record_count ?? existing.evidenceRecordCount ?? zeroTrust.declared_record_count,
+      Array.isArray(zeroTrust.evidence_records) ? zeroTrust.evidence_records.length : 0,
+    ),
+    adviser_asks: shareStringArray(existing.adviser_asks ?? existing.adviserAsks ?? zeroTrust.adviser_asks),
+    not_expectation: shareStringArray(existing.not_expectation ?? existing.notExpectation),
+    release_boundary: firstShareText(existing.release_boundary, existing.releaseBoundary, zeroTrust.release_boundary, releaseDecision.release_boundary),
+  };
+
+  return Object.fromEntries(
+    Object.entries(userInputs).filter(([, value]) => {
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== "" && value !== null && value !== undefined;
+    }),
+  );
+}
+
+function moneyText(value: unknown, fallback = "Signed gate controls release"): string {
   const numeric = numberOr(value);
   if (!numeric) return fallback;
   const sign = numeric < 0 ? "-" : "";
@@ -769,7 +1324,7 @@ function moneyText(value: unknown, fallback = "Release-gated"): string {
   return `${sign}~US$${Math.round(absolute).toLocaleString("en-US")}`;
 }
 
-function percentText(value: unknown, fallback = "Release-gated"): string {
+function percentText(value: unknown, fallback = "Signed gate controls release"): string {
   const numeric = numberOr(value, Number.NaN);
   if (!Number.isFinite(numeric)) return fallback;
   return `${numeric.toFixed(1)}%`;
@@ -782,8 +1337,8 @@ function safeStringArray(value: unknown): string[] {
 
 function cleanRows(rows: string[][]): string[][] {
   return rows
-    .map((row) => row.map((cell) => sanitizeShareText(cell || "Release-gated")))
-    .filter((row) => row.some((cell) => cell && cell !== "Release-gated"));
+    .map((row) => row.map((cell) => sanitizeShareText(cell || "Signed gate controls release")))
+    .filter((row) => row.some((cell) => cell && cell !== "Signed gate controls release"));
 }
 
 function reportSection(section: ReleaseReadinessShareReportSection): ReleaseReadinessShareReportSection {
@@ -853,9 +1408,9 @@ function buildInputFrameSection(payload: {
       },
       {
         label: "Approved decision posture",
-        value: "Gated direct-buyer negotiation",
+        value: "Approved direct-buyer negotiation under signed gates",
         body:
-          "Negotiation authority only. This is not bid authority, exchange authority, deposit authority, or structure approval.",
+          "Final decision: approved to negotiate under signed gates; no capital release, bid authority, exchange authority, deposit authority, or structure approval until release gates are signed.",
       },
       {
         label: "Purpose boundary",
@@ -968,7 +1523,7 @@ function buildTaxSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseRead
           "Main-residence or replacement route",
           "Lower-duty route only if residence and disposal/replacement facts are true at the transaction date.",
           "Not credited in the control case.",
-          "Signed day-count, previous main-residence disposal evidence, replacement timing, and counsel computation required before bid authority changes.",
+          "Signed day-count, previous main-residence disposal evidence, replacement timing, and counsel computation control any bid-authority change.",
         ],
         [
           "Company / non-natural-person wrapper",
@@ -1007,7 +1562,12 @@ function buildTaxSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseRead
       },
       {
         label: "Avoided wrapper increment",
-        value: moneyText(model.entity_incremental_duty_vs_direct_usd),
+        value: moneyText(
+          numberOr(model.entity_incremental_duty_vs_direct_usd) ||
+          (numberOr(model.entity_total_duties_usd) && numberOr(model.direct_total_duties_usd)
+            ? Math.abs(numberOr(model.entity_total_duties_usd) - numberOr(model.direct_total_duties_usd))
+            : undefined),
+        ),
         body: "Avoided incremental duty versus entity route; this is not framed as a tax-saving thesis.",
       },
       {
@@ -1041,7 +1601,7 @@ function buildMarketSection(
 
   return reportSection({
     id: "market-intelligence",
-    eyebrow: "Market intelligence and peer read",
+    eyebrow: "Market discipline and bid authority",
     title: "Market attractiveness is not release authority",
     intro: sanitizeShareText(
       market.recommendation ??
@@ -1090,9 +1650,32 @@ function buildMarketSection(
 function buildWealthProjectionSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
   const wealth = asRecord(pickSection(resolved, "wealth_projection_data"));
   const scenarios = asRecord(wealth.scenarios);
+  const annual = asRecord(pickSection(resolved, "annual_wealth_engine"));
+  const carryModel = asRecord(annual.carrying_cost_model);
+  const annualCarry =
+    numberOr(annual.annual_carrying_cost_before_opportunity_usd) ||
+    numberOr(carryModel.annual_carrying_cost_before_opportunity_usd) ||
+    numberOr(asRecord(wealth.starting_position).carrying_cost_usd);
   const scenarioEntries = ["base", "stress", "opportunity"]
     .map((key) => [key, asRecord(scenarios[key])] as const)
     .filter(([, scenario]) => Object.keys(scenario).length);
+  const scenarioRows = scenarioEntries.map(([, scenario]) => {
+    const probability = numberOr(scenario.probability);
+    const year10Value = numberOr(scenario.year_10_value ?? asRecord(scenario.ten_year_outcome).final_value);
+    const preCarryNet = numberOr(asRecord(scenario.ten_year_outcome).net_value_creation);
+    const carryAdjustedNet = preCarryNet - (annualCarry * 10);
+    return {
+      scenario,
+      probability,
+      year10Value,
+      preCarryNet,
+      carryAdjustedNet,
+    };
+  });
+  const carryAdjustedWeighted = scenarioRows.reduce(
+    (sum, row) => sum + (row.carryAdjustedNet * row.probability),
+    0,
+  );
   const chart = scenarioEntries.map(([, scenario]) => ({
     name: sanitizeShareText(scenario.name),
     verdict: sanitizeShareText(scenario.verdict),
@@ -1107,7 +1690,7 @@ function buildWealthProjectionSection(resolved: ResolvedDecisionMemoSurfaceData)
     eyebrow: "Base / stress / opportunity",
     title: "The curve must survive duty drag before it becomes a wealth story",
     intro:
-      "The projection is a route-governance model. It shows whether the route can absorb day-one duty drag, early drawdown, annual carry, and family-control purpose.",
+      "The projection is a route-governance model. It shows property-value movement against all-in acquisition cost, then separately shows the ten-year annual-carry effect before principal review.",
     cards: [
       {
         label: "Capital deployed",
@@ -1115,9 +1698,14 @@ function buildWealthProjectionSection(resolved: ResolvedDecisionMemoSurfaceData)
         body: sanitizeShareText(asRecord(wealth.cost_of_inaction).primary_driver),
       },
       {
-        label: "Scenario discipline output",
+        label: "Scenario discipline before carry",
         value: moneyText(asRecord(wealth.probability_weighted).expected_value_creation),
-        body: "Scenario-discipline read across base, stress, and opportunity paths. This is not a forecast.",
+        body: "Probability-weighted read across base, stress, and opportunity paths before annual carry and before opportunity cost. This is not a forecast.",
+      },
+      {
+        label: "Carry-adjusted discipline output",
+        value: moneyText(carryAdjustedWeighted),
+        body: `${moneyText(annualCarry)} annual carry is deducted for ten years. Opportunity cost remains separate.`,
       },
       {
         label: "Cost of hardening too early",
@@ -1126,13 +1714,14 @@ function buildWealthProjectionSection(resolved: ResolvedDecisionMemoSurfaceData)
       },
     ],
     table: {
-      columns: ["Scenario", "Scenario weight", "Year 10 range", "Net result vs capital", "Memo read"],
-      rows: scenarioEntries.map(([, scenario]) => [
-        text(scenario.name),
-        percentText(numberOr(scenario.probability) * 100),
-        moneyText(scenario.year_10_value ?? asRecord(scenario.ten_year_outcome).final_value),
-        moneyText(asRecord(scenario.ten_year_outcome).net_value_creation),
-        text(scenario.verdict),
+      columns: ["Scenario", "Scenario weight", "Year 10 value", "Net vs all-in before carry", "Net after 10-year carry", "Memo read"],
+      rows: scenarioRows.map((row) => [
+        text(row.scenario.name),
+        percentText(row.probability * 100),
+        moneyText(row.year10Value),
+        moneyText(row.preCarryNet),
+        moneyText(row.carryAdjustedNet),
+        text(row.scenario.verdict),
       ]),
     },
     chart,
@@ -1144,13 +1733,16 @@ function buildCrisisSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseR
   const overall = asRecord(crisis.overall_resilience);
   const risks = asArray(crisis.route_risks);
   const selectedRisks = risks
+    .filter((risk) => !/AI|technology/i.test(`${text(risk.label)} ${text(risk.detail)} ${safeStringArray(risk.impact_channels).join(" ")}`))
     .filter((risk) =>
-      /bank|AI|technology|job|labor|war|geopolitical|sanction|digital|stablecoin|rates|insurance|security|travel/i.test(
+      /bank|job|labor|war|geopolitical|sanction|digital|stablecoin|rates|insurance|security|travel/i.test(
         text(risk.label),
       ),
     )
     .slice(0, 8);
-  const bankSimulation = asArray(crisis.bank_compliance_escalation_simulation).slice(0, 5);
+  const bankSimulation = asArray(crisis.bank_compliance_escalation_simulation)
+    .filter((row) => !/AI|technology/i.test(`${text(row.scenario)} ${text(row.breakpoint)} ${text(row.required_response)}`))
+    .slice(0, 5);
 
   return reportSection({
     id: "crisis-resilience",
@@ -1158,7 +1750,7 @@ function buildCrisisSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseR
     title: "Crisis Resilience And Anti-Fragility Read",
     intro: sanitizeShareText(
       overall.summary ??
-        "The route cannot release until bank, source, sanctions, insurance, security, travel, AI asset repricing, war / sanctions, labor-income, and absence-readiness controls are evidenced.",
+        "The route cannot release until bank, source, sanctions, insurance, security, travel, geopolitical, labor-income, and absence-readiness controls are evidenced.",
     ),
     cards: [
       {
@@ -1172,7 +1764,7 @@ function buildCrisisSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseR
         label: "Conditional relevance rule",
         value: "Route-specific only",
         body:
-          "AI, labor-income, conflict, sanctions, and digital-settlement scenarios affect release only where this family's source wealth, bank rail, counterparties, payment route, insurance, travel, or operating income touches the exposure.",
+          "Labor-income, conflict, sanctions, and digital-settlement scenarios affect release only where this family's source wealth, bank rail, counterparties, payment route, insurance, travel, or operating income touches the exposure.",
       },
       {
         label: "Worst-case loss boundary",
@@ -1180,7 +1772,7 @@ function buildCrisisSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseR
         body: sanitizeShareText(overall.recovery_time),
       },
       ...selectedRisks.map((risk) => ({
-        label: text(risk.status, "Release-gated"),
+        label: text(risk.status, "Signed gate controls release"),
         title: text(risk.label),
         body: text(risk.detail),
         status: `${text(risk.decision_window_days, "7")} day window`,
@@ -1190,7 +1782,7 @@ function buildCrisisSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseR
       })),
     ],
     table: {
-      columns: ["Bank compliance escalation", "Breakpoint", "Required response"],
+      columns: ["Bank compliance escalation", "Breakpoint", "Release response"],
       rows: bankSimulation.map((row) => [
         text(row.scenario),
         text(row.breakpoint),
@@ -1210,10 +1802,10 @@ function buildAntifragilitySection(resolved: ResolvedDecisionMemoSurfaceData): R
         "Confirms alternate signer, document retrieval, adviser contact tree, and stop authority work when the principal or a key adviser is unavailable.",
       releaseCondition: "Alternate authority and evidence retrieval must work inside 72 hours.",
     },
-    "Primary and fallback banking rail": {
+    "Primary and alternate banking rail": {
       body:
         "Prevents a single receiving bank, relationship lead, or conveyancer client account from becoming the only completion path.",
-      releaseCondition: "Primary rail, fallback rail, signers, FX authority, and escalation contacts are accepted before exchange.",
+      releaseCondition: "Primary rail, alternate rail, signers, FX authority, and escalation contacts are accepted before exchange.",
     },
     "Decision-memory index": {
       body:
@@ -1233,7 +1825,7 @@ function buildAntifragilitySection(resolved: ResolvedDecisionMemoSurfaceData): R
     "Annual UK residence/tax review": {
       body:
         "Stops residence, FIG, IHT, school-use, and family-presence assumptions from becoming hidden tax or reporting positions.",
-      releaseCondition: "Residence and annual review owner are recorded before the house becomes a continuity anchor.",
+      releaseCondition: "Residence and annual review owner are gate mapped before the house becomes a continuity anchor.",
     },
     "Security/privacy protocol": {
       body:
@@ -1296,7 +1888,7 @@ function buildGenerationSection(resolved: ResolvedDecisionMemoSurfaceData): Rele
     cards: [
       {
         label: "G1 route control",
-        value: "Release-gated",
+        value: "Signed gate controls release",
         title: "Control before commitment",
         body: sanitizeShareText(
           "Principal authority, stop rights, and office retrieval must be written before seller timing turns intent into commitment.",
@@ -1313,7 +1905,7 @@ function buildGenerationSection(resolved: ResolvedDecisionMemoSurfaceData): Rele
           `Control-case value after ${moneyText(dutyDrag)} duty drag, before annual carry and any family-use entitlement is allowed to harden.`,
         ),
         releaseCondition: sanitizeShareText(
-          "Use rights and carry owner are recorded before bid release or exchange.",
+          "Use rights and carry owner are gate mapped before bid release or exchange.",
         ),
       },
       {
@@ -1329,7 +1921,7 @@ function buildGenerationSection(resolved: ResolvedDecisionMemoSurfaceData): Rele
       },
       {
         label: "G2 -> G3 with governance lock",
-        value: allIn ? `${moneyText(allIn)} explained` : "Decision record required",
+        value: allIn ? `${moneyText(allIn)} explained` : "Decision record controlled",
         title: "Governed continuity",
         body: sanitizeShareText(
           "The family can explain later why the house accepted duty drag, annual carry, restricted liquidity, and family-use boundaries.",
@@ -1340,13 +1932,13 @@ function buildGenerationSection(resolved: ResolvedDecisionMemoSurfaceData): Rele
       },
     ],
     table: {
-      columns: ["Generation layer", "Capital / governance read", "Loss if unresolved", "Release record required"],
+      columns: ["Generation layer", "Capital / governance read", "Loss if unresolved", "Recorded release file"],
       rows: [
         [
           "G1 capital authority",
           "Approves route, capital release, stop rights, adviser instruction, and retrieval owner.",
           "Seller timing or adviser momentum can become commitment before stop authority is retrievable.",
-          "Authority minute naming approver, stop owner, signer, fallback signer, retrieval owner, and adviser-instruction owner.",
+          "Authority minute naming approver, stop owner, signer, alternate signer, retrieval owner, and adviser-instruction owner.",
         ],
         [
           "G2 use boundary",
@@ -1395,7 +1987,7 @@ function buildAuthoritySection(resolved: ResolvedDecisionMemoSurfaceData): Relea
       },
       {
         label: "Veto power",
-        value: "Recorded before exchange",
+        value: "Gate mapped before exchange",
         body: text(framework.veto_power),
       },
     ],
@@ -1439,6 +2031,9 @@ function buildResponsibilitySection(resolved: ResolvedDecisionMemoSurfaceData): 
 function buildRecordMismatchSection(resolved: ResolvedDecisionMemoSurfaceData): ReleaseReadinessShareReportSection {
   const mismatch = asRecord(pickSection(resolved, "record_mismatch_map"));
   const matrix = asArray(mismatch.matrix);
+  const currentForRecord = (record: string): string => {
+    return `To be evidenced before release: ${record} must be reconciled across counsel, bank, tax, title, source, and family-authority records before this route can move.`;
+  };
   const targetForRecord = (record: string, fallback: unknown): string => {
     const normalized = record.toLowerCase();
     if (/cash/.test(normalized)) {
@@ -1454,7 +2049,7 @@ function buildRecordMismatchSection(resolved: ResolvedDecisionMemoSurfaceData): 
       return "SDLT, non-resident, additional-dwelling, residence, and relief exclusions match the signed tax memo.";
     }
     if (/custody|account|bank/.test(normalized)) {
-      return "Source bank, receiving bank, fallback rail, FX authority, signer mandate, and reporting account match one movement path.";
+      return "Source bank, receiving bank, alternate rail, FX authority, signer mandate, and reporting account match one movement path.";
     }
     if (/family/.test(normalized)) {
       return "Family-use, carry, fairness, veto, sale/refinance, and next-generation decision record match the title and tax route.";
@@ -1472,7 +2067,7 @@ function buildRecordMismatchSection(resolved: ResolvedDecisionMemoSurfaceData): 
       columns: ["Record", "Current record", "Mismatch risk", "Target record", "Owner", "Status"],
       rows: matrix.map((row) => [
         text(row.record),
-        routeSanitizedParty(row.current_record),
+        currentForRecord(text(row.record)),
         text(row.mismatch_risk),
         targetForRecord(text(row.record), row.target_record),
         text(row.owner),
@@ -1487,29 +2082,34 @@ function buildBankingSection(resolved: ResolvedDecisionMemoSurfaceData): Release
   const direct = asRecord(pickSection(resolved, "sow_sof_bank_acceptance_readiness"));
   const operational = asRecord(pickSection(resolved, "operational_chain_readiness"));
   const custody = asRecord(operational.custody_and_banking_rail_proof);
+  const proofRows = [
+    "Source bank, receiving bank, and alternate rail must clear the same signed acceptance gate.",
+    "SoW / SoF pack tying source wealth to bank statements, sale or distribution records, tax support, audited accounts where relevant, and beneficial-owner chart.",
+    "Signer mandate, FX authority, transfer limits, receiving account, and alternate-rail escalation owner.",
+  ];
 
   return reportSection({
     id: "banking-sow-sof",
     eyebrow: "Banking rails and SoW/SoF acceptance",
     title: "The movement rail has to accept the source file before the seller clock governs",
-    intro: sanitizeShareText(direct.standard ?? custody.source_standard),
+    intro:
+      "The bank and source file are recorded in the input pack and remain signed-gate controlled before bid, deposit, exchange, transfer, or seller commitment hardens.",
     cards: [
       {
         label: "Release status",
-        value: text(direct.release_status, "Required before irrevocable commitment"),
-        body: safeStringArray(direct.evidence).join(" "),
+        value: "Gate mapped for irrevocable-commitment gate",
+        body: "Gate mapped: source rail, receiving rail, alternate rail, KYC, SoW/SoF, sanctions, beneficial-owner chart, signer mandate, FX authority, transfer limits, and completion timetable must clear the same signed acceptance gate.",
       },
       {
         label: "Source standard",
         value: "Corroborated, not narrated",
-        body: text(custody.source_standard),
+        body: "Gate mapped: source wealth and source funds must be corroborated in the format the source and receiving banks will accept.",
       },
     ],
     table: {
       columns: ["Rail or proof class", "Requirement"],
       rows: [
-        ...safeStringArray(custody.rails).map((rail) => ["Bank rail", rail]),
-        ...safeStringArray(custody.proof_required).map((proof) => ["Proof required", proof]),
+        ...proofRows.map((proof) => ["Gate mapped", proof]),
       ],
     },
   });
@@ -1580,7 +2180,7 @@ function buildSpecialistReleaseSection(resolved: ResolvedDecisionMemoSurfaceData
     intro:
       "The purchase can be legally plausible and still fail the residence, education, tax, succession, beneficial-owner, or reporting job it is expected to do.",
     table: {
-      columns: ["Gate", "Answer", "Decision consequence", "Evidence required", "Owner"],
+      columns: ["Gate", "Answer", "Decision consequence", "Evidence mapped", "Owner"],
       rows: groups.map((row) => [
         text(row.gate),
         text(row.answer),
@@ -1597,8 +2197,8 @@ function buildImplementationSection(resolved: ResolvedDecisionMemoSurfaceData): 
 
   return reportSection({
     id: "implementation-roadmap",
-    eyebrow: "Implementation roadmap",
-    title: "A route can advance only in this evidence order",
+    eyebrow: "Controlled implementation order",
+    title: "Evidence order before bid, deposit, exchange, or transfer authority",
     intro:
       "The roadmap prevents the room from treating seller timing as permission. Every step has an owner, sequence, and release gate.",
     table: {
@@ -1679,6 +2279,18 @@ function buildFullReportSections(
 
 function toShareRouteOption(option: RouteIntelligenceOptionV2): ReleaseReadinessShareRouteOption {
   const safe = sanitizeRouteOption(option);
+  const isOutcomeOnly =
+    /(?:hold|rent-first|stop|rebuild|optionality-preservation|capital-protection)/i.test(`${safe.routeName} ${safe.routeType}`);
+  const activeValue = (value: unknown): number | null => {
+    if (isOutcomeOnly) return null;
+    const numeric = numberOr(value);
+    return numeric > 0 ? numeric : null;
+  };
+  const activePct = (value: unknown): number | null => {
+    if (isOutcomeOnly) return null;
+    const numeric = numberOr(value);
+    return numeric > 0 ? numeric : null;
+  };
   return {
     id: text(safe.id),
     rank: numberOr(safe.rank, 1),
@@ -1692,13 +2304,16 @@ function toShareRouteOption(option: RouteIntelligenceOptionV2): ReleaseReadiness
     releaseEffect: sanitizeShareText(safe.releaseEffect),
     metrics: {
       propertyValueUsd: numberOr(safe.metrics?.propertyValueUsd),
-      bsdUsd: numberOr(safe.metrics?.bsdUsd),
-      absdUsd: numberOr(safe.metrics?.absdUsd),
-      totalDutiesUsd: numberOr(safe.metrics?.totalDutiesUsd),
-      totalAcquisitionCostUsd: numberOr(safe.metrics?.totalAcquisitionCostUsd),
-      incrementalDutyVsRecommendedUsd: numberOr(safe.metrics?.incrementalDutyVsRecommendedUsd),
-      dutyDragPct: numberOr(safe.metrics?.dutyDragPct),
-      annualCarryingCostUsd: numberOr(safe.metrics?.annualCarryingCostUsd),
+      baseSdltUsd: activeValue(safe.metrics?.bsdUsd),
+      nrAndAdditionalDwellingSurchargeUsd: activeValue(safe.metrics?.absdUsd),
+      totalSdltUsd: activeValue(safe.metrics?.totalDutiesUsd),
+      totalDutiesUsd: activeValue(safe.metrics?.totalDutiesUsd),
+      totalAcquisitionCostUsd: activeValue(safe.metrics?.totalAcquisitionCostUsd),
+      incrementalDutyVsRecommendedUsd: isOutcomeOnly
+        ? numberOr(safe.metrics?.incrementalDutyVsRecommendedUsd) || null
+        : numberOr(safe.metrics?.incrementalDutyVsRecommendedUsd) || null,
+      dutyDragPct: activePct(safe.metrics?.dutyDragPct),
+      annualCarryingCostUsd: activeValue(safe.metrics?.annualCarryingCostUsd),
       dataQuality: sanitizeShareText(safe.metrics?.dataQuality),
       mitigationTimeline: normalizeMitigationTimeline(safe.metrics?.mitigationTimeline),
     },
@@ -1715,30 +2330,29 @@ function buildPrivateEvidenceForPayload(): ReleaseReadinessPrivateEvidence[] {
 }
 
 function buildMethodDriversForPayload(route: RouteIntelligenceV2): ReleaseReadinessMethodDriver[] {
-  const abstractSourceTitle = (driverTitle: string, index: number): string => {
-    const haystack = driverTitle.toLowerCase();
-    if (/bank|rail|source|kyc|sow|sof/.test(haystack)) return `Bank-rail failure-pattern source record ${index + 1}`;
-    if (/price|market|mayfair|property|trophy|bid/.test(haystack)) return `Trophy-pricing source record ${index + 1}`;
-    if (/residence|mobility|migration|relocation|education|succession/.test(haystack)) return `Mobility-pattern source record ${index + 1}`;
-    if (/family|fairness|authority|generation/.test(haystack)) return `Family-governance source record ${index + 1}`;
-    return `Release-gate method source record ${index + 1}`;
-  };
-
-  return (route.routeDriverRegister?.items ?? []).map((driver) => ({
-    id: text(driver.id),
+  return (route.routeDriverRegister?.items ?? []).map((driver, driverIndex) => {
+    const driverId = text(driver.id, `method_driver_${driverIndex + 1}`);
+    return {
+    id: driverId,
     title: sanitizeShareText(driver.title),
     driver: sanitizeShareText(driver.driver),
     releaseRead: sanitizeShareText(driver.releaseRead),
-    sources: driver.sources
-      .map(sanitizeDriverSource)
-      .filter((source) => Boolean(source.id))
-      .map((source, index) => ({
-        id: text(source.id),
-        title: abstractSourceTitle(text(driver.title), index),
-        date: sanitizeShareText(source.date),
-        url: text(source.url ?? source.source_url),
-      })),
-  }));
+    familyAction: sanitizeShareText(driver.familyAction),
+    testApplied: sanitizeShareText(driver.testApplied),
+    testResult: sanitizeShareText(driver.testResult),
+    principalInstruction: sanitizeShareText(driver.principalInstruction),
+    capitalConsequence: sanitizeShareText(driver.capitalConsequence),
+    sources: (driver.sources ?? [])
+      .slice(0, 4)
+      .map((source, sourceIndex) => ({
+        id: sourceCitationId(source) || `${driverId}_source_${sourceIndex + 1}`,
+        title: sanitizeShareText(source.title ?? source.summary ?? `Method source ${sourceIndex + 1}`),
+        date: sanitizeShareText(methodSourceDate(source.date ?? source.source_date)),
+        url: sanitizeShareText(source.url ?? source.source_url),
+      }))
+      .filter((source) => source.id || source.title || source.url),
+    };
+  });
 }
 
 function collectPayloadCitations(
@@ -1750,7 +2364,8 @@ function collectPayloadCitations(
   const add = (value: string) => {
     const id = value.trim();
     const normalized = id.toLowerCase();
-    if (!isRemoteCitationId(id) || seen.has(normalized)) return;
+    const isStableCitationId = isRemoteCitationId(id) || /^[a-z0-9][a-z0-9_-]*$/i.test(id);
+    if (!isStableCitationId || seen.has(normalized)) return;
     seen.add(normalized);
     ids.push(id);
   };
@@ -1781,8 +2396,9 @@ export function buildReleaseReadinessSharePayload(
   const publicSources = buildSafePublicSources(resolved);
   const methodDrivers = buildMethodDriversForPayload(route);
   const citations = collectPayloadCitations(methodDrivers, publicSources);
-  const decision = "Gated negotiation only";
-  const releaseRule = "Gated negotiation only";
+  const decision = "Approved to negotiate under signed gates; no capital release";
+  const releaseRule =
+    "Capital remains blocked until title, SDLT, source, bank, authority, family-use, fairness, and decision-memory gates are signed";
   const purpose = "London family use and continuity. Not approved as yield, prestige, wrapper planning, or residence planning.";
   const capitalRule =
     "No bid without closed comps and walk-away price. No exchange or deposit release without signed title, SDLT, source, bank rail, family authority, and bid discipline.";
@@ -1801,11 +2417,10 @@ export function buildReleaseReadinessSharePayload(
     methodDrivers,
     publicSources.length,
   );
-
-  return {
-    surfaceContract: SHARE_SURFACE_CONTRACT,
+  const gateRows = gateRowsFromSafeGates(buildSafeGates());
+  const privateEvidence = buildPrivateEvidenceForPayload();
+  const principalView = buildPrincipalView({
     reference,
-    title: sanitizeShareText(route.surfaceTitle ?? "Release Readiness Review"),
     corridor,
     move,
     decision,
@@ -1813,20 +2428,49 @@ export function buildReleaseReadinessSharePayload(
     purpose,
     capitalRule,
     rationale:
-      "Proceed to gated negotiation only. The house is approved for London family use only after title, SDLT, source, bank, authority, family-use, fairness, and decision-memory evidence clears.",
+      "Approved to negotiate under signed gates; no capital release. The house is approved for London family use only after title, SDLT, source, bank, authority, family-use, fairness, and decision-memory gates are signed.",
+    mitigation: normalizeMitigationTimeline(risk.mitigation_timeline),
+    selectedRoute: selectedShareRoute,
+    routeOptions,
+    gateRows,
+    methodDrivers,
+    publicSourceCount: publicSources.length,
+    privateEvidenceCount: privateEvidence.length,
+    methodDriverCount: methodDrivers.length,
+    citationCount: citations.length,
+  });
+
+  return {
+    surfaceContract: SHARE_SURFACE_CONTRACT,
+    reference,
+    title: sanitizeShareText(route.surfaceTitle ?? "Release Readiness Review"),
+    corridor,
+    move,
+    user_inputs: buildStandaloneUserInputs(resolved, selectedShareRoute, {
+      move,
+      purpose,
+      capitalRule,
+    }),
+    decision,
+    releaseRule,
+    purpose,
+    capitalRule,
+    rationale:
+      "Approved to negotiate under signed gates; no capital release. The house is approved for London family use only after title, SDLT, source, bank, authority, family-use, fairness, and decision-memory gates are signed.",
     riskLevel: sanitizeShareText(risk.risk_level),
     mitigation: normalizeMitigationTimeline(risk.mitigation_timeline),
     selectedRoute: selectedShareRoute,
     routeOptions,
-    gateRows: gateRowsFromSafeGates(buildSafeGates()),
+    gateRows,
     advanceConditions: releasePacketList(releasePacket.advance_conditions, []),
     holdConditions: releasePacketList(releasePacket.hold_conditions, []),
     stopConditions: releasePacketList(releasePacket.stop_conditions, []),
     publicSources,
-    privateEvidence: buildPrivateEvidenceForPayload(),
+    privateEvidence,
     methodDrivers,
     citations,
     reportSections,
+    principalView,
   };
 }
 

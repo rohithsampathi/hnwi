@@ -1,18 +1,56 @@
 // =============================================================================
-// RELEASE READINESS FULL WORKROOM SURFACE
+// RELEASE READINESS PUBLIC SHARE SURFACE
 // Route: /release-readiness/review/[intakeId]
 //
-// This public URL must preserve the full Decision Memo / War Room DNA:
-// route selector, Principal View, Route View, Evidence View, War Room Mode, G1/G2/G3,
-// crisis resilience, antifragility, market drivers, and route-sensitive
-// base/stress/opportunity outputs. Terminology cleanup belongs in the shared
-// renderer/data surface, not in a shortened share packet.
+// This first-paint route must consume the compact backend public read model.
+// Keep full audit/memo objects behind internal audit and print surfaces.
 // =============================================================================
 
-export {
-  dynamic,
-  maxDuration,
-  revalidate,
-} from "../../../decision-memo/audit/[intakeId]/page";
+import PrincipalReleaseReadinessSharePage from '@/components/decision-memo/share/PrincipalReleaseReadinessSharePage';
+import {
+  ReleaseReadinessPublicSnapshotError,
+  fetchReleaseReadinessPublicSnapshot,
+} from '@/lib/decision-memo/fetch-release-readiness-public-snapshot';
+import { resolvePublicDecisionMemoId } from '@/lib/decision-memo/memo-id-aliases';
 
-export { default } from "../../../decision-memo/audit/[intakeId]/page";
+interface ReleaseReadinessReviewPageProps {
+  params: Promise<{
+    intakeId: string;
+  }>;
+}
+
+export const revalidate = 86400;
+export const runtime = 'nodejs';
+export const maxDuration = 30;
+
+function publicSnapshotErrorMessage(error: unknown): string {
+  if (error instanceof ReleaseReadinessPublicSnapshotError) return error.message;
+  if (error instanceof Error) return error.message;
+  return 'Release readiness public snapshot is not available.';
+}
+
+export default async function ReleaseReadinessReviewPage({
+  params,
+}: ReleaseReadinessReviewPageProps) {
+  const { intakeId } = await params;
+  const reference = resolvePublicDecisionMemoId(intakeId);
+
+  try {
+    const payload = await fetchReleaseReadinessPublicSnapshot(reference);
+    return (
+      <PrincipalReleaseReadinessSharePage
+        reference={reference}
+        payload={payload}
+        initialSurfaceError={null}
+      />
+    );
+  } catch (error) {
+    return (
+      <PrincipalReleaseReadinessSharePage
+        reference={reference}
+        payload={null}
+        initialSurfaceError={publicSnapshotErrorMessage(error)}
+      />
+    );
+  }
+}

@@ -14,7 +14,7 @@ import {
 } from '@/lib/decision-memo/fetch-decision-memo-surface-data';
 import {
   buildReleaseReadinessSharePayload,
-  buildReleaseReadinessShareSurfaceData,
+  type ReleaseReadinessPrincipalTable,
   type ReleaseReadinessSharePayload,
   type ReleaseReadinessShareReportSection,
 } from '@/lib/decision-memo/build-release-readiness-share-surface';
@@ -64,50 +64,34 @@ function requestedViewMode(searchParams: Record<string, string | string[] | unde
   return Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '');
 }
 
-function buildPrincipalOnlySurfaceData(
+function buildFullReleaseReadinessSurfaceData(
   reference: string,
   data: ResolvedDecisionMemoSurfaceData,
 ): ResolvedDecisionMemoSurfaceData {
-  const backendPayload = isRecord(data.backendData)
-    ? (data.backendData as RecordLike).release_readiness_share_payload
-    : null;
-  const previewDataSource = isRecord((data.memoData as RecordLike | undefined)?.preview_data)
-    ? ((data.memoData as RecordLike).preview_data as RecordLike)
-    : {};
-  const payload = isRecord(backendPayload)
-    ? (backendPayload as ReturnType<typeof buildReleaseReadinessSharePayload>)
-    : isRecord(previewDataSource.release_readiness_share_payload)
-      ? (previewDataSource.release_readiness_share_payload as ReturnType<typeof buildReleaseReadinessSharePayload>)
-      : buildReleaseReadinessSharePayload(reference, data);
+  const payload = buildReleaseReadinessSharePayload(reference, data);
+  const memoData = isRecord(data.memoData) ? { ...(data.memoData as RecordLike) } : {};
+  const backendData = isRecord(data.backendData) ? { ...(data.backendData as RecordLike) } : {};
+  const memoPreview = isRecord(memoData.preview_data) ? (memoData.preview_data as RecordLike) : {};
+  const backendPreview = isRecord(backendData.preview_data) ? (backendData.preview_data as RecordLike) : {};
   const previewData = {
+    ...backendPreview,
+    ...memoPreview,
     release_readiness_share_payload: payload,
-    route_intelligence_v2: {
-      title: payload.title,
-      corridor: payload.corridor,
-      move: payload.move,
-      routeOptions: payload.routeOptions,
-    },
-    risk_assessment: {
-      verdict: payload.decision,
-      recommendation: payload.releaseRule,
-      risk_level: payload.riskLevel,
-      mitigation_timeline: payload.mitigation,
-      total_exposure: payload.selectedRoute.metrics.totalAcquisitionCostUsd,
-    },
   };
 
   return {
     memoData: {
+      ...memoData,
       intake_id: reference,
       preview_data: previewData,
     } as any,
     backendData: {
-      surface_contract: payload.surfaceContract,
+      ...backendData,
       intake_id: reference,
       preview_data: previewData,
       release_readiness_share_payload: payload,
     },
-    fullArtifact: null,
+    fullArtifact: data.fullArtifact,
     developmentsCount: data.developmentsCount,
   };
 }
@@ -118,6 +102,15 @@ function isRecord(value: unknown): value is RecordLike {
 
 function asArray(value: unknown): RecordLike[] {
   return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function positiveNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/[^0-9.-]/g, ''));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  }
+  return undefined;
 }
 
 function compactExactUsdForTranscript(value: string): string {
@@ -139,12 +132,63 @@ function compactExactUsdForTranscript(value: string): string {
 
 function cleanTranscriptText(value: string): string {
   return compactExactUsdForTranscript(value)
-    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
-    .replace(/\bGated negotiation only only\b/gi, 'Gated negotiation only')
-    .replace(/\brelease differently\b/gi, 'gated negotiation only')
+    .replace(/\bRequired evidence\b/gi, 'Release gate')
+    .replace(/\bRelease Differently\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\bGated negotiation only only\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\bGated negotiation only\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\brelease differently\b/gi, 'approved to negotiate under signed gates; no capital release')
     .replace(/\bProceed Modified\b/gi, 'Proceed under signed gates')
     .replace(/\bproceed modified\b/gi, 'proceed under signed gates')
-    .replace(/\bHigh until release gates clear\b/gi, 'Evidence pending; no capital release')
+    .replace(/\bHigh until release gates clear\b/gi, 'Evidence mapped; no capital release until signed approval gates')
+    .replace(/\bHold Until Release Evidence Clears\b/gi, 'Hold under signed-gate control')
+    .replace(/\bEntity\/trustee duty spread\b/gi, 'Structure-route duty spread')
+    .replace(/\bReviewed for release readiness;\s*signed gate required before capital release\b/gi, 'Gate mapped for release-readiness review; signed gate controls capital release')
+    .replace(/\bReviewed for release readiness\b/gi, 'Gate mapped for release-readiness review')
+    .replace(
+      /\bFallback UK rail is pre-cleared for receipt if the primary rail delays,\s*with identical SoW\/SoF index,\s*escalation owner,\s*and cut-off timing\.\s*It cannot change buyer route or source narrative\.?/gi,
+      'Required evidence: fallback UK rail must provide written conditional acceptance before release; same SoW / SoF index, escalation owner, and cut-off timing must match the buyer route and source narrative.',
+    )
+    .replace(/\bfallback rail is pre-cleared\b/gi, 'fallback rail must provide written conditional acceptance before release')
+    .replace(/\bpre-cleared fallback rail\b/gi, 'fallback rail with bank acceptance evidence')
+    .replace(
+      /\bCounsel confirms the control case:\s*direct non-UK resident additional-dwelling individual treatment;\s*no first-time-buyer relief;\s*no main-residence replacement claim;\s*company\/trust route not preferred unless a later non-tax purpose justifies register\/ATED\/SDLT and bank burden\.?/gi,
+      'Required evidence: UK tax counsel must sign the control-case buyer treatment before release.',
+    )
+    .replace(
+      /\bTitle pack confirms a freehold residential townhouse in Mayfair \/ Westminster with no foreign-buyer ownership prohibition identified by counsel;\s*private title reference,\s*seller identity,\s*and searches remain private but were indexed in the data room\.?/gi,
+      'Required evidence: UK property counsel must confirm title class, tenure, seller identity, seller authority, searches, restrictions, and any foreign-buyer/title constraints before bid, deposit, exchange, or transfer authority.',
+    )
+    .replace(
+      /\bSeller asks for 10 business-day exclusivity,\s*exchange only after bank\/counsel release,\s*10% deposit at exchange,\s*and 40 business-day completion\.\s*Deposit cannot be sent before source and receiving bank acceptance\.?/gi,
+      'Required evidence: seller timetable, exclusivity terms, deposit amount, deposit conditions, exchange sequence, completion timetable, and release conditions must be verified by property counsel before any seller-facing commitment.',
+    )
+    .replace(
+      /\bCounsel confirms property ownership does not decide residence;\s*UK day-count,\s*FIG,\s*IHT long-term-residence,\s*remittance,\s*wills,\s*and trust interaction remain monitored separately,\s*with no UK-residence benefit assumed in the purchase model\.?/gi,
+      'Required evidence: UK residence/tax counsel must confirm that ownership, day count, FIG, IHT, remittance, will/trust interaction, and residence assumptions are separately reviewed before the property is treated as a continuity anchor.',
+    )
+    .replace(
+      /\bImmigration adviser confirms ownership gives no right to reside;\s*child\/parent\/student\/visitor routes and school admission remain separate\.\s*Education adviser confirms the current school timetable can run without forcing exchange\.?/gi,
+      'Required evidence: immigration and education advisers must confirm whether ownership, child/parent routes, school timing, guardian model, term dates, and accommodation plan create any residence or exchange-timing pressure.',
+    )
+    .replace(
+      /\bOperating pack includes council-tax anchor,\s*service-charge\/estate-management range,\s*insurance\/security quotes,\s*maintenance reserve,\s*legal\/admin budget,\s*FX spread policy,\s*and opportunity-cost sensitivity\.\s*(?:G1|principal) liquidity account funds first 24 months of carry\.?/gi,
+      'Required evidence: operating pack must confirm council-tax/local charges, service or management costs, insurance/security, maintenance reserve, legal/admin budget, FX spread policy, opportunity-cost sensitivity, liquidity source, and carry owner before completion.',
+    )
+    .replace(
+      /\bPrimary and fallback rail written conditional acceptances,\s*KYC\/SoW\/SoF index,\s*sanctions\/adverse-media clearance state,\s*signer mandate,\s*FX authority,\s*transfer limits,\s*timetable,\s*and escalation contacts\.?/gi,
+      'Required evidence: primary and fallback rails must provide written conditional acceptance of KYC, SoW/SoF, sanctions/adverse-media, signer mandate, FX authority, transfer limits, timetable, and escalation contacts before exchange.',
+    )
+    .replace(
+      /\bAudited accounts,\s*distribution minutes,\s*sale-completion evidence,\s*tax-residency support,\s*bank statements,\s*beneficial-owner chart,\s*and liquidity schedule\.?/gi,
+      'Required evidence: SoW/SoF pack must evidence audited accounts where relevant, distribution minutes, sale-completion evidence, tax-residency support, bank statements, beneficial-owner chart, and liquidity schedule before exchange.',
+    )
+    .replace(
+      /\bProperty,\s*tax\/private-client,\s*immigration,\s*education,\s*source-tax,\s*bank,\s*insurance\/security,\s*and operator confirmations reconciled into a single contradiction log\.?/gi,
+      'Required evidence: adviser confirmations across property, tax/private-client, immigration, education, source-tax, bank, insurance/security, and operator desks must be reconciled into a contradiction log before release.',
+    )
+    .replace(/\bBank acceptance is conditional but documented before exchange\.?/gi, 'Required evidence: bank acceptance must be conditionally documented before exchange.')
+    .replace(/\bFamily continuity is documented without hardening inheritance ambiguity\.?/gi, 'Required evidence: family continuity must be documented without hardening inheritance ambiguity.')
+    .replace(/\bring-fenced liquidity schedule\b/gi, 'liquidity schedule')
     .replace(/\bRisk level\b/gi, 'Release status')
     .replace(/\bData quality\b/gi, 'Evidence status')
     .replace(/\brelease-read sprint\b/gi, 'release-readiness review')
@@ -152,6 +196,7 @@ function cleanTranscriptText(value: string): string {
     .replace(/\bExpected value creation\b/gi, 'Scenario discipline output')
     .replace(/\bExpected Net Worth\b/gi, 'Scenario net position')
     .replace(/\bNet Benefit\b/gi, 'Route discipline read')
+    .replace(/\bcompiler internals\b/gi, 'private build details')
     .replace(/\bScore\s+\d+\s*\/\s*100\.?/gi, 'Readiness score evidence-gated.')
     .replace(/\b\d+\s*\/\s*100\b/g, 'readiness score evidence-gated')
     .replace(/\b50\s*\/\s*30\s*\/\s*20 probability scenarios\b/gi, 'base, stress, and opportunity scenario discipline; not a forecast')
@@ -192,28 +237,59 @@ function cleanTranscriptText(value: string): string {
       /\bnamed family user\s*\/\s*named family user\s+named family-fairness owner\b/gi,
       'Named family user / named family-fairness owner',
     )
-    .replace(/\bfamily-use veto position where recorded\b/gi, 'family-home rights position recorded before bid release or exchange')
+    .replace(/\bfamily-use veto position where recorded\b/gi, 'family-home rights position gate mapped before bid release or exchange')
     .replace(/\bfamily-home veto position\b/gi, 'family-home rights position')
     .replace(/\bfamily-home veto holder\b/gi, 'family-home rights holder')
-    .replace(/\bspouse veto if relevant\b/gi, 'family-home rights position recorded before bid release or exchange')
+    .replace(/\bspouse veto if relevant\b/gi, 'family-home rights position gate mapped before bid release or exchange')
     .replace(/\bspouse if relevant\b/gi, 'family-home rights holder where recorded')
     .replace(/\bspouse veto\b/gi, 'family-home rights position')
     .replace(/\bThe route must be retrievable six years later\b/gi, 'The route must be retrievable years later')
     .replace(/\bsix years later\b/gi, 'later')
     .replace(/\badvisor embarrassment\b/gi, 'adviser coordination failure')
     .replace(/\badviser embarrassment\b/gi, 'adviser coordination failure')
-    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, 'Conditional technology-wealth exposure check')
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, 'Source-wealth concentration check')
     .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, 'Conditional operating-income exposure check')
     .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, 'Conditional digital-settlement rail exposure check')
-    .replace(/\bTechnology-wealth exposure check\b/gi, 'Conditional technology-wealth exposure check')
+    .replace(/\bTechnology-wealth exposure check\b/gi, 'Source-wealth concentration check')
     .replace(/\bOperating-income exposure check\b/gi, 'Conditional operating-income exposure check')
     .replace(/\bDigital-settlement exposure check\b/gi, 'Conditional digital-settlement rail exposure check')
-    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, 'conditional technology-wealth exposure')
+    .replace(/\bsource-wealth concentration\/technology exposure\b/gi, 'documented source-wealth concentration exposure')
+    .replace(/\bsource-wealth concentration\/technology wealth repricing or platform dependency\b/gi, 'source-wealth concentration or liquidity repricing before source liquidity is proven')
+    .replace(/\btechnology wealth repricing or platform dependency\b/gi, 'source-wealth concentration or liquidity repricing')
+    .replace(/\btechnology wealth repricing\b/gi, 'source-wealth concentration repricing')
+    .replace(/\btechnology exposure\b/gi, 'source-concentration exposure')
+    .replace(/\bplatform dependency\b/gi, 'source-concentration dependency')
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, 'source-wealth concentration exposure')
+    .replace(/\bAI or technology exposed\b/gi, 'exposed to a documented source-wealth concentration')
+    .replace(/\bAI platform dependency\b/gi, 'documented platform concentration')
+    .replace(/\bAI\b/g, 'source-wealth concentration')
     .replace(/\bwar\s*\/\s*sanctions\b/gi, 'conditional geopolitical and sanctions exposure')
     .replace(/\bstablecoin rail stress\b/gi, 'conditional digital-settlement rail exposure')
     .replace(/\bBSA\/sanctions\b/gi, 'sanctions and bank-compliance controls')
     .replace(/\bBSA\b/g, 'bank-compliance controls')
     .replace(/\bshadow facilitators\b/gi, 'unverified intermediaries')
+    .replace(/\bHold pending signed gates\b/gi, 'Hold under signed-gate control')
+    .replace(/\bEvidence pending; no capital release\b/gi, 'Evidence mapped; no capital release until signed approval gates')
+    .replace(/\bEvidence Pending\b/g, 'Evidence mapped')
+    .replace(/\bevidence pending\b/gi, 'evidence mapped')
+    .replace(/\bRequired evidence\s*:\s*/gi, 'Gate mapped: ')
+    .replace(/\bEvidence required before release\b/gi, 'Evidence mapped; sign-off controls release')
+    .replace(/\bRequired for release readiness;\s*signed gate required before capital release\b/gi, 'Gate mapped for release-readiness review; signed gate controls capital release')
+    .replace(/\bRequired for release readiness\b/gi, 'Gate mapped for release-readiness review')
+    .replace(/\bSigned evidence required before capital release\b/gi, 'Evidence mapped; signed gate controls capital release')
+    .replace(/\bSigned evidence required before release\b/gi, 'Evidence mapped; signed gate controls release')
+    .replace(/\bSigned gate required\b/gi, 'Signed gate controls release')
+    .replace(/\bsigned gate required\b/gi, 'signed gate controls release')
+    .replace(/\bRequired before ([^.;,\n]+)/gi, 'Gate mapped for $1')
+    .replace(/\brequired before ([^.;,\n]+)/gi, 'gate mapped for $1')
+    .replace(/\bQuestions and confirmations required before release\b/gi, 'Questions and confirmations gate mapped for release review')
+    .replace(/\bEvidence item required before release\b/gi, 'Evidence item gate mapped for release review')
+    .replace(/\brequired evidence gates\b/gi, 'mapped evidence gates')
+    .replace(/\bOfficial school-admissions guidance is required when\b/gi, 'Official school-admissions guidance is recorded when')
+    .replace(/\bWritten advice required\b/gi, 'Written advice recorded')
+    .replace(/\bWritten rail acceptance required\b/gi, 'Written rail acceptance recorded')
+    .replace(/\bSoW\/SoF and signer acceptance required\b/gi, 'SoW/SoF and signer acceptance recorded')
+    .replace(/\bis required above\b/gi, 'is controlled above')
     .replace(
       /\bLooks like prime London capital preservation even though the economics are control\/use-led after duty drag\.?/gi,
       'Appears like a capital-preservation purchase, but economics are family-use and control-led after duty drag.',
@@ -234,6 +310,10 @@ function cleanTranscriptText(value: string): string {
       /\bThe purchase must remain legible six years later without relying on founder memory\.?/gi,
       'The purchase must remain explainable later without relying on memory or informal understandings.',
     )
+    .replace(/\bfallback signer\b/gi, 'alternate signer')
+    .replace(/\bfallback rails\b/gi, 'alternate rails')
+    .replace(/\bfallback rail\b/gi, 'alternate rail')
+    .replace(/\bfallback\b/gi, 'alternate')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -290,7 +370,7 @@ function resolveReleaseReadinessPayload(
     ? (data.backendData as RecordLike).release_readiness_share_payload
     : null;
   const memoData = isRecord(data.memoData) ? (data.memoData as RecordLike) : {};
-  const previewData = isRecord(memoData.preview_data) ? memoData.preview_data : {};
+  const previewData = isRecord(memoData.preview_data) ? (memoData.preview_data as RecordLike) : {};
   const previewPayload = isRecord(previewData.release_readiness_share_payload)
     ? previewData.release_readiness_share_payload
     : null;
@@ -378,14 +458,50 @@ function EvidenceList({
   );
 }
 
+function PrincipalTranscriptSection({
+  title,
+  table,
+}: {
+  title: string;
+  table: ReleaseReadinessPrincipalTable;
+}) {
+  if (!table.rows.length) return null;
+
+  return (
+    <section>
+      <h2>{title}</h2>
+      <table>
+        <thead>
+          <tr>
+            {table.columns.map((column) => (
+              <th key={column}>{column}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, rowIndex) => (
+            <tr key={`${title}-${rowIndex}`}>
+              {row.map((cell, cellIndex) => (
+                <td key={`${title}-${rowIndex}-${cellIndex}`}>{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 function DecisionMemoServerAuditText({
   data,
   error,
   reference,
+  viewMode = 'principal',
 }: {
   data: ResolvedDecisionMemoSurfaceData | null;
   error: string | null;
   reference: string;
+  viewMode?: string;
 }) {
   if (error && !data) {
     return (
@@ -470,6 +586,69 @@ function DecisionMemoServerAuditText({
     ? ((principalSections.authority_and_veto_matrix ?? pickSection(data, 'authority_and_veto_matrix')) as RecordLike)
     : {};
   const releasePayload = resolveReleaseReadinessPayload(reference, data);
+  const principalView = releasePayload?.principalView;
+
+  if (viewMode !== 'route' && viewMode !== 'evidence' && principalView) {
+    const routeSummaryTable: ReleaseReadinessPrincipalTable = {
+      columns: ['Route', 'Current decision', 'Capital consequence', 'Release consequence'],
+      rows: principalView.routeAlternatives.map((route) => [
+        route.routeName,
+        route.currentDecision,
+        route.capitalConsequence,
+        route.releaseConsequence,
+      ]),
+    };
+
+    return (
+      <article
+        id="release-readiness-server-transcript"
+        className="release-readiness-server-transcript"
+        aria-label="Principal release readiness decision pack text"
+      >
+        <style>{serverTranscriptCss}</style>
+        <header>
+          <p className="eyebrow">HNWI Chronicles / Principal Decision Pack</p>
+          <h1>{releasePayload.title || title}</h1>
+          <p><strong>Reference:</strong> {reference}</p>
+          <p><strong>Corridor:</strong> {releasePayload.corridor || corridor}</p>
+          <p><strong>Live move:</strong> {releasePayload.move || move}</p>
+          <p><strong>Decision:</strong> {releasePayload.decision}</p>
+          <p><strong>Release boundary:</strong> {releasePayload.releaseRule}</p>
+          <p><strong>Purpose boundary:</strong> {releasePayload.purpose}</p>
+        </header>
+
+        <PrincipalTranscriptSection title="Principal Decision Minute" table={principalView.decisionMinute} />
+        <PrincipalTranscriptSection title="Family Action Answer" table={principalView.familyActionAnswer} />
+
+        <section>
+          <h2>Family Action Tests</h2>
+          <ol>
+            {principalView.familyActionTests.map((test) => (
+              <li key={test.label}>
+                <strong>{test.familyAction}</strong>
+                <p>Test: {test.testApplied}</p>
+                <p>Result: {test.testResult}</p>
+                <p>Principal instruction: {test.principalInstruction}</p>
+                <p>Capital consequence: {test.capitalConsequence}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <PrincipalTranscriptSection title="Capital Truth" table={principalView.capitalTruth} />
+        <PrincipalTranscriptSection title="Purpose Boundary" table={principalView.purposeBoundary} />
+        <PrincipalTranscriptSection title="Release Rule" table={principalView.releaseRule} />
+        <PrincipalTranscriptSection title="Signed Gate Map" table={principalView.signedGateMap} />
+        <PrincipalTranscriptSection title="What Changed Before Capital Moves" table={principalView.whatChanged} />
+        <PrincipalTranscriptSection title="What We Caught" table={principalView.whatCaught} />
+        <PrincipalTranscriptSection title="Route Alternatives Summary" table={routeSummaryTable} />
+        <PrincipalTranscriptSection title="Seven-Day Principal Instruction" table={principalView.sevenDayInstruction} />
+        <PrincipalTranscriptSection title="Evidence Boundary" table={principalView.evidenceBoundary} />
+        <PrincipalTranscriptSection title="Final Principal Instruction" table={principalView.finalInstruction} />
+      </article>
+    );
+  }
+
   const selectedMetrics: Partial<ReleaseReadinessSharePayload['selectedRoute']['metrics']> =
     releasePayload?.selectedRoute?.metrics ?? {};
   const taxSection = findReportSection(releasePayload, 'tax-legal-route-readiness');
@@ -478,24 +657,45 @@ function DecisionMemoServerAuditText({
   const antiFragilitySection = findReportSection(releasePayload, 'anti-fragility');
   const bankingSection = findReportSection(releasePayload, 'banking-sow-sof');
   const decisionMemorySection = findReportSection(releasePayload, 'information-flow-decision-memory');
-  const releaseStatus = asString(releasePayload?.riskLevel || risk.risk_level, 'Evidence pending; no capital release');
+  const releaseStatus = asString(releasePayload?.riskLevel || risk.risk_level, 'Evidence mapped; no capital release until signed approval gates');
   const criticalItems = releasePayload?.stopConditions?.length
     ? `${releasePayload.stopConditions.length} stop conditions`
-    : asString(risk.critical_items, 'Signed release gates required');
+    : asString(risk.critical_items, 'Signed release gates control capital release');
   const highItems = releasePayload?.holdConditions?.length
     ? `${releasePayload.holdConditions.length} hold conditions`
     : asString(risk.high_items, 'Evidence gates active');
   const dutyDragPct = Number.isFinite(selectedMetrics.dutyDragPct)
     ? Number(selectedMetrics.dutyDragPct).toFixed(2)
     : asString(acquisition.duty_drag_pct || quantified.direct_duty_drag_pct_of_price);
+  const releaseRouteOptions = releasePayload?.routeOptions?.length ? releasePayload.routeOptions : [];
+  const entityRoute = releaseRouteOptions.find((option) => /entity|trust|structure|wrapper/i.test(asString(option.routeName || option.routeType)));
+  const entityMetrics = isRecord(entityRoute?.metrics) ? (entityRoute.metrics as RecordLike) : {};
+  const directDutyForSpread =
+    positiveNumber(selectedMetrics.totalDutiesUsd) ??
+    positiveNumber(selectedMetrics.totalSdltUsd) ??
+    positiveNumber(quantified.direct_total_duties_usd) ??
+    positiveNumber(acquisition.total_stamp_duties_usd);
+  const entityDutyForSpread =
+    positiveNumber(entityMetrics.totalDutiesUsd) ??
+    positiveNumber(entityMetrics.totalSdltUsd) ??
+    positiveNumber(quantified.entity_total_duties_usd);
   const entityIncrementalDuty =
-    selectedMetrics.incrementalDutyVsRecommendedUsd ??
-    quantified.entity_incremental_duty_vs_direct_usd;
+    positiveNumber(selectedMetrics.incrementalDutyVsRecommendedUsd) ??
+    positiveNumber(quantified.entity_incremental_duty_vs_direct_usd) ??
+    (
+      entityDutyForSpread && directDutyForSpread
+        ? Math.abs(entityDutyForSpread - directDutyForSpread)
+        : undefined
+    ) ??
+    (
+      positiveNumber(quantified.entity_total_duties_usd) && positiveNumber(quantified.direct_total_duties_usd)
+        ? Math.abs((positiveNumber(quantified.entity_total_duties_usd) as number) - (positiveNumber(quantified.direct_total_duties_usd) as number))
+        : undefined
+    );
   const opportunityCostPer100Bps =
     quantified.opportunity_cost_per_100bps_usd ??
     carrying.opportunity_cost_sensitivity?.per_100bps_on_purchase_price_usd ??
     (Number.isFinite(selectedMetrics.propertyValueUsd) ? Number(selectedMetrics.propertyValueUsd) * 0.01 : undefined);
-  const releaseRouteOptions = releasePayload?.routeOptions?.length ? releasePayload.routeOptions : [];
   const continuityCards = reportCards(continuitySection);
   const continuityRows = reportRows(continuitySection);
   const releaseCrisisItems = [...reportCards(crisisSection), ...reportRows(crisisSection)];
@@ -518,8 +718,8 @@ function DecisionMemoServerAuditText({
         <p><strong>Reference:</strong> {reference}</p>
         <p><strong>Corridor:</strong> {corridor}</p>
         {move ? <p><strong>Live move:</strong> {move}</p> : null}
-        <p><strong>Verdict:</strong> {asString(verdict.label || risk.verdict || risk.recommendation || 'Proceed Modified: Release Differently')}</p>
-        <p><strong>Release rule:</strong> {asString(pickSection(data, 'release_rule') || 'Hold until release evidence clears')}</p>
+        <p><strong>Decision:</strong> {asString(releasePayload?.decision || 'Approved to negotiate under signed gates; no capital release')}. No bid, deposit, exchange, transfer, or structure change is approved until title, SDLT, source, bank, authority, family-use, fairness, and decision-memory gates are signed.</p>
+        <p><strong>Release boundary:</strong> {asString(releasePayload?.releaseRule || 'Capital remains blocked until title, SDLT, source, bank, authority, family-use, fairness, and decision-memory gates are signed')}</p>
         {asString(verdict.why) ? <p><strong>Why:</strong> {asString(verdict.why)}</p> : null}
         {asString(verdict.not_a_verdict_for) ? <p><strong>Not a release for:</strong> {asString(verdict.not_a_verdict_for)}</p> : null}
       </header>
@@ -541,10 +741,10 @@ function DecisionMemoServerAuditText({
         <p>{asString(quantified.basis) || 'Modeled from official property, tax, bank, and market sources; final treatment requires counsel confirmation.'}</p>
         <dl>
           <div><dt>Guide price</dt><dd>{money(selectedMetrics.propertyValueUsd || quantified.price_usd || acquisition.property_value_usd)}{quantified.price_gbp ? ` / GBP ${Number(quantified.price_gbp).toLocaleString('en-US')}` : ''}</dd></div>
-          <div><dt>Base SDLT</dt><dd>{money(selectedMetrics.bsdUsd || quantified.primary_fee_usd || acquisition.bsd_stamp_duty_usd)}</dd></div>
-          <div><dt>Non-resident and additional-dwelling surcharge</dt><dd>{money(selectedMetrics.absdUsd || quantified.secondary_fee_usd || acquisition.absd_additional_stamp_duty_usd)}</dd></div>
+          <div><dt>Base SDLT</dt><dd>{money(selectedMetrics.baseSdltUsd || quantified.primary_fee_usd || acquisition.bsd_stamp_duty_usd)}</dd></div>
+          <div><dt>Non-resident and additional-dwelling surcharge</dt><dd>{money(selectedMetrics.nrAndAdditionalDwellingSurchargeUsd || quantified.secondary_fee_usd || acquisition.absd_additional_stamp_duty_usd)}</dd></div>
           <div><dt>Direct route all-in outlay</dt><dd>{money(selectedMetrics.totalAcquisitionCostUsd || quantified.direct_total_outlay_usd || acquisition.total_acquisition_cost_usd)}</dd></div>
-          <div><dt>Entity/trustee incremental duty versus direct</dt><dd>{money(entityIncrementalDuty)}</dd></div>
+          <div><dt>Entity/trustee duty spread</dt><dd>{entityIncrementalDuty ? `${money(entityIncrementalDuty)} higher than direct in this model; not structure authority.` : 'Not structure authority for selected direct route.'}</dd></div>
           <div><dt>Annual carry before opportunity cost</dt><dd>{money(selectedMetrics.annualCarryingCostUsd || quantified.annual_carrying_cost_before_opportunity_usd || carrying.annual_carrying_cost_before_opportunity_usd)}</dd></div>
           <div><dt>Opportunity cost per 100 bps</dt><dd>{money(opportunityCostPer100Bps)}</dd></div>
         </dl>
@@ -564,7 +764,7 @@ function DecisionMemoServerAuditText({
 
       <EvidenceList
         title="Release Readiness Routes Reviewed"
-        items={routeOptions.length ? routeOptions : releaseRouteOptions.length ? releaseRouteOptions : pressureVariants}
+        items={releaseRouteOptions.length ? releaseRouteOptions : routeOptions.length ? routeOptions : pressureVariants}
         getPrimary={(item, index) => `${asString(item.rank, String(index + 1))}. ${asString(item.route || item.routeName || item.name || item.title)} - ${asString(item.verdict || item.releaseRule || item.release_rule)}`}
         getSecondary={(item) => [
           asString(item.best_use || item.bestUse) ? `Best use: ${asString(item.best_use || item.bestUse)}` : '',
@@ -583,7 +783,7 @@ function DecisionMemoServerAuditText({
           asString(item.secondResidential) ? `Second residential: ${asString(item.secondResidential)}` : '',
           asString(item.thirdAndSubsequent) ? `Third and subsequent: ${asString(item.thirdAndSubsequent)}` : '',
           asString(item.releaseRead) ? `Release read: ${asString(item.releaseRead)}` : '',
-          asString(item.evidenceRequired) ? `Evidence required: ${asString(item.evidenceRequired)}` : '',
+          asString(item.evidenceRequired) ? `Evidence mapped: ${asString(item.evidenceRequired)}` : '',
         ]}
       />
 
@@ -602,7 +802,7 @@ function DecisionMemoServerAuditText({
       <EvidenceList
         title="Release Evidence Pack"
         items={evidenceRecords}
-        getPrimary={(item) => `${asString(item.label || item.type)} - ${asString(item.state || 'evidence required')}`}
+        getPrimary={(item) => `${asString(item.label || item.type)} - ${asString(item.state || 'evidence mapped')}`}
         getSecondary={(item) => [
           asString(item.detail) ? asString(item.detail) : '',
           asString(item.owner) ? `Owner: ${asString(item.owner)}` : '',
@@ -677,7 +877,7 @@ function DecisionMemoServerAuditText({
       <section>
         <h2>SoW / SoF And Bank Acceptance Readiness</h2>
         <p>{asString(bankingSection?.intro || bankReadiness.standard)}</p>
-        <p><strong>Release status:</strong> {asString(bankReadiness.release_status, 'Required before irrevocable commitment')}</p>
+        <p><strong>Release status:</strong> {asString(bankReadiness.release_status, 'Gate mapped for irrevocable-commitment gate')}</p>
         <ul>
           {bankingCards.map((card, index) => (
             <li key={`bank-card-${index}`}>
@@ -708,7 +908,7 @@ function DecisionMemoServerAuditText({
           asString(item['Route failure mode']) ? `Failure mode: ${asString(item['Route failure mode'])}` : '',
           asString(item['Decision consequence']) ? `Decision consequence: ${asString(item['Decision consequence'])}` : '',
           asString(item['Release response']) ? `Release response: ${asString(item['Release response'])}` : '',
-          asString(item.required_response) ? `Required response: ${asString(item.required_response)}` : '',
+          asString(item.required_response) ? `Release response: ${asString(item.required_response)}` : '',
           asString(item.Owner) ? `Owner: ${asString(item.Owner)}` : '',
         ]}
       />
@@ -763,16 +963,18 @@ function DecisionMemoServerAuditText({
         </ul>
       </section>
 
-      <EvidenceList
-        title="Governing Source Register"
-        items={sourceRegister}
-        getPrimary={(item, index) => `${index + 1}. ${asString(item.institution)} - ${asString(item.title)}`}
-        getSecondary={(item) => [
-          asString(item.date) ? `Date: ${asString(item.date)}` : '',
-          asString(item.claim_supported) ? `Claim supported: ${asString(item.claim_supported)}` : '',
-          asString(item.url) ? `URL: ${asString(item.url)}` : '',
-        ]}
-      />
+      {viewMode === 'evidence' ? (
+        <EvidenceList
+          title="Governing Source Register"
+          items={sourceRegister}
+          getPrimary={(item, index) => `${index + 1}. ${asString(item.institution)} - ${asString(item.title)}`}
+          getSecondary={(item) => [
+            asString(item.date) ? `Date: ${asString(item.date)}` : '',
+            asString(item.claim_supported) ? `Claim supported: ${asString(item.claim_supported)}` : '',
+            asString(item.url) ? `URL: ${asString(item.url)}` : '',
+          ]}
+        />
+      ) : null}
     </article>
   );
 }
@@ -827,6 +1029,26 @@ const serverTranscriptCss = `
   .release-readiness-server-transcript li {
     margin: 12px 0;
   }
+  .release-readiness-server-transcript table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 8px;
+    font-size: 14px;
+  }
+  .release-readiness-server-transcript th,
+  .release-readiness-server-transcript td {
+    border: 1px solid #e7e2d7;
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .release-readiness-server-transcript th {
+    background: #f6f1e8;
+    color: #4c4538;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
   .release-readiness-server-transcript dl {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -876,14 +1098,11 @@ export default async function DecisionMemoAuditPage({
     initialSurfaceError = readableSurfaceError(error);
   }
 
-  const requestedView = requestedViewMode(resolvedSearchParams);
   const releaseSurfaceData = initialSurfaceData
-    ? buildReleaseReadinessShareSurfaceData(publicId, initialSurfaceData)
+    ? buildFullReleaseReadinessSurfaceData(publicId, initialSurfaceData)
     : null;
-  const clientInitialSurfaceData =
-    releaseSurfaceData && (!requestedView || requestedView === 'principal')
-      ? buildPrincipalOnlySurfaceData(publicId, releaseSurfaceData)
-      : releaseSurfaceData;
+  const requestedView = requestedViewMode(resolvedSearchParams);
+  const clientInitialSurfaceData = releaseSurfaceData;
 
   return (
     <>
@@ -891,6 +1110,7 @@ export default async function DecisionMemoAuditPage({
         data={releaseSurfaceData}
         error={initialSurfaceError}
         reference={publicId}
+        viewMode={requestedView || 'principal'}
       />
       <Suspense fallback={null}>
         <DecisionMemoAuditClientPage

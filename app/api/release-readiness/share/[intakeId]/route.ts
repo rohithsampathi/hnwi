@@ -1,51 +1,53 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import {
-  DecisionMemoBackendUnavailableError,
-  DecisionMemoMissingError,
-  fetchDecisionMemoSurfaceData,
-} from "@/lib/decision-memo/fetch-decision-memo-surface-data";
-import { buildReleaseReadinessSharePayload } from "@/lib/decision-memo/build-release-readiness-share-surface";
-import { resolvePublicDecisionMemoId } from "@/lib/decision-memo/memo-id-aliases";
+  ReleaseReadinessPublicSnapshotError,
+  fetchReleaseReadinessPublicSnapshot,
+} from '@/lib/decision-memo/fetch-release-readiness-public-snapshot';
+import { resolvePublicDecisionMemoId } from '@/lib/decision-memo/memo-id-aliases';
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const runtime = "nodejs";
-export const maxDuration = 300;
+export const revalidate = 86400;
+export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 interface ReleaseReadinessShareRouteProps {
   params: Promise<{ intakeId: string }>;
 }
 
 function errorStatus(error: unknown): number {
-  if (error instanceof DecisionMemoBackendUnavailableError) return 503;
-  if (error instanceof DecisionMemoMissingError) return 404;
+  if (error instanceof ReleaseReadinessPublicSnapshotError) return error.status;
   return 500;
 }
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
-  return "Release readiness output is not available.";
+  return 'Release readiness public snapshot is not available.';
 }
 
-export async function GET(request: NextRequest, { params }: ReleaseReadinessShareRouteProps) {
+export async function GET(_request: Request, { params }: ReleaseReadinessShareRouteProps) {
   const { intakeId } = await params;
-  const publicId = resolvePublicDecisionMemoId(intakeId);
+  const reference = resolvePublicDecisionMemoId(intakeId);
 
   try {
-    const fullSurfaceData = await fetchDecisionMemoSurfaceData(intakeId, request.headers);
-    const payload = buildReleaseReadinessSharePayload(publicId, fullSurfaceData);
+    const payload = await fetchReleaseReadinessPublicSnapshot(reference);
     return NextResponse.json(payload, {
       headers: {
-        "Cache-Control": "no-store, max-age=0",
+        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+        'X-Kingdom-Surface-Contract': payload.surfaceContract,
+        'X-Kingdom-Read-Model': payload.snapshotContract ?? 'release_readiness_public_snapshot',
+        'X-Kingdom-Read-Source': payload.sourceMap?.source ?? 'release_readiness_public_snapshot',
       },
     });
   } catch (error) {
     return NextResponse.json(
-      { error: errorMessage(error) },
+      {
+        success: false,
+        reference,
+        error: errorMessage(error),
+      },
       {
         status: errorStatus(error),
         headers: {
-          "Cache-Control": "no-store, max-age=0",
+          'Cache-Control': 'no-store',
         },
       },
     );

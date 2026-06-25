@@ -86,6 +86,11 @@ export interface RouteDriverRegisterItem {
   driver: string;
   releaseRead?: string;
   evidenceBasis?: string;
+  familyAction?: string;
+  testApplied?: string;
+  testResult?: string;
+  principalInstruction?: string;
+  capitalConsequence?: string;
   sourceIds: string[];
   sources: RouteDriverSourceRecord[];
 }
@@ -182,6 +187,96 @@ function asArray(value: unknown): RecordLike[] {
   return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 
+function hasKeys(value: unknown): value is RecordLike {
+  return isRecord(value) && Object.keys(value).length > 0;
+}
+
+function isBlankPreviewValue(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value === 'string') return value.trim().length === 0;
+  if (Array.isArray(value)) return value.length === 0;
+  if (isRecord(value)) return Object.keys(value).length === 0;
+  return false;
+}
+
+const ROUTE_REVIEW_PREVIEW_KEYS = [
+  'zero_trust_move_intake',
+  'responsibility_transfer_matrix',
+  'record_mismatch_map',
+  'counsel_operator_question_pack',
+  'programmatic_dd_checklist',
+  'crisis_resilience_stress_test',
+  'antifragile_resilience_test',
+  'bank_compliance_escalation_simulation',
+  'heir_management_data',
+  'heir_management_analysis',
+  'generational_view',
+  'wealth_projection_analysis',
+  'scenario_tree_analysis',
+  'crisis_data',
+  'carrying_cost_model',
+  'cross_border_audit_summary',
+  'structure_optimization',
+  'wealth_projection_data',
+  'route_intelligence_v2',
+  'release_decision_packet',
+  'release_rule',
+  'evidence_status',
+  'contradiction_register',
+  'execution_timeline',
+  'real_asset_route_readiness',
+  'tax_jurisdiction_notes',
+] as const;
+
+function candidatePreviewRecords(record: unknown): RecordLike[] {
+  const root = asRecord(record);
+  const artifact = asRecord(root.artifact);
+  const fullArtifact = asRecord(root.fullArtifact ?? root.full_artifact);
+  return [
+    asRecord(root.preview_data),
+    asRecord(artifact.preview_data),
+    asRecord(fullArtifact.preview_data),
+    artifact,
+    fullArtifact,
+    root,
+  ].filter(hasKeys);
+}
+
+function mergedPreviewData(primary: unknown, records: unknown[]): RecordLike {
+  const merged: RecordLike = {};
+  const candidates = [
+    ...records.flatMap(candidatePreviewRecords),
+    asRecord(primary),
+  ];
+
+  for (const candidate of candidates) {
+    for (const [key, value] of Object.entries(candidate)) {
+      if (isBlankPreviewValue(merged[key]) && !isBlankPreviewValue(value)) {
+        merged[key] = value;
+      }
+    }
+  }
+
+  const primaryRecord = asRecord(primary);
+  for (const [key, value] of Object.entries(primaryRecord)) {
+    if (!isBlankPreviewValue(value)) {
+      merged[key] = value;
+    }
+  }
+
+  for (const key of ROUTE_REVIEW_PREVIEW_KEYS) {
+    if (!isBlankPreviewValue(merged[key])) continue;
+    for (const candidate of candidates) {
+      if (!isBlankPreviewValue(candidate[key])) {
+        merged[key] = candidate[key];
+        break;
+      }
+    }
+  }
+
+  return merged;
+}
+
 function text(value: unknown, fallback = ''): string {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback;
 }
@@ -191,6 +286,87 @@ function textList(value: unknown): string[] {
   return value
     .map((item) => text(item))
     .filter(Boolean);
+}
+
+type JurisdictionContext = {
+  sourceLabel: string;
+  destinationLabel: string;
+  destinationShort: string;
+  sourceBankLabel: string;
+  receivingBankLabel: string;
+  propertyCounselLabel: string;
+  taxCounselLabel: string;
+  primaryFeeLabel: string;
+  secondaryFeeLabel: string;
+  earlyExitFeeLabel: string;
+  isUk: boolean;
+  isSingapore: boolean;
+};
+
+type RouteNumericBasis = {
+  propertyValueUsd: number;
+  bsdUsd: number;
+  directAbsdUsd: number;
+  directDutiesUsd: number;
+  directAllInUsd: number;
+  entityDutiesUsd: number;
+  entityIncrementalUsd: number;
+  annualCarryingCostUsd: number;
+};
+
+function firstTextFromRecords(records: RecordLike[], keys: string[], fallback = ''): string {
+  for (const record of records) {
+    for (const key of keys) {
+      const value = text(record[key]);
+      if (value) return value;
+    }
+  }
+  return fallback;
+}
+
+function jurisdictionContextFromRecords(records: RecordLike[]): JurisdictionContext {
+  const sourceLabel = firstTextFromRecords(records, [
+    'source_jurisdiction',
+    'sourceJurisdiction',
+    'source_country',
+    'sourceCountry',
+    'source_city',
+    'sourceCity',
+  ], 'Source jurisdiction');
+  const destinationLabel = firstTextFromRecords(records, [
+    'destination_jurisdiction',
+    'destinationJurisdiction',
+    'destination_country',
+    'destinationCountry',
+    'destination_city',
+    'destinationCity',
+  ], 'Destination jurisdiction');
+  const destinationLower = destinationLabel.toLowerCase();
+  const sourceLower = sourceLabel.toLowerCase();
+  const isUk = /united kingdom|\buk\b|london|england|mayfair/.test(destinationLower);
+  const isSingapore = /singapore/.test(destinationLower);
+  const sourceBankLabel = /dubai|uae|united arab emirates/.test(sourceLower)
+    ? 'UAE source bank'
+    : 'source bank';
+  const destinationShort = isUk ? 'UK' : isSingapore ? 'Singapore' : destinationLabel;
+  return {
+    sourceLabel,
+    destinationLabel,
+    destinationShort,
+    sourceBankLabel,
+    receivingBankLabel: `${destinationShort} receiving bank`,
+    propertyCounselLabel: `${destinationShort} property counsel`,
+    taxCounselLabel: `${destinationShort} tax counsel`,
+    primaryFeeLabel: isUk ? 'Base SDLT' : isSingapore ? 'BSD' : 'Primary transfer duty',
+    secondaryFeeLabel: isUk
+      ? 'Non-resident and additional-dwelling surcharge'
+      : isSingapore
+        ? 'ABSD'
+        : 'Additional buyer or transfer surcharge',
+    earlyExitFeeLabel: isUk ? 'post-acquisition tax/reporting' : isSingapore ? 'SSD' : 'early-exit duty',
+    isUk,
+    isSingapore,
+  };
 }
 
 function recordArray<T>(value: unknown): T[] {
@@ -298,6 +474,11 @@ function normalizeRouteDriverRegister(value: unknown): { items: RouteDriverRegis
         driver: text(item.driver ?? item.text ?? item.summary),
         releaseRead: text(item.releaseRead ?? item.release_read),
         evidenceBasis: text(item.evidenceBasis ?? item.evidence_basis),
+        familyAction: text(item.familyAction ?? item.family_action),
+        testApplied: text(item.testApplied ?? item.test_applied),
+        testResult: text(item.testResult ?? item.test_result),
+        principalInstruction: text(item.principalInstruction ?? item.principal_instruction),
+        capitalConsequence: text(item.capitalConsequence ?? item.capital_consequence),
         sourceIds,
         sources: sources.map((source, sourceIndex) => ({
           ...source,
@@ -363,6 +544,7 @@ function slugRouteId(routeName: string, rank: number): string {
     lower.includes('trustee') ||
     lower.includes('company') ||
     lower.includes('corporate') ||
+    lower.includes('ownership structure') ||
     lower.includes('non-natural') ||
     lower.includes('non natural')
   ) {
@@ -389,6 +571,7 @@ function routeKind(routeName: string): 'direct' | 'entity' | 'status' | 'hold' |
     lower.includes('trustee') ||
     lower.includes('company') ||
     lower.includes('corporate') ||
+    lower.includes('ownership structure') ||
     lower.includes('non-natural') ||
     lower.includes('non natural')
   ) return 'entity';
@@ -396,6 +579,305 @@ function routeKind(routeName: string): 'direct' | 'entity' | 'status' | 'hold' |
   if (lower.includes('hold') || lower.includes('rent')) return 'hold';
   if (lower.includes('stop')) return 'stop';
   return 'other';
+}
+
+function surfaceStatus(value: unknown): string {
+  const raw = text(value);
+  if (!raw) return '';
+  if (/^release-gated$/i.test(raw)) return 'Signed gate controls release';
+  if (/^evidence gated$/i.test(raw)) return 'Evidence mapped; signed gate controls release';
+  return raw;
+}
+
+function zeroTrustIntake(preview?: RecordLike): RecordLike {
+  return asRecord(preview?.zero_trust_move_intake ?? preview?.zeroTrustMoveIntake);
+}
+
+function hasReviewedEvidenceBundle(preview?: RecordLike): boolean {
+  const counts = asRecord(zeroTrustIntake(preview).declared_counts);
+  return (
+    numberOr(counts.confirmed) > 0 &&
+    numberOr(counts.missing) === 0 &&
+    numberOr(counts.contradicted) === 0
+  );
+}
+
+function reviewedGateStatus(preview?: RecordLike): string {
+  return hasReviewedEvidenceBundle(preview)
+    ? 'Gate mapped for release-readiness review; signed gate controls capital release'
+    : 'Evidence mapped; signed gate controls capital release';
+}
+
+function reviewedRecordStatus(preview?: RecordLike): string {
+  return hasReviewedEvidenceBundle(preview)
+    ? 'Gate mapped; keep synchronized before bid, exchange, and completion'
+    : 'Evidence mapped; signed gate controls capital release';
+}
+
+function mapEvidenceOwner(record: RecordLike): string {
+  return text(
+    record.owner ??
+      record.responsible ??
+      record.responsible_party ??
+      record.desk ??
+      record.adviser ??
+      record.role,
+    'Family office operator / CFO',
+  );
+}
+
+function memoEvidenceGates(preview?: RecordLike): RouteEvidenceGate[] {
+  const intake = zeroTrustIntake(preview);
+  const rawRecords = [
+    ...asArray(intake.records),
+    ...asArray(intake.evidence_records),
+    ...asArray(intake.document_bundle),
+    ...asArray(intake.adviser_confirmations),
+    ...asArray(preview?.programmatic_dd_checklist),
+    ...asArray(asRecord(preview?.programmatic_dd_checklist).items),
+    ...asArray(asRecord(preview?.programmatic_dd_checklist).checklist),
+    ...asArray(asRecord(preview?.dd_checklist).items),
+    ...asArray(asRecord(preview?.dd_checklist).checklist),
+  ];
+  const status = reviewedGateStatus(preview);
+  const mapped = rawRecords
+    .map((record, index): RouteEvidenceGate => {
+      const gate = text(
+        record.gate ??
+          record.category ??
+          record.label ??
+          record.record ??
+          record.document_class ??
+          record.documentClass ??
+          record.evidence_class ??
+          record.evidenceClass ??
+          record.name,
+        'Input evidence record',
+      );
+      const evidenceRequired = text(
+        record.detail ??
+          record.evidence ??
+          record.evidence_required ??
+          record.evidenceRequired ??
+          record.item ??
+          record.description ??
+          record.requirement ??
+          record.requirements ??
+          record.summary,
+        'Evidence reviewed in the zero-trust bundle; signed gate controls capital release.',
+      );
+      const releaseEffect = text(
+        record.release_effect ??
+          record.releaseEffect ??
+          record.consequence_if_missing ??
+          record.consequenceIfMissing ??
+          record.why_it_matters ??
+          record.whyItMatters ??
+          record.blocker ??
+          record.status,
+        'Capital remains blocked until this evidence class is signed or indexed for the release room.',
+      );
+      return {
+        gate,
+        owner: mapEvidenceOwner(record),
+        evidenceRequired,
+        releaseStatus: status,
+        consequenceIfMissing: releaseEffect,
+      };
+    })
+    .filter((gate) => Boolean(gate.gate && gate.evidenceRequired));
+
+  return mapped.filter((gate, index, list) => (
+    list.findIndex((candidate) => candidate.gate.toLowerCase() === gate.gate.toLowerCase()) === index
+  ));
+}
+
+function memoResponsibilityTransfer(preview?: RecordLike): RouteIntelligenceOptionV2['responsibilityTransfer'] {
+  const rows = asArray(preview?.responsibility_transfer_matrix ?? preview?.responsibilityTransferMatrix);
+  return rows
+    .map((row): RouteIntelligenceOptionV2['responsibilityTransfer'][number] => {
+      const party = text(row.party ?? row.role ?? row.owner, 'Release owner');
+      const releaseStatus = surfaceStatus(row.release_status ?? row.releaseStatus);
+      return {
+        action: party,
+        primaryOwner: party,
+        fallbackOwner: text(row.fallback_owner ?? row.fallbackOwner, 'Family office operator / CFO'),
+        releaseCondition: [
+          `See: ${text(row.can_see ?? row.canSee, 'by permission')}`,
+          `Stop: ${text(row.can_stop ?? row.canStop, 'as recorded')}`,
+          `Sign: ${text(row.can_sign ?? row.canSign, 'as recorded')}`,
+          `Move: ${text(row.can_move ?? row.canMove, 'as recorded')}`,
+          `Retrieve: ${text(row.can_retrieve ?? row.canRetrieve, 'as recorded')}`,
+          `Explain: ${text(row.can_explain ?? row.canExplain, 'as recorded')}`,
+          releaseStatus || reviewedGateStatus(preview),
+        ].join('; '),
+      };
+    })
+    .filter((row) => Boolean(row.action));
+}
+
+function memoRecordMismatchMap(preview?: RecordLike): RouteIntelligenceOptionV2['recordMismatchMap'] {
+  const mismatch = asRecord(preview?.record_mismatch_map ?? preview?.recordMismatchMap);
+  const rows = asArray(mismatch.matrix ?? mismatch.records ?? mismatch.items);
+  const pendingCurrentRead = (row: RecordLike): string => {
+    const record = text(row.record ?? row.name ?? row.label, 'record');
+    return `To be evidenced before release: ${record} must be reconciled across counsel, bank, tax, title, source, and family-authority records.`;
+  };
+  return rows
+    .map((row): RouteIntelligenceOptionV2['recordMismatchMap'][number] => ({
+      record: text(row.record ?? row.name ?? row.label, 'Record'),
+      currentRead: pendingCurrentRead(row),
+      targetRead: text(
+        row.target_record ?? row.targetRecord ?? row.target_read ?? row.targetRead,
+        'One route story across source funds, buyer route, title, tax, bank file, authority minute, and decision memory.',
+      ),
+      releaseStatus: reviewedRecordStatus(preview),
+    }))
+    .filter((row) => Boolean(row.record));
+}
+
+function memoCounselQuestionPack(preview?: RecordLike): RouteIntelligenceOptionV2['counselQuestionPack'] {
+  const rows = asArray(preview?.counsel_operator_question_pack ?? preview?.counselOperatorQuestionPack);
+  return rows
+    .map((row): RouteIntelligenceOptionV2['counselQuestionPack'][number] => ({
+      desk: text(row.domain ?? row.desk ?? row.adviser ?? row.owner, 'Adviser desk'),
+      question: text(row.question ?? row.ask ?? row.prompt),
+    }))
+    .filter((row) => Boolean(row.question));
+}
+
+function normalizeRouteOptionForSurface(
+  route: RouteIntelligenceOptionV2,
+  context: JurisdictionContext,
+  preview?: RecordLike,
+  baseTaxAudit?: RecordLike,
+  values?: RouteNumericBasis,
+): RouteIntelligenceOptionV2 {
+  const rank = numberOr((route as RecordLike).rank, 1);
+  const routeName = text(
+    (route as RecordLike).routeName,
+    text((route as RecordLike).route, `Route ${rank}`),
+  );
+  const routeRecord = {
+    route: routeName,
+    best_use: (route as RecordLike).bestUse,
+    economic_read: (route as RecordLike).economicRead,
+    failure_mode: (route as RecordLike).failureMode,
+    release_effect: (route as RecordLike).releaseEffect,
+    verdict: (route as RecordLike).verdict,
+  };
+  const derived = preview && baseTaxAudit && values
+    ? deriveRouteOption(routeRecord, Math.max(0, rank - 1), preview, baseTaxAudit, context, values)
+    : route;
+  const sourceRoute = {
+    ...derived,
+    ...route,
+    metrics: derived.metrics,
+    rank,
+    routeName,
+  };
+  const fallbackRoute = {
+    ...derived,
+    routeName,
+  };
+  const routeCounselQuestions = recordArray<RouteIntelligenceOptionV2['counselQuestionPack'][number]>(
+    (sourceRoute as RecordLike).counselQuestionPack ??
+      (sourceRoute as RecordLike).counselQuestions ??
+      (sourceRoute as RecordLike).counsel_question_pack,
+  );
+  const routeEvidence = recordArray<RouteEvidenceGate>((sourceRoute as RecordLike).evidenceGates);
+  const routeResponsibility = recordArray<RouteIntelligenceOptionV2['responsibilityTransfer'][number]>(
+    (sourceRoute as RecordLike).responsibilityTransfer,
+  );
+  const routeMismatches = recordArray<RouteIntelligenceOptionV2['recordMismatchMap'][number]>(
+    (sourceRoute as RecordLike).recordMismatchMap,
+  );
+  const routeJurisdictionValues = recordArray<RouteIntelligenceOptionV2['jurisdictionValues'][number]>(
+    (sourceRoute as RecordLike).jurisdictionValues,
+  );
+  const routeStress = recordArray<RouteStressSignal>((sourceRoute as RecordLike).stressSignals);
+  const routeScenarios = recordArray<RouteScenarioPoint>((sourceRoute as RecordLike).scenarios);
+  const hasMaterialScenarioData = routeScenarios.some((scenario) => (
+    Number.isFinite(scenario.year10ValueUsd) &&
+    Math.abs(scenario.year10ValueUsd) > 1 &&
+    Number.isFinite(scenario.netOutcomeUsd)
+  ));
+  const memoEvidence = memoEvidenceGates(preview);
+  const memoResponsibility = memoResponsibilityTransfer(preview);
+  const memoMismatches = memoRecordMismatchMap(preview);
+  const memoCounselQuestions = memoCounselQuestionPack(preview);
+  const preferReviewedEvidence = hasReviewedEvidenceBundle(preview);
+  const normalizedEvidence =
+    preferReviewedEvidence && memoEvidence.length >= 6
+      ? memoEvidence
+      : routeEvidence.length >= 6
+        ? routeEvidence
+        : memoEvidence.length >= 6
+        ? memoEvidence
+        : fallbackRoute.evidenceGates || [];
+  const normalizedResponsibility =
+    preferReviewedEvidence && memoResponsibility.length >= 6
+      ? memoResponsibility
+      : routeResponsibility.length >= 6
+        ? routeResponsibility
+        : memoResponsibility.length >= 6
+        ? memoResponsibility
+        : fallbackRoute.responsibilityTransfer || [];
+  const normalizedMismatches =
+    preferReviewedEvidence && memoMismatches.length >= 5
+      ? memoMismatches
+      : routeMismatches.length >= 5
+        ? routeMismatches
+        : memoMismatches.length >= 5
+        ? memoMismatches
+        : fallbackRoute.recordMismatchMap || [];
+  const normalizedCounselQuestions =
+    preferReviewedEvidence && memoCounselQuestions.length >= 8
+      ? memoCounselQuestions
+      : routeCounselQuestions.length >= 8
+        ? routeCounselQuestions
+        : memoCounselQuestions.length >= 8
+        ? memoCounselQuestions
+        : fallbackRoute.counselQuestionPack || [];
+
+  const taxAudit = cloneRecord(sourceRoute.taxAudit);
+  const acquisitionAudit = asRecord(taxAudit.acquisition_audit);
+  taxAudit.acquisition_audit = {
+    ...acquisitionAudit,
+    primary_fee_label: text(acquisitionAudit.primary_fee_label, context.primaryFeeLabel),
+    secondary_fee_label: text(acquisitionAudit.secondary_fee_label, context.secondaryFeeLabel),
+  };
+  const mergedMetrics = {
+    ...fallbackRoute.metrics,
+    ...sourceRoute.metrics,
+    dataQuality: surfaceStatus(sourceRoute.metrics?.dataQuality) || 'Signed route gates control release',
+  };
+  const normalizedStressSignals = stressSignalsFromMergedMetrics(
+    { routeName, metrics: mergedMetrics },
+    (routeStress.length ? routeStress : fallbackRoute.stressSignals || []).map((signal) => ({
+      ...signal,
+      value: surfaceStatus(signal.value) || signal.value,
+    })),
+  );
+
+  return {
+    ...sourceRoute,
+    taxAudit,
+    metrics: mergedMetrics,
+    jurisdictionValues: (routeJurisdictionValues.length ? routeJurisdictionValues : fallbackRoute.jurisdictionValues) || [],
+    stressSignals: normalizedStressSignals,
+    scenarios: hasMaterialScenarioData ? routeScenarios : fallbackRoute.scenarios || [],
+    responsibilityTransfer: normalizedResponsibility,
+    counselQuestionPack: normalizedCounselQuestions,
+    recordMismatchMap: normalizedMismatches.map((row) => ({
+      ...row,
+      releaseStatus: surfaceStatus(row.releaseStatus) || reviewedRecordStatus(preview),
+    })),
+    evidenceGates: normalizedEvidence.map((gate) => ({
+      ...gate,
+      releaseStatus: surfaceStatus(gate.releaseStatus) || reviewedGateStatus(preview),
+    })),
+  };
 }
 
 function routeRecordsFromStructures(structures: RecordLike[]): RecordLike[] {
@@ -425,7 +907,77 @@ function routeRecordsFromStructures(structures: RecordLike[]): RecordLike[] {
   });
 }
 
-function defaultBuyerProfileMatrix(): BuyerProfileRemissionMatrix {
+function defaultBuyerProfileMatrix(context: JurisdictionContext): BuyerProfileRemissionMatrix {
+  if (context.isUk) {
+    return {
+      title: 'UK buyer-profile and SDLT surcharge review',
+      sourceRead: 'UK residential acquisition release-readiness turns on SDLT profile, residence status, property count, buyer type, and counsel-signed relief exclusions.',
+      dubaiRead:
+        `${context.sourceLabel} residence does not itself reduce UK SDLT. The room must prove buyer residence, existing-property count, main-residence replacement status, title route, and bank acceptance before bid authority changes.`,
+      ftaRead:
+        'No reduced-duty treaty or nationality benefit is credited in the control case. Any relief, replacement-residence, or wrapper position must be signed by UK tax counsel before release.',
+      counselQuestion:
+        'Confirm buyer identity class, UK residence/day-count, property count, replacement-main-residence position, surcharge treatment, filing responsibility, and whether any wrapper or relief claim is counsel-approved before bid release.',
+      matrix: [
+        {
+          profile: 'Direct non-UK resident individual',
+          firstResidential: 'Base SDLT + non-resident surcharge',
+          secondResidential: 'Base SDLT + non-resident + additional-dwelling surcharge',
+          thirdAndSubsequent: 'Same surcharge posture unless counsel signs a different residence/property-count fact.',
+          releaseRead: 'Property count, residence status, and main-residence replacement facts change the duty route; none is credited without signed evidence.',
+          evidenceRequired: 'Passport/residence file, day-count, worldwide property count, source file, and UK tax counsel computation.',
+        },
+        {
+          profile: 'UK resident or replacement-main-residence route',
+          firstResidential: 'Lower only if residence and main-residence facts are true at transaction date.',
+          secondResidential: 'Additional-dwelling exposure remains unless replacement/disposal conditions are signed.',
+          thirdAndSubsequent: 'No benefit without signed replacement-main-residence and disposal evidence.',
+          releaseRead: 'Eligibility must exist before the transaction trigger; future intention is not bid authority.',
+          evidenceRequired: 'UK day-count, residence file, prior main-residence disposal/replacement evidence, and counsel computation.',
+        },
+        {
+          profile: 'Company / non-natural-person wrapper',
+          firstResidential: 'Higher-cost route unless a non-tax control purpose is signed.',
+          secondResidential: 'Higher-cost route with disclosure, ATED, bank, and beneficial-owner friction.',
+          thirdAndSubsequent: 'No scaling benefit; structure must be justified outside tax saving.',
+          releaseRead: 'Wrapper route is not a shortcut to lower duty; it only survives for governance, security, succession, or operating purpose.',
+          evidenceRequired: 'Non-tax purpose memo, beneficial-owner file, ATED/register analysis, bank acceptance, and counsel sign-off.',
+        },
+      ],
+    };
+  }
+
+  if (!context.isSingapore) {
+    return {
+      title: `${context.destinationShort} buyer-profile and transfer-duty review`,
+      sourceRead: `${context.destinationLabel} buyer route must be reviewed against local transfer duty, residence, title, bank acceptance, and reporting rules.`,
+      dubaiRead:
+        `${context.sourceLabel} residence is not treated as a release benefit unless destination counsel signs an applicable rule before the transaction trigger.`,
+      ftaRead:
+        'No treaty, residence, citizenship, or structure benefit is credited unless counsel signs the route and evidence before release.',
+      counselQuestion:
+        `Confirm buyer identity class, residence status, property count, title eligibility, transfer-duty treatment, filing responsibility, and bank acceptance for ${context.destinationLabel}.`,
+      matrix: [
+        {
+          profile: 'Direct individual buyer',
+          firstResidential: 'Destination transfer-duty route must be computed by counsel.',
+          secondResidential: 'Additional-property or non-resident surcharges require counsel review.',
+          thirdAndSubsequent: 'Later-property treatment must be signed before release.',
+          releaseRead: 'The route cannot rely on generic corridor assumptions; buyer profile and destination rules must match.',
+          evidenceRequired: 'Buyer profile, residence file, property count, title route, and counsel computation.',
+        },
+        {
+          profile: 'Entity / trustee route',
+          firstResidential: 'Structure route requires non-tax purpose and bank acceptance.',
+          secondResidential: 'Structure friction can exceed any perceived control benefit.',
+          thirdAndSubsequent: 'No benefit credited without signed structure purpose.',
+          releaseRead: 'Use only if governance, succession, security, or operating purpose survives counsel review.',
+          evidenceRequired: 'Structure memo, beneficial-owner file, bank acceptance, and counsel sign-off.',
+        },
+      ],
+    };
+  }
+
   return {
     title: 'Singapore buyer-profile and ABSD remission review',
     sourceRead: 'IRAS ABSD buyer-profile table and IRAS FTA remission rules.',
@@ -480,8 +1032,8 @@ function defaultBuyerProfileMatrix(): BuyerProfileRemissionMatrix {
   };
 }
 
-function coerceBuyerProfileMatrix(value: unknown): BuyerProfileRemissionMatrix {
-  const fallback = defaultBuyerProfileMatrix();
+function coerceBuyerProfileMatrix(value: unknown, context: JurisdictionContext): BuyerProfileRemissionMatrix {
+  const fallback = defaultBuyerProfileMatrix(context);
   const record = asRecord(value);
   const matrix = asArray(record.matrix);
   if (matrix.length === 0) {
@@ -626,8 +1178,6 @@ function buildAcquisitionAudit(
     bsd_stamp_duty_usd: roundCurrency(values.bsdUsd),
     absd_additional_stamp_duty: roundCurrency(values.absdUsd),
     absd_additional_stamp_duty_usd: roundCurrency(values.absdUsd),
-    bsd: roundCurrency(values.bsdUsd),
-    absd: roundCurrency(values.absdUsd),
     total_stamp_duties: roundCurrency(values.totalDutiesUsd),
     total_stamp_duties_usd: roundCurrency(values.totalDutiesUsd),
     total_acquisition_cost: roundCurrency(values.totalAcquisitionCostUsd),
@@ -651,7 +1201,12 @@ function buildAcquisitionAudit(
 
 function routeVerdictCode(route: RouteIntelligenceOptionV2): 'PROCEED_MODIFIED' | 'HOLD' | 'DO_NOT_PROCEED' {
   const rule = text(route.releaseRule).toLowerCase();
-  if (route.releaseRule === 'Release Differently' || rule.includes('gated negotiation') || rule.includes('release differently')) return 'PROCEED_MODIFIED';
+  if (
+    route.releaseRule === 'Release Differently' ||
+    rule.includes('gated negotiation') ||
+    rule.includes('release differently') ||
+    rule.includes('approved to negotiate')
+  ) return 'PROCEED_MODIFIED';
   if (route.releaseRule === 'Hold' || rule.includes('hold')) return 'HOLD';
   return 'DO_NOT_PROCEED';
 }
@@ -670,6 +1225,7 @@ function isReleaseRoute(route: RouteIntelligenceOptionV2): boolean {
     route.releaseRule === 'Release Differently' ||
     rule.includes('gated negotiation') ||
     rule.includes('release differently') ||
+    rule.includes('approved to negotiate') ||
     verdict.includes('preferred direct') ||
     verdict.includes('proceed under signed gates')
   );
@@ -685,19 +1241,21 @@ function routeStructure(route: RouteIntelligenceOptionV2, selectedRouteId: strin
     type: route.routeType,
     verdict: routeVerdictCode(route),
     viable: isReleaseRoute(route),
-    net_benefit_10yr: isReleaseRoute(route) ? 0 : -incrementalDuty,
+    net_benefit_10yr: isReleaseRoute(route) ? undefined : -incrementalDuty,
     net_benefit_display: selected
       ? formatUsdCompact(route.metrics.totalAcquisitionCostUsd)
       : incrementalDuty
         ? `-${formatUsdCompact(incrementalDuty)}`
-        : formatUsdCompact(route.metrics.totalAcquisitionCostUsd),
+        : isExecutable
+          ? formatUsdCompact(route.metrics.totalAcquisitionCostUsd)
+          : 'No capital deployed',
     net_benefit_label: selected
       ? 'Selected route all-in outlay'
       : 'Duty delta vs recommended route',
-    tax_savings_pct: 0,
+    tax_savings_pct: undefined,
     setup_cost: isExecutable ? route.metrics.totalDutiesUsd : undefined,
     annual_cost: isExecutable ? route.metrics.annualCarryingCostUsd : undefined,
-    warnings: gates.map((gate) => `${text(gate.gate, 'Release gate')}: ${text(gate.consequenceIfMissing, 'Evidence required')}`),
+    warnings: gates.map((gate) => `${text(gate.gate, 'Release gate')}: ${text(gate.consequenceIfMissing, 'Evidence mapped')}`),
   };
 }
 
@@ -708,8 +1266,8 @@ function buildRouteChecklist(route: RouteIntelligenceOptionV2): RecordLike {
     total_items: gates.length,
     items: gates.map((gate) => ({
       category: text(gate.gate, 'Release gate'),
-      item: text(gate.evidenceRequired, 'Evidence required before release'),
-      status: text(gate.releaseStatus, 'release-gated'),
+      item: text(gate.evidenceRequired, 'Evidence mapped; sign-off controls release'),
+      status: text(gate.releaseStatus, 'Signed gate controls release'),
       priority: criticalStatus.test(gate.releaseStatus) ? 'critical' : 'high',
       timeline: route.metrics.mitigationTimeline,
       owner: text(gate.owner, 'Family office'),
@@ -724,12 +1282,12 @@ function buildRouteExecutionSequence(route: RouteIntelligenceOptionV2): RecordLi
   return routeResponsibilityTransfer(route).map((step, index) => ({
     step: index + 1,
     phase: text(step.action, 'Release gate'),
-    action: text(step.releaseCondition, 'Evidence must be signed before release.'),
+    action: text(step.releaseCondition, 'Evidence signed-gate control applies before release.'),
     owner: text(step.primaryOwner, 'Family office'),
     responsible: text(step.primaryOwner, 'Family office'),
     fallback_owner: text(step.fallbackOwner, 'Principal'),
     timeline: index === 0 ? '72 hours' : '7 days',
-    status: 'release-gated',
+    status: 'Signed gate controls release',
   }));
 }
 
@@ -744,17 +1302,113 @@ function buildRouteScenarioTree(route: RouteIntelligenceOptionV2): RecordLike {
     const weight = index === 0 ? 0.6 : index === 1 ? 0.25 : 0.15;
     return sum + (scenario.netOutcomeUsd * weight);
   }, 0);
+  const scenarioOutcomes = scenarios.map((scenario, index) => ({
+    scenario: scenario.scenario,
+    probability: index === 0 ? 0.6 : index === 1 ? 0.25 : 0.15,
+    net_outcome: roundCurrency(scenario.netOutcomeUsd),
+    description: scenario.read,
+    stress_calibration: scenario.read,
+  }));
+  const releaseConditions = gates.slice(0, 6).map((gate) => ({
+    condition: text(gate.evidenceRequired, text(gate.gate, 'Release gate')),
+    status: 'CONDITIONAL',
+  }));
+  const forceNowOutcomes = scenarioOutcomes.map((outcome) => ({
+    ...outcome,
+    description: `If the route hardens before signed gates: ${outcome.description}`,
+  }));
   return {
     recommended_branch: verdictCode,
     recommendation_strength: releaseRoute ? 78 : holdRoute ? 68 : 84,
     decision_ev_usd: roundCurrency(weightedNetOutcome),
     expected_value_usd: roundCurrency(weightedNetOutcome),
+    value_basis_label: 'Scenario discipline output',
+    value_basis_note: 'Scenario values discipline the release route. They are not a forecast and do not replace signed title, tax, bank, source, authority, family-use, and decision-memory gates.',
     decision_ev_label: releaseRoute
-      ? 'Weighted route outcome after release conditions'
-      : 'Weighted consequence if this route is forced',
+      ? 'Scenario discipline for the selected route'
+      : 'Route consequence if forced',
+    decision_ev_note: releaseRoute
+      ? 'Weighted route outcome after signed gates clear; not release authority by itself.'
+      : 'Route consequence if the family forces or blocks the route.',
     recommended_route: route.routeName,
     route_read: route.releaseEffect,
     critical_gates: gates.map((gate) => text(gate.gate, 'Release gate')),
+    branches: [
+      {
+        name: 'PROCEED_MODIFIED',
+        recommendation_strength: releaseRoute ? 0.78 : 0.62,
+        conditions: releaseConditions,
+        outcomes: scenarioOutcomes,
+        expected_value: roundCurrency(weightedNetOutcome),
+        expected_value_note: 'Weighted across base, stress, and opportunity route cases after signed gates clear.',
+        verdict: route.releaseEffect,
+        verdict_conditions: [
+          'No bid without closed comparables and walk-away price.',
+          'No exchange or deposit without signed title, SDLT, source, bank rail, family authority, and bid discipline.',
+        ],
+      },
+      {
+        name: 'PROCEED_NOW',
+        recommendation_strength: 0.28,
+        conditions: [
+          { condition: 'Family accepts unmodified route risk before evidence gates clear.', status: 'BLOCKED' },
+        ],
+        outcomes: forceNowOutcomes,
+        expected_value: roundCurrency(scenarios[1]?.netOutcomeUsd ?? weightedNetOutcome),
+        expected_value_note: 'Unmodified route case under live seller, bank, tax, and family-authority stress.',
+        verdict: 'Do not force the purchase before signed gates clear.',
+        verdict_conditions: ['Fails if bank, title, SDLT, source, authority, or family-use records diverge.'],
+      },
+      {
+        name: 'DO_NOT_PROCEED',
+        recommendation_strength: holdRoute ? 0.68 : 0.42,
+        conditions: [
+          { condition: 'Capital remains blocked until the release route is rebuilt or abandoned.', status: 'CONDITIONAL' },
+        ],
+        outcomes: [
+          {
+            scenario: 'Capital preservation case',
+            probability: 1,
+            net_outcome: 0,
+            description: 'No purchase duty is incurred while the family keeps optionality and repairs evidence, authority, bank rails, title, tax, and decision memory.',
+          },
+        ],
+        expected_value: 0,
+        expected_value_note: 'Capital preserved; no purchase duty while the route remains held or stopped.',
+        verdict: 'Hold or stop if any critical release gate remains unsigned.',
+        verdict_conditions: ['Use when evidence, authority, or banking cannot clear inside the decision window.'],
+      },
+    ],
+    decision_gates: gates.slice(0, 8).map((gate) => ({
+      gate: text(gate.gate, 'Release gate'),
+      owner: text(gate.owner, 'Family office operator / CFO'),
+      status: text(gate.releaseStatus, 'Signed gate controls release'),
+      release_condition: text(gate.evidenceRequired, 'Evidence mapped; signed gate controls release.'),
+    })),
+    decision_matrix: [
+      {
+        branch: 'Proceed under signed gates',
+        modeled_route_outcome: roundCurrency(weightedNetOutcome),
+        risk_level: releaseRoute ? 'Medium' : 'High',
+        recommended_if: 'All critical gates clear inside the live decision window.',
+      },
+      {
+        branch: 'Proceed now',
+        modeled_route_outcome: roundCurrency(scenarios[1]?.netOutcomeUsd ?? weightedNetOutcome),
+        risk_level: 'High',
+        recommended_if: 'Not recommended; only if the principal knowingly accepts unmodified route risk.',
+      },
+      {
+        branch: 'Hold or stop',
+        modeled_route_outcome: 'Capital preserved',
+        risk_level: 'Low capital leakage / high opportunity discipline',
+        recommended_if: 'Any abort trigger survives remediation.',
+      },
+    ],
+    expiry: {
+      days: 30,
+      reassess_triggers: ['Market shift above 10%', 'New tax or reporting rule', 'Counterparty change', 'Bank acceptance change', 'Family authority change'],
+    },
     doctrine_metadata: {
       failure_mode_count: gates.length,
       risk_flags_total: gates.length + mismatches.length,
@@ -765,7 +1419,7 @@ function buildRouteScenarioTree(route: RouteIntelligenceOptionV2): RecordLike {
         mode: text(gate.gate, 'Release gate'),
         doctrine_book: 'Decision Release Rule',
         severity: criticalStatusFromGate(gate.releaseStatus),
-        description: text(gate.consequenceIfMissing, 'Evidence required before release.'),
+        description: text(gate.consequenceIfMissing, 'Evidence mapped; sign-off controls release.'),
       })),
     },
   };
@@ -889,8 +1543,20 @@ export function buildRouteScopedDecisionMemoSurface({
   const scopedMemoData = cloneRecord(memoData);
   const scopedBackendData = cloneRecord(backendData ?? {});
   const scopedFullArtifact = cloneRecord(fullArtifact ?? {});
-  const preview = asRecord(scopedMemoData.preview_data);
+  const preview = mergedPreviewData(scopedMemoData.preview_data, [
+    scopedMemoData,
+    scopedBackendData,
+    scopedFullArtifact,
+  ]);
   scopedMemoData.preview_data = preview;
+  const jurisdictionContext = jurisdictionContextFromRecords([
+    preview,
+    scopedMemoData,
+    scopedBackendData,
+    scopedFullArtifact,
+    asRecord(scopedMemoData.artifact),
+    asRecord(scopedBackendData.artifact),
+  ]);
 
   const routeTaxAudit = buildAcquisitionAudit(asRecord(route.taxAudit), route.routeName, {
     propertyValueUsd: route.metrics.propertyValueUsd,
@@ -900,8 +1566,8 @@ export function buildRouteScopedDecisionMemoSurface({
     totalAcquisitionCostUsd: route.metrics.totalAcquisitionCostUsd,
     dutyDragPct: route.metrics.dutyDragPct,
     buyerCategory: route.routeName,
-    primaryFeeLabel: text(asRecord(asRecord(route.taxAudit).acquisition_audit).primary_fee_label, 'BSD'),
-    secondaryFeeLabel: text(asRecord(asRecord(route.taxAudit).acquisition_audit).secondary_fee_label, 'ABSD'),
+    primaryFeeLabel: text(asRecord(asRecord(route.taxAudit).acquisition_audit).primary_fee_label, jurisdictionContext.primaryFeeLabel),
+    secondaryFeeLabel: text(asRecord(asRecord(route.taxAudit).acquisition_audit).secondary_fee_label, jurisdictionContext.secondaryFeeLabel),
   });
   const routeRiskAssessment = buildRouteRiskAssessment(route);
   const routeChecklist = buildRouteChecklist(route);
@@ -949,7 +1615,7 @@ export function buildRouteScopedDecisionMemoSurface({
   preview.total_savings = formatUsdCompact(route.metrics.totalAcquisitionCostUsd || Math.abs(route.metrics.incrementalDutyVsRecommendedUsd));
   preview.exposure_class = route.routeType;
   preview.verdict = route.verdict;
-  preview.data_quality = 'limited';
+  preview.data_quality = route.metrics.dataQuality;
   preview.data_quality_note = route.metrics.dataQuality;
   preview.thesis_summary = `${route.routeName}: ${route.releaseEffect}`;
   preview.decision_thesis = route.economicRead;
@@ -957,6 +1623,9 @@ export function buildRouteScopedDecisionMemoSurface({
   preview.decision_context = route.bestUse;
   preview.risk_assessment = routeRiskAssessment;
   preview.cross_border_audit_summary = routeTaxAudit;
+  preview.cross_border_audit = routeTaxAudit;
+  preview.tax_audit = routeTaxAudit;
+  preview.route_tax_audit = routeTaxAudit;
   preview.structure_optimization = structureOptimization;
   preview.dd_checklist = routeChecklist;
   preview.execution_sequence = routeExecutionSequence;
@@ -993,14 +1662,17 @@ export function buildRouteScopedDecisionMemoSurface({
   preview.all_mistakes = routeEvidenceGates(route).map((gate, index) => ({
     id: `${route.id}-gate-${index + 1}`,
     title: text(gate.gate, 'Release gate'),
-    mistake: text(gate.evidenceRequired, 'Evidence required before release'),
-    cost: text(gate.consequenceIfMissing, 'Evidence required before release.'),
+    mistake: text(gate.evidenceRequired, 'Evidence mapped; sign-off controls release'),
+    cost: text(gate.consequenceIfMissing, 'Evidence mapped; sign-off controls release.'),
     cost_numeric: route.metrics.totalDutiesUsd || Math.abs(route.metrics.incrementalDutyVsRecommendedUsd),
     urgency: criticalStatusFromGate(gate.releaseStatus),
-    mitigation: text(gate.releaseStatus, 'release-gated'),
+    mitigation: text(gate.releaseStatus, 'Signed gate controls release'),
     owner: text(gate.owner, 'Family office'),
   }));
   scopedBackendData.risk_assessment = routeRiskAssessment;
+  scopedBackendData.cross_border_audit_summary = routeTaxAudit;
+  scopedBackendData.cross_border_audit = routeTaxAudit;
+  scopedBackendData.tax_audit = routeTaxAudit;
   scopedBackendData.mitigationTimeline = route.metrics.mitigationTimeline;
   scopedBackendData.mitigation_timeline = route.metrics.mitigationTimeline;
   scopedBackendData.all_mistakes = preview.all_mistakes;
@@ -1018,6 +1690,9 @@ export function buildRouteScopedDecisionMemoSurface({
     thesisSummary: preview.thesis_summary,
   };
   scopedFullArtifact.risk_assessment = routeRiskAssessment;
+  scopedFullArtifact.cross_border_audit_summary = routeTaxAudit;
+  scopedFullArtifact.cross_border_audit = routeTaxAudit;
+  scopedFullArtifact.tax_audit = routeTaxAudit;
   scopedFullArtifact.data_quality = preview.data_quality;
   scopedFullArtifact.data_quality_note = preview.data_quality_note;
   scopedFullArtifact.thesis = preview.thesis;
@@ -1114,48 +1789,54 @@ function adjustedScenarios(
   });
 }
 
-function evidenceGates(kind: ReturnType<typeof routeKind>): RouteEvidenceGate[] {
+function evidenceGates(kind: ReturnType<typeof routeKind>, context: JurisdictionContext): RouteEvidenceGate[] {
   const common: RouteEvidenceGate[] = [
     {
       gate: 'Buyer capacity and title route',
-      owner: 'Singapore property counsel',
-      evidenceRequired: 'Exact buyer name, title class, OTP/deposit mechanics, completion timing, and whether approval is required.',
-      releaseStatus: 'Required before commitment',
+      owner: context.propertyCounselLabel,
+      evidenceRequired: 'Exact buyer name, title class, OTP/deposit mechanics, completion timing, and whether approval applies.',
+      releaseStatus: 'Gate mapped for commitment gate',
       consequenceIfMissing: 'The family may sign a route that cannot carry the intended authority, use, or exit path.',
     },
     {
-      gate: 'BSD / ABSD / SSD calculation',
-      owner: 'Singapore tax counsel',
-      evidenceRequired: 'Written duty computation for the buyer profile, basis value, due date, and SSD early-exit exposure.',
-      releaseStatus: 'Required before payment',
+      gate: context.isUk
+        ? 'SDLT and surcharge calculation'
+        : context.isSingapore
+          ? 'BSD / ABSD / SSD calculation'
+          : 'Transfer-duty and surcharge calculation',
+      owner: context.taxCounselLabel,
+      evidenceRequired: context.isUk
+        ? 'Written SDLT computation for buyer profile, residence status, property count, surcharge posture, due date, and filing responsibility.'
+        : `Written duty computation for buyer profile, basis value, due date, and ${context.earlyExitFeeLabel} exposure.`,
+      releaseStatus: 'Gate mapped for payment gate',
       consequenceIfMissing: 'Non-recoverable duty drag can be accepted without the room understanding the real all-in cost.',
     },
     {
       gate: 'SoW / SoF corroboration',
-      owner: 'UAE source bank + family office operator / CFO',
+      owner: `${context.sourceBankLabel} + family office operator / CFO`,
       evidenceRequired: 'Source-of-wealth and source-of-funds file with bank statements, sale/dividend records, tax support, and transfer narrative.',
-      releaseStatus: 'Required before receiving-bank reliance',
+      releaseStatus: 'Gate mapped for receiving-bank reliance gate',
       consequenceIfMissing: 'Bank compliance escalation can stop the move after seller timing has started.',
     },
     {
       gate: 'Primary and fallback banking rails',
-      owner: 'Singapore receiving bank + UAE source bank',
+      owner: `${context.receivingBankLabel} + ${context.sourceBankLabel}`,
       evidenceRequired: 'Named sending and receiving rails, accepted signers, FX authority, emergency fallback path, and reporting cadence.',
-      releaseStatus: 'Required before irrevocable release',
+      releaseStatus: 'Gate mapped for irrevocable-release gate',
       consequenceIfMissing: 'The asset can become hostage to one rail, one banker, or one unresolved KYC question.',
     },
     {
       gate: 'Family authority and veto',
       owner: 'Founder, named family user, named family-fairness owner, and family office operator / CFO',
       evidenceRequired: 'Who can approve, stop, sign, move funds, retrieve records, and explain the purchase without the founder.',
-      releaseStatus: 'Required before visibility',
+      releaseStatus: 'Gate mapped for visibility gate',
       consequenceIfMissing: 'Late family-home, next-generation, or fairness veto can convert a property decision into a family-governance event.',
     },
     {
       gate: 'Succession and decision memory',
       owner: 'Succession counsel + family office operator / CFO',
       evidenceRequired: 'Where the route decision, evidence file, title documents, bank approvals, and future reporting pack will live.',
-      releaseStatus: 'Required before completion',
+      releaseStatus: 'Gate mapped for completion gate',
       consequenceIfMissing: 'The purchase may be explainable only by the founder, which is not a durable family-office decision.',
     },
   ];
@@ -1199,7 +1880,7 @@ function evidenceGates(kind: ReturnType<typeof routeKind>): RouteEvidenceGate[] 
   return common;
 }
 
-function responsibilityTransfer(kind: ReturnType<typeof routeKind>) {
+function responsibilityTransfer(kind: ReturnType<typeof routeKind>, context: JurisdictionContext) {
   const releaseCondition = kind === 'hold' || kind === 'stop'
     ? 'No one releases funds; owners preserve evidence and review trigger.'
     : 'Named owner can act without waiting for informal founder interpretation.';
@@ -1207,7 +1888,7 @@ function responsibilityTransfer(kind: ReturnType<typeof routeKind>) {
     { action: 'See the full record', primaryOwner: 'Family office operator / CFO', fallbackOwner: 'Named family user', releaseCondition },
     { action: 'Stop the move', primaryOwner: 'Founder', fallbackOwner: 'Named family-fairness owner + counsel', releaseCondition: 'Stop authority is written before seller timing starts.' },
     { action: 'Sign and release funds', primaryOwner: 'Founder or appointed signer', fallbackOwner: 'Bank-approved alternate signer', releaseCondition: kind === 'hold' || kind === 'stop' ? 'Not released under this route.' : 'Bank mandates, FX authority, and signer limits match the route.' },
-    { action: 'Move funds across rails', primaryOwner: 'UAE source bank lead', fallbackOwner: 'Fallback bank rail owner', releaseCondition: kind === 'hold' || kind === 'stop' ? 'Rail review only; no settlement transfer.' : 'Primary and fallback rails have accepted SoW/SoF.' },
+    { action: 'Move funds across rails', primaryOwner: `${context.sourceBankLabel} lead`, fallbackOwner: 'Fallback bank rail owner', releaseCondition: kind === 'hold' || kind === 'stop' ? 'Rail review only; no settlement transfer.' : 'Primary and fallback rails have accepted SoW/SoF.' },
     { action: 'Retrieve and explain the decision', primaryOwner: 'Family office operator / CFO', fallbackOwner: 'Succession counsel', releaseCondition: 'Decision memory packet is retrievable within 72 hours.' },
   ];
 }
@@ -1221,20 +1902,27 @@ function recordMismatchMap(kind: ReturnType<typeof routeKind>) {
         ? 'Eligibility-dependent buyer route'
         : 'Direct foreign individual buyer route';
   return [
-    { record: 'Cash and FX path', currentRead: 'Dubai-origin funds must be corroborated and transferable.', targetRead: `${routeRead}; bank rails accept source file and FX authority.`, releaseStatus: 'Release-gated' },
-    { record: 'Title and beneficial ownership', currentRead: 'Buyer and use purpose must not be assumed from family intent.', targetRead: `${routeRead}; title record and beneficial-owner record say the same thing.`, releaseStatus: 'Release-gated' },
-    { record: 'Tax and duty position', currentRead: 'Duty drag changes by route and buyer category.', targetRead: `${routeRead}; written acquisition-duty computation is attached.`, releaseStatus: 'Release-gated' },
-    { record: 'Family authority', currentRead: 'Founder, named family user, named family-fairness owner, and operator roles are not interchangeable.', targetRead: `${routeRead}; approval, veto, signer, and fallback roles are signed.`, releaseStatus: 'Release-gated' },
-    { record: 'Succession memory', currentRead: 'Decision cannot live only in one adviser thread.', targetRead: `${routeRead}; decision memory is indexed for G2/G3 retrieval.`, releaseStatus: 'Release-gated' },
+    { record: 'Cash and FX path', currentRead: 'Gate mapped: source funds must stay corroborated and transferable.', targetRead: `${routeRead}; bank rails accept source file and FX authority.`, releaseStatus: 'Signed gate controls release' },
+    { record: 'Title and beneficial ownership', currentRead: 'Gate mapped: buyer and use purpose must not be assumed from family intent.', targetRead: `${routeRead}; title record and beneficial-owner record say the same thing.`, releaseStatus: 'Signed gate controls release' },
+    { record: 'Tax and duty position', currentRead: 'Gate mapped: duty drag changes by route and buyer category.', targetRead: `${routeRead}; written acquisition-duty computation is attached.`, releaseStatus: 'Signed gate controls release' },
+    { record: 'Family authority', currentRead: 'Gate mapped: founder, named family user, named family-fairness owner, and operator roles are not interchangeable.', targetRead: `${routeRead}; approval, veto, signer, and fallback roles are signed.`, releaseStatus: 'Signed gate controls release' },
+    { record: 'Succession memory', currentRead: 'Gate mapped: decision cannot live only in one adviser thread.', targetRead: `${routeRead}; decision memory is indexed for G2/G3 retrieval.`, releaseStatus: 'Signed gate controls release' },
   ];
 }
 
-function counselQuestions(kind: ReturnType<typeof routeKind>) {
+function counselQuestions(kind: ReturnType<typeof routeKind>, context: JurisdictionContext) {
   const base = [
-    { desk: 'Singapore property counsel', question: 'Does this exact title class allow the proposed buyer, use, completion timing, and future family-control purpose without additional approval?' },
-    { desk: 'Singapore tax counsel', question: 'Confirm BSD, ABSD, SSD, owner-occupation, property-tax, and filing/payment timing for this buyer profile in writing.' },
-    { desk: 'Singapore receiving bank', question: 'What SoW/SoF documents, signer mandates, FX notes, and fallback transfer path must be accepted before seller timing begins?' },
-    { desk: 'UAE source bank', question: 'Can the source account, transfer purpose, FX authority, and documentary trail be corroborated in the format the receiving bank will accept?' },
+    { desk: context.propertyCounselLabel, question: `Does this exact title route allow the proposed buyer, use, completion timing, and future family-control purpose in ${context.destinationLabel}?` },
+    {
+      desk: context.taxCounselLabel,
+      question: context.isUk
+        ? 'Confirm SDLT, non-resident surcharge, additional-dwelling posture, residence/day-count, property-count, relief exclusions, and filing/payment timing for this buyer profile in writing.'
+        : context.isSingapore
+          ? 'Confirm BSD, ABSD, SSD, owner-occupation, property-tax, and filing/payment timing for this buyer profile in writing.'
+          : 'Confirm transfer duty, additional buyer surcharge, residence/property-count treatment, relief exclusions, and filing/payment timing for this buyer profile in writing.',
+    },
+    { desk: context.receivingBankLabel, question: 'What SoW/SoF documents, signer mandates, FX notes, and fallback transfer path must be accepted before seller timing begins?' },
+    { desk: context.sourceBankLabel, question: 'Can the source account, transfer purpose, FX authority, and documentary trail be corroborated in the format the receiving bank will accept?' },
     { desk: 'Succession counsel', question: 'If the founder is unavailable for 72 hours, who can retrieve, explain, stop, or carry this decision without family conflict?' },
   ];
   if (kind === 'entity') {
@@ -1258,17 +1946,17 @@ function counselQuestions(kind: ReturnType<typeof routeKind>) {
   return base;
 }
 
-function routeJurisdictionValues(kind: ReturnType<typeof routeKind>, routeName: string) {
+function routeJurisdictionValues(kind: ReturnType<typeof routeKind>, routeName: string, context: JurisdictionContext) {
   return [
     {
-      jurisdiction: 'Dubai / UAE',
+      jurisdiction: context.sourceLabel,
       value: 'Source-of-funds and transfer authority',
-      releaseRead: 'The Dubai side must prove origin, signer power, FX authority, and availability of records before Singapore can rely on the incoming capital.',
+      releaseRead: `The source side must prove origin, signer power, FX authority, and availability of records before ${context.destinationLabel} can rely on the incoming capital.`,
     },
     {
-      jurisdiction: 'Singapore',
+      jurisdiction: context.destinationLabel,
       value: 'Title, duty, bank acceptance, and property-use consequence',
-      releaseRead: `${routeName} releases only if title eligibility, BSD/ABSD/SSD, receiving-bank acceptance, and family-use evidence align before commitment.`,
+      releaseRead: `${routeName} releases only if title eligibility, ${context.primaryFeeLabel}/${context.secondaryFeeLabel}, receiving-bank acceptance, and family-use evidence align before commitment.`,
     },
     {
       jurisdiction: 'Family system',
@@ -1302,7 +1990,7 @@ function routeStressSignals(
   }
   if (kind === 'status') {
     return [
-      { label: 'Benefit assumed', value: '0 until proven', read: 'No reduced duty path exists until qualifying status is effective before purchase.' },
+      { label: 'Benefit assumed', value: 'None credited', read: 'No reduced duty path exists until qualifying status is effective before purchase.' },
       { label: 'Timing risk', value: 'High', read: 'Future status cannot be used to justify present commitment.' },
       { label: 'Fallback', value: 'Direct or hold', read: 'If eligibility fails, the room returns to direct release-differently or hold.' },
     ];
@@ -1310,8 +1998,47 @@ function routeStressSignals(
   return [
     { label: 'Duty drag', value: formatUsdCompact(directDutiesUsd), read: 'Accepted only if control, family-use, and continuity value are consciously signed.' },
     { label: 'Annual carry', value: formatUsdCompact(annualCarryingCostUsd), read: 'Carrying cost must be owned as control cost, not hidden inside property optimism.' },
-    { label: 'Bank readiness', value: 'Release-gated', read: 'Primary and fallback rails must clear before seller commitment hardens.' },
+    { label: 'Bank readiness', value: 'Sign-off controlled', read: 'Primary and fallback rails must clear before seller commitment hardens.' },
   ];
+}
+
+function isZeroUsdDisplay(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  return /^-?\s*US\$0(?:\.0+)?(?:[KMB])?$/i.test(value.trim());
+}
+
+function shouldRepairStressSignalValue(signal: RouteStressSignal): boolean {
+  return !signal.value || isZeroUsdDisplay(signal.value);
+}
+
+function stressSignalsFromMergedMetrics(
+  route: Pick<RouteIntelligenceOptionV2, 'routeName' | 'metrics'>,
+  signals: RouteStressSignal[],
+): RouteStressSignal[] {
+  const kind = routeKind(route.routeName);
+  const metrics = route.metrics;
+  return signals.map((signal) => {
+    if (!shouldRepairStressSignalValue(signal)) return signal;
+    const label = signal.label.toLowerCase();
+
+    if (label.includes('annual carry') && metrics.annualCarryingCostUsd > 0) {
+      return { ...signal, value: formatUsdCompact(metrics.annualCarryingCostUsd) };
+    }
+
+    if (label.includes('immediate duty preserved') && metrics.incrementalDutyVsRecommendedUsd < 0) {
+      return { ...signal, value: formatUsdCompact(Math.abs(metrics.incrementalDutyVsRecommendedUsd)) };
+    }
+
+    if (label.includes('incremental duty') && metrics.incrementalDutyVsRecommendedUsd > 0) {
+      return { ...signal, value: formatUsdCompact(metrics.incrementalDutyVsRecommendedUsd) };
+    }
+
+    if (label.includes('duty') && kind !== 'hold' && kind !== 'stop' && metrics.totalDutiesUsd > 0) {
+      return { ...signal, value: formatUsdCompact(metrics.totalDutiesUsd) };
+    }
+
+    return signal;
+  });
 }
 
 function deriveRouteOption(
@@ -1319,6 +2046,7 @@ function deriveRouteOption(
   index: number,
   preview: RecordLike,
   baseTaxAudit: RecordLike,
+  context: JurisdictionContext,
   values: {
     propertyValueUsd: number;
     bsdUsd: number;
@@ -1338,6 +2066,13 @@ function deriveRouteOption(
   const entityDuties = values.entityDutiesUsd || directDuties + values.entityIncrementalUsd;
   const entityAbsd = Math.max(0, values.directAbsdUsd + values.entityIncrementalUsd);
   const entityAllIn = values.propertyValueUsd + entityDuties;
+  const marketModel = asRecord(
+    asRecord(asRecord(preview.current_market_data).acquisition_duty_model).price_usd
+      ? asRecord(asRecord(preview.current_market_data).acquisition_duty_model)
+      : asRecord(preview.acquisition_duty_model),
+  );
+  const statusDuties = numberOr(marketModel.main_residence_total_duties_usd) || directDuties;
+  const statusAllIn = values.propertyValueUsd + statusDuties;
 
   const routeNumbers = (() => {
     if (kind === 'entity') {
@@ -1349,8 +2084,8 @@ function deriveRouteOption(
         incrementalDutyVsRecommendedUsd: values.entityIncrementalUsd,
         dutyDragPct: values.propertyValueUsd ? (entityDuties / values.propertyValueUsd) * 100 : 0,
         buyerCategory: 'Entity or trustee buyer route',
-        primaryFeeLabel: 'BSD',
-        secondaryFeeLabel: 'ABSD (entity/trustee)',
+        primaryFeeLabel: context.primaryFeeLabel,
+        secondaryFeeLabel: context.isUk ? 'Higher-rate and non-natural-person surcharge posture' : `${context.secondaryFeeLabel} (entity/trustee)`,
       };
     }
     if (kind === 'hold' || kind === 'stop') {
@@ -1362,8 +2097,21 @@ function deriveRouteOption(
         incrementalDutyVsRecommendedUsd: -directDuties,
         dutyDragPct: 0,
         buyerCategory: kind === 'hold' ? 'No acquisition released yet' : 'Acquisition stopped',
-        primaryFeeLabel: 'BSD deferred',
-        secondaryFeeLabel: 'ABSD deferred',
+        primaryFeeLabel: `${context.primaryFeeLabel} deferred`,
+        secondaryFeeLabel: `${context.secondaryFeeLabel} deferred`,
+      };
+    }
+    if (kind === 'status') {
+      return {
+        bsdUsd: Math.min(values.bsdUsd || statusDuties, statusDuties),
+        absdUsd: Math.max(0, statusDuties - Math.min(values.bsdUsd || statusDuties, statusDuties)),
+        totalDutiesUsd: statusDuties,
+        totalAcquisitionCostUsd: statusAllIn,
+        incrementalDutyVsRecommendedUsd: statusDuties - directDuties,
+        dutyDragPct: values.propertyValueUsd ? (statusDuties / values.propertyValueUsd) * 100 : 0,
+        buyerCategory: 'Eligibility-dependent buyer route',
+        primaryFeeLabel: context.primaryFeeLabel,
+        secondaryFeeLabel: `${context.secondaryFeeLabel} only if eligibility is proven before purchase`,
       };
     }
     return {
@@ -1373,9 +2121,9 @@ function deriveRouteOption(
       totalAcquisitionCostUsd: directAllIn,
       incrementalDutyVsRecommendedUsd: 0,
       dutyDragPct: values.propertyValueUsd ? (directDuties / values.propertyValueUsd) * 100 : 0,
-      buyerCategory: kind === 'status' ? 'Eligibility-dependent buyer route' : 'Foreign individual control case',
-      primaryFeeLabel: 'BSD',
-      secondaryFeeLabel: kind === 'status' ? 'ABSD unless eligibility is proven before purchase' : 'ABSD (foreign individual)',
+      buyerCategory: 'Foreign individual control case',
+      primaryFeeLabel: context.primaryFeeLabel,
+      secondaryFeeLabel: `${context.secondaryFeeLabel} (foreign individual)`,
     };
   })();
 
@@ -1413,9 +2161,9 @@ function deriveRouteOption(
                 : 'Route under release-readiness review',
     verdict:
       kind === 'direct'
-        ? 'Gated negotiation only'
+        ? 'Approved to negotiate under signed gates; no capital release'
         : kind === 'hold'
-          ? 'Hold Until Release Evidence Clears'
+          ? 'Hold under signed-gate control'
           : kind === 'stop' || kind === 'entity'
             ? 'Do Not Release'
             : 'Hold Unless Eligibility Is Proven',
@@ -1434,17 +2182,17 @@ function deriveRouteOption(
       incrementalDutyVsRecommendedUsd: roundCurrency(routeNumbers.incrementalDutyVsRecommendedUsd),
       dutyDragPct: routeNumbers.dutyDragPct,
       annualCarryingCostUsd: kind === 'hold' || kind === 'stop' ? 0 : roundCurrency(values.annualCarryingCostUsd),
-      dataQuality: 'Release-gated',
+      dataQuality: 'Signed route gates control release',
       mitigationTimeline:
         kind === 'hold' || kind === 'stop'
-          ? 'Reopen only after the missing evidence gate clears.'
+          ? 'Reopen only after the signed route gate clears.'
           : '72-hour bank/title/source drill, then 7-day counsel and family-authority close path.',
     },
-    jurisdictionValues: routeJurisdictionValues(kind, routeName),
-    evidenceGates: evidenceGates(kind),
-    responsibilityTransfer: responsibilityTransfer(kind),
+    jurisdictionValues: routeJurisdictionValues(kind, routeName, context),
+    evidenceGates: evidenceGates(kind, context),
+    responsibilityTransfer: responsibilityTransfer(kind, context),
     recordMismatchMap: recordMismatchMap(kind),
-    counselQuestionPack: counselQuestions(kind),
+    counselQuestionPack: counselQuestions(kind, context),
     stressSignals: routeStressSignals(kind, directDuties, values.entityIncrementalUsd, values.annualCarryingCostUsd),
     scenarios,
   };
@@ -1454,9 +2202,25 @@ export function buildRouteIntelligenceV2(
   resolvedSurfaceData: ResolvedDecisionMemoSurfaceData,
 ): RouteIntelligenceV2 {
   const memoData = resolvedSurfaceData.memoData;
-  const preview = asRecord(memoData.preview_data);
+  const memoDataRecord = asRecord(memoData);
+  const backendRecord = asRecord(resolvedSurfaceData.backendData);
+  const fullArtifactRecord = asRecord(resolvedSurfaceData.fullArtifact);
+  const preview = mergedPreviewData(memoDataRecord.preview_data, [
+    memoDataRecord,
+    backendRecord,
+    fullArtifactRecord,
+  ]);
   const peerStats = asRecord(preview.peer_cohort_stats);
   const nativeRouteIntelligence = asRecord(preview.route_intelligence_v2);
+  const jurisdictionContext = jurisdictionContextFromRecords([
+    preview,
+    memoData,
+    backendRecord,
+    fullArtifactRecord,
+    asRecord(memoDataRecord.artifact),
+    asRecord(backendRecord.artifact),
+    asRecord(fullArtifactRecord.artifact),
+  ]);
   const nativeRouteDrivers = textList(
     nativeRouteIntelligence.nativeRouteDrivers ??
       nativeRouteIntelligence.native_route_drivers ??
@@ -1469,93 +2233,18 @@ export function buildRouteIntelligenceV2(
       nativeRouteIntelligence.route_driver_register ??
       preview.route_driver_register,
   );
-  const nativePressureVariants = Array.isArray(nativeRouteIntelligence.pressureVariants)
-    ? nativeRouteIntelligence.pressureVariants
-    : Array.isArray(nativeRouteIntelligence.pressure_variants)
-      ? nativeRouteIntelligence.pressure_variants
-      : [];
-  const nativeRouteOptions = Array.isArray(nativeRouteIntelligence.routeOptions)
-    ? nativeRouteIntelligence.routeOptions
-    : Array.isArray(nativeRouteIntelligence.route_options)
-      ? nativeRouteIntelligence.route_options
-      : nativePressureVariants;
-  if (nativeRouteOptions.length > 0) {
-    const routes = nativeRouteOptions as RouteIntelligenceOptionV2[];
-    const recommendedRouteId = text(
-      nativeRouteIntelligence.recommendedRouteId ?? nativeRouteIntelligence.recommended_route_id,
-      text(routes[0]?.id, 'direct_foreign_individual'),
-    );
-    const selectedRoute =
-      routes.find((route) => route.id === recommendedRouteId) ??
-      routes[0];
-    const selectedLiveOptionRecord = asRecord(
-      nativeRouteIntelligence.selectedLiveOption ?? nativeRouteIntelligence.selected_live_option,
-    );
-    const proposedRouteRecord = asRecord(
-      nativeRouteIntelligence.proposedRoute ?? nativeRouteIntelligence.proposed_route,
-    );
-    return {
-      surfaceContract: ROUTE_INTELLIGENCE_V2_CONTRACT,
-      surfaceEyebrow: text(nativeRouteIntelligence.surfaceEyebrow ?? nativeRouteIntelligence.surface_eyebrow, 'Proposed Move Release Readiness'),
-      surfaceTitle: text(nativeRouteIntelligence.surfaceTitle ?? nativeRouteIntelligence.surface_title, 'Proposed Move Release Readiness Memo'),
-      nativeRouteDrivers,
-      nativeRouteDriverTitle: sanitizeRouteDriverTitle(
-        nativeRouteIntelligence.nativeRouteDriverTitle ??
-          nativeRouteIntelligence.native_route_driver_title,
-      ),
-      nativeRouteDriverSubtitle: text(
-        nativeRouteIntelligence.nativeRouteDriverSubtitle ??
-          nativeRouteIntelligence.native_route_driver_subtitle ??
-          peerStats.driver_analysis_subtitle,
-        'What the route-pattern witnesses actually change in this move.',
-      ),
-      nativeRouteDriverNote: sanitizeRouteDriverNote(
-        nativeRouteIntelligence.nativeRouteDriverNote ??
-          nativeRouteIntelligence.native_route_driver_note ??
-          peerStats.driver_analysis_note,
-      ),
-      routeDriverRegister,
-      selectorLabel: text(nativeRouteIntelligence.selectorLabel ?? nativeRouteIntelligence.selector_label, 'Route Being Released'),
-      selectorCopy: text(
-        nativeRouteIntelligence.selectorCopy ?? nativeRouteIntelligence.selector_copy,
-        'Review release-readiness routes against the proposed move. The downstream tax audit, jurisdiction readiness, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.',
-      ),
-      comparisonLabel: text(nativeRouteIntelligence.comparisonLabel ?? nativeRouteIntelligence.comparison_label, 'Release Readiness Routes'),
-      comparisonTitle: text(nativeRouteIntelligence.comparisonTitle ?? nativeRouteIntelligence.comparison_title, 'Routes reviewed against the proposed route, not new advisory options.'),
-      selectedRouteLabel: text(nativeRouteIntelligence.selectedRouteLabel ?? nativeRouteIntelligence.selected_route_label, 'Variant Under Review'),
-      memoReference: text(
-        nativeRouteIntelligence.memoReference ?? nativeRouteIntelligence.memo_reference,
-        text(memoData.intake_id, 'Release Readiness Memo'),
-      ),
-      generatedAt: typeof memoData.generated_at === 'string' ? memoData.generated_at : undefined,
-      corridor: text(nativeRouteIntelligence.corridor, 'Source -> Destination'),
-      move: text(nativeRouteIntelligence.move, 'Selected private-wealth move under release-readiness review'),
-      recommendedRouteId,
-      selectedLiveOption: Object.keys(selectedLiveOptionRecord).length > 0
-        ? selectedLiveOptionRecord as RouteIntelligenceOptionV2
-        : selectedRoute,
-      proposedRoute: Object.keys(proposedRouteRecord).length > 0
-        ? proposedRouteRecord as RouteIntelligenceOptionV2
-        : selectedRoute,
-      pressureVariants: (nativePressureVariants.length > 0 ? nativePressureVariants : routes) as RouteIntelligenceOptionV2[],
-      routeOptions: routes,
-      buyerProfileMatrix: coerceBuyerProfileMatrix(
-        nativeRouteIntelligence.buyerProfileMatrix ?? nativeRouteIntelligence.buyer_profile_matrix,
-      ),
-      principalValueGate: coercePrincipalValueGate(
-        nativeRouteIntelligence.principalValueGate ?? nativeRouteIntelligence.principal_value_gate,
-      ) ?? principalValueGateFromResolved(resolvedSurfaceData),
-      sourceRead: text(
-        nativeRouteIntelligence.sourceRead ?? nativeRouteIntelligence.source_read,
-        'This review applies the stored release-readiness evidence to the selected route and shows what must clear before capital, title, or seller commitments harden.',
-      ),
-    };
-  }
   const baseTaxAudit = getBaseTaxAudit(preview);
   const acquisitionAudit = asRecord(baseTaxAudit.acquisition_audit);
   const structureOptimization = asRecord(preview.structure_optimization);
   const comparisonBasis = asRecord(structureOptimization.comparison_basis);
   const carryingCost = asRecord(preview.carrying_cost_model);
+  const annual = asRecord(preview.annual_wealth_engine);
+  const annualCarryModel = asRecord(annual.carrying_cost_model);
+  const currentMarketModel = asRecord(asRecord(preview.current_market_data).acquisition_duty_model);
+  const annualCarryComponentSum = asArray(annualCarryModel.annual_components).reduce(
+    (sum, row) => sum + numberOr(row.amount_usd),
+    0,
+  );
   const startingPosition = asRecord(asRecord(preview.wealth_projection_data).starting_position);
   const purchasePriceUsd = numberOr(startingPosition.purchase_price_usd);
   const purchasePriceSgd = numberOr(startingPosition.purchase_price_sgd);
@@ -1606,9 +2295,113 @@ export function buildRouteIntelligenceV2(
     numberOr(comparisonBasis.entity_or_trustee_duties_usd) ||
     directDutiesUsd + entityIncrementalUsd;
   const annualCarryingCostUsd =
+    numberOr(currentMarketModel.annual_carrying_cost_before_opportunity_usd) ||
+    numberOr(annual.annual_carrying_cost_before_opportunity_usd) ||
+    numberOr(annualCarryModel.annual_carrying_cost_before_opportunity_usd) ||
+    annualCarryComponentSum ||
     numberOr(carryingCost.annual_carrying_cost_before_opportunity_usd) ||
     Math.round(propertyValueUsd * 0.018);
-
+  const routeNumericBasis: RouteNumericBasis = {
+    propertyValueUsd,
+    bsdUsd,
+    directAbsdUsd,
+    directDutiesUsd,
+    directAllInUsd,
+    entityDutiesUsd,
+    entityIncrementalUsd,
+    annualCarryingCostUsd,
+  };
+  const nativePressureVariants = Array.isArray(nativeRouteIntelligence.pressureVariants)
+    ? nativeRouteIntelligence.pressureVariants
+    : Array.isArray(nativeRouteIntelligence.pressure_variants)
+      ? nativeRouteIntelligence.pressure_variants
+      : [];
+  const nativeRouteOptions = Array.isArray(nativeRouteIntelligence.routeOptions)
+    ? nativeRouteIntelligence.routeOptions
+    : Array.isArray(nativeRouteIntelligence.route_options)
+      ? nativeRouteIntelligence.route_options
+      : nativePressureVariants;
+  if (nativeRouteOptions.length > 0) {
+    const routes = (nativeRouteOptions as RouteIntelligenceOptionV2[]).map((route) =>
+      normalizeRouteOptionForSurface(route, jurisdictionContext, preview, baseTaxAudit, routeNumericBasis),
+    );
+    const normalizedPressureVariants = (nativePressureVariants.length > 0
+      ? nativePressureVariants as RouteIntelligenceOptionV2[]
+      : routes
+    ).map((route) => normalizeRouteOptionForSurface(route, jurisdictionContext, preview, baseTaxAudit, routeNumericBasis));
+    const recommendedRouteId = text(
+      nativeRouteIntelligence.recommendedRouteId ?? nativeRouteIntelligence.recommended_route_id,
+      text(routes[0]?.id, 'direct_foreign_individual'),
+    );
+    const selectedRoute =
+      routes.find((route) => route.id === recommendedRouteId) ??
+      routes[0];
+    const selectedLiveOptionRecord = asRecord(
+      nativeRouteIntelligence.selectedLiveOption ?? nativeRouteIntelligence.selected_live_option,
+    );
+    const proposedRouteRecord = asRecord(
+      nativeRouteIntelligence.proposedRoute ?? nativeRouteIntelligence.proposed_route,
+    );
+    const selectedLiveOption = Object.keys(selectedLiveOptionRecord).length > 0
+      ? normalizeRouteOptionForSurface(selectedLiveOptionRecord as RouteIntelligenceOptionV2, jurisdictionContext, preview, baseTaxAudit, routeNumericBasis)
+      : selectedRoute;
+    const proposedRoute = Object.keys(proposedRouteRecord).length > 0
+      ? normalizeRouteOptionForSurface(proposedRouteRecord as RouteIntelligenceOptionV2, jurisdictionContext, preview, baseTaxAudit, routeNumericBasis)
+      : selectedRoute;
+    return {
+      surfaceContract: ROUTE_INTELLIGENCE_V2_CONTRACT,
+      surfaceEyebrow: text(nativeRouteIntelligence.surfaceEyebrow ?? nativeRouteIntelligence.surface_eyebrow, 'Proposed Move Release Readiness'),
+      surfaceTitle: text(nativeRouteIntelligence.surfaceTitle ?? nativeRouteIntelligence.surface_title, 'Proposed Move Release Readiness Memo'),
+      nativeRouteDrivers,
+      nativeRouteDriverTitle: sanitizeRouteDriverTitle(
+        nativeRouteIntelligence.nativeRouteDriverTitle ??
+          nativeRouteIntelligence.native_route_driver_title,
+      ),
+      nativeRouteDriverSubtitle: text(
+        nativeRouteIntelligence.nativeRouteDriverSubtitle ??
+          nativeRouteIntelligence.native_route_driver_subtitle ??
+          peerStats.driver_analysis_subtitle,
+        'What the route-pattern witnesses actually change in this move.',
+      ),
+      nativeRouteDriverNote: sanitizeRouteDriverNote(
+        nativeRouteIntelligence.nativeRouteDriverNote ??
+          nativeRouteIntelligence.native_route_driver_note ??
+          peerStats.driver_analysis_note,
+      ),
+      routeDriverRegister,
+      selectorLabel: text(nativeRouteIntelligence.selectorLabel ?? nativeRouteIntelligence.selector_label, 'Route Being Released'),
+      selectorCopy: text(
+        nativeRouteIntelligence.selectorCopy ?? nativeRouteIntelligence.selector_copy,
+        'Review release-readiness routes against the proposed move. The downstream tax audit, jurisdiction readiness, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.',
+      ),
+      comparisonLabel: text(nativeRouteIntelligence.comparisonLabel ?? nativeRouteIntelligence.comparison_label, 'Release Readiness Routes'),
+      comparisonTitle: text(nativeRouteIntelligence.comparisonTitle ?? nativeRouteIntelligence.comparison_title, 'Routes reviewed against the proposed route, not new advisory options.'),
+      selectedRouteLabel: text(nativeRouteIntelligence.selectedRouteLabel ?? nativeRouteIntelligence.selected_route_label, 'Variant Under Review'),
+      memoReference: text(
+        nativeRouteIntelligence.memoReference ?? nativeRouteIntelligence.memo_reference,
+        text(memoDataRecord.intake_id, 'Release Readiness Memo'),
+      ),
+      generatedAt: typeof memoDataRecord.generated_at === 'string' ? memoDataRecord.generated_at : undefined,
+      corridor: text(nativeRouteIntelligence.corridor, `${jurisdictionContext.sourceLabel} -> ${jurisdictionContext.destinationLabel}`),
+      move: text(nativeRouteIntelligence.move, text(memoDataRecord.decision_thesis, `Selected private-wealth move into ${jurisdictionContext.destinationLabel}`)),
+      recommendedRouteId,
+      selectedLiveOption,
+      proposedRoute,
+      pressureVariants: normalizedPressureVariants,
+      routeOptions: routes,
+      buyerProfileMatrix: coerceBuyerProfileMatrix(
+        nativeRouteIntelligence.buyerProfileMatrix ?? nativeRouteIntelligence.buyer_profile_matrix,
+        jurisdictionContext,
+      ),
+      principalValueGate: coercePrincipalValueGate(
+        nativeRouteIntelligence.principalValueGate ?? nativeRouteIntelligence.principal_value_gate,
+      ) ?? principalValueGateFromResolved(resolvedSurfaceData),
+      sourceRead: text(
+        nativeRouteIntelligence.sourceRead ?? nativeRouteIntelligence.source_read,
+        'This review applies the stored release-readiness evidence to the selected route and shows what must clear before capital, title, or seller commitments harden.',
+      ),
+    };
+  }
   const routeOptions =
     asArray(preview.route_options).length > 0
       ? asArray(preview.route_options)
@@ -1618,15 +2411,8 @@ export function buildRouteIntelligenceV2(
   const routes = (routeOptions.length > 0
     ? routeOptions
     : [{ route: 'Direct foreign individual acquisition', verdict: 'Preferred modified route' }]
-  ).map((route, index) => deriveRouteOption(route, index, preview, baseTaxAudit, {
-    propertyValueUsd,
-    bsdUsd,
-    directAbsdUsd,
-    directDutiesUsd,
-    directAllInUsd,
-    entityDutiesUsd,
-    entityIncrementalUsd,
-    annualCarryingCostUsd,
+  ).map((route, index) => deriveRouteOption(route, index, preview, baseTaxAudit, jurisdictionContext, {
+    ...routeNumericBasis,
   }));
 
   const recommendedRoute =
@@ -1650,16 +2436,16 @@ export function buildRouteIntelligenceV2(
     comparisonLabel: 'Release Readiness Routes',
     comparisonTitle: 'Routes reviewed against the proposed route, not new advisory options.',
     selectedRouteLabel: 'Variant Under Review',
-    memoReference: text(memoData.intake_id, text(resolvedSurfaceData.backendData?.intake_id, 'Release Readiness Memo')),
-    generatedAt: typeof memoData.generated_at === 'string' ? memoData.generated_at : undefined,
-    corridor: text(preview.corridor, 'Dubai -> Singapore'),
-    move: text(preview.live_decision, 'Dubai family purchasing a Singapore penthouse'),
+    memoReference: text(memoDataRecord.intake_id, text(resolvedSurfaceData.backendData?.intake_id, 'Release Readiness Memo')),
+    generatedAt: typeof memoDataRecord.generated_at === 'string' ? memoDataRecord.generated_at : undefined,
+    corridor: text(preview.corridor, `${jurisdictionContext.sourceLabel} -> ${jurisdictionContext.destinationLabel}`),
+    move: text(preview.live_decision, text(memoDataRecord.decision_thesis, `Selected private-wealth move into ${jurisdictionContext.destinationLabel}`)),
     recommendedRouteId: recommendedRoute?.id ?? 'direct_foreign_individual',
     selectedLiveOption: recommendedRoute,
     proposedRoute: recommendedRoute,
     pressureVariants: routes,
     routeOptions: routes,
-    buyerProfileMatrix: defaultBuyerProfileMatrix(),
+    buyerProfileMatrix: defaultBuyerProfileMatrix(jurisdictionContext),
     principalValueGate: principalValueGateFromResolved(resolvedSurfaceData),
     sourceRead: 'The route intelligence surface reads the stored decision memo and re-slices tax, jurisdiction, projection, owner, and evidence sections by selected route.',
   };

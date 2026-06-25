@@ -43,6 +43,7 @@ interface HouseGradeMemoSectionProps {
   citationMap?: Map<string, number>;
   embedDetailedSchedules?: boolean;
   releaseReadinessSharePayload?: ReleaseReadinessSharePayload | null;
+  hideEvidenceAppendix?: boolean;
   chapterId?:
     | 'hero'
     | 'governing-correction'
@@ -97,6 +98,7 @@ function publicHouseText(value: string): string {
     .replace(/\bExpected value creation\b/gi, 'Scenario discipline output')
     .replace(/\bExpected Net Worth\b/gi, 'Scenario net position')
     .replace(/\bNet Benefit\b/gi, 'Route discipline read')
+    .replace(/\bcompiler internals\b/gi, 'private build details')
     .replace(/\bValue Creation\b/gi, 'Scenario discipline output')
     .replace(/\bExpected Outcome\b/gi, 'Scenario outcome')
     .replace(/\bScore\s+\d+\s*\/\s*100\.?/gi, 'Readiness score evidence-gated.')
@@ -105,19 +107,23 @@ function publicHouseText(value: string): string {
     .replace(/\b50\s*\/\s*30\s*\/\s*20 probabilities\b/gi, 'base / stress / opportunity scenario weights; not a forecast')
     .replace(/\badvisor embarrassment\b/gi, 'adviser coordination failure')
     .replace(/\badviser embarrassment\b/gi, 'adviser coordination failure')
-    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, 'Conditional technology-wealth exposure check')
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, 'Source-wealth concentration check')
     .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, 'Conditional operating-income exposure check')
     .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, 'Conditional digital-settlement rail exposure check')
-    .replace(/\bTechnology-wealth exposure check\b/gi, 'Conditional technology-wealth exposure check')
+    .replace(/\bTechnology-wealth exposure check\b/gi, 'Source-wealth concentration check')
     .replace(/\bOperating-income exposure check\b/gi, 'Conditional operating-income exposure check')
     .replace(/\bDigital-settlement exposure check\b/gi, 'Conditional digital-settlement rail exposure check')
-    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, 'conditional technology-wealth exposure')
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, 'source-wealth concentration exposure')
+    .replace(/\bAI or technology exposed\b/gi, 'exposed to a documented source-wealth concentration')
+    .replace(/\bAI platform dependency\b/gi, 'documented platform concentration')
+    .replace(/\bAI\b/g, 'source-wealth concentration')
     .replace(/\bwar\s*\/\s*sanctions\b/gi, 'conditional geopolitical and sanctions exposure')
     .replace(/\bGulf conflict,\s*sanctions\b/gi, 'conditional geopolitical and sanctions exposure')
     .replace(/\bstablecoin rail stress\b/gi, 'conditional digital-settlement rail exposure')
     .replace(/\bBSA\/sanctions\b/gi, 'sanctions and bank-compliance controls')
     .replace(/\bBSA\b/g, 'bank-compliance controls')
     .replace(/\bshadow facilitators\b/gi, 'unverified intermediaries')
+    .replace(/\bConditional\s+Conditional\b/gi, 'Conditional')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -228,6 +234,20 @@ function formatUsdCompactValue(value: unknown, fallback = '—'): string {
   return `${sign}US$${Math.round(absolute).toLocaleString()}`;
 }
 
+function routeOutcomeMetric(value: unknown): string {
+  const numeric = toFiniteValue(value);
+  if (numeric === null || Math.abs(numeric) < 1) return '';
+  return formatUsdCompactValue(numeric, '');
+}
+
+function isSupportedMetric(value: unknown): boolean {
+  const display = asText(value, '').trim();
+  if (!display || display === '—') return false;
+  if (/^(?:US\$|\$)?0(?:\.0+)?(?:[KMB])?$/i.test(display)) return false;
+  if (/weighted route outcome|scenario[-\s]weighted|release conditions/i.test(display)) return false;
+  return true;
+}
+
 function formatReadableMetric(
   value: unknown,
   variant: 'rail' | 'proof' | 'default' = 'default',
@@ -299,11 +319,30 @@ function uniqueTexts(values: string[]): string[] {
 
 function metricValueClass(value: string | null | undefined, size: 'rail' | 'proof'): string {
   const display = (value || '').trim();
+  const metricLike = /^(?:[-~]?\s*)?(?:US\$|\$)?\d[\d,]*(?:\.\d+)?(?:[KMB])?%?$/i.test(display);
   const long = display.length >= 12;
+  if (!metricLike && long) {
+    return 'max-w-[12rem] break-words text-right text-sm font-semibold leading-snug text-foreground [overflow-wrap:anywhere]';
+  }
   if (size === 'rail') {
     return memoNumberClass(long ? 'stat' : 'inline', 'default', 'whitespace-nowrap leading-[0.98]');
   }
   return memoNumberClass(long ? 'stat' : 'metric', 'default', 'whitespace-nowrap leading-[0.98]');
+}
+
+function metricLikeDisplay(value: string | null | undefined): boolean {
+  const display = (value || '').trim();
+  if (!display) return false;
+  if (/^(?:[-~]?\s*)?(?:US\$|\$)?\d[\d,]*(?:\.\d+)?(?:[KMB])?%?$/i.test(display)) return true;
+  if (/^\d+\s*(?:h|hr|hrs|d|day|days)\s*\/\s*\d+\s*(?:h|hr|hrs|d|day|days)$/i.test(display)) return true;
+  return display.length <= 28 && !/[,.]/.test(display);
+}
+
+function splitRailValue(value: string | null | undefined): { value: string; note: string } {
+  const display = formatReadableMetric(value, 'rail').trim();
+  if (!display || !isSupportedMetric(display)) return { value: '', note: '' };
+  if (metricLikeDisplay(display)) return { value: display, note: '' };
+  return { value: '', note: display };
 }
 
 function statusTone(status?: string): Tone {
@@ -396,13 +435,17 @@ function normalizeListItems(values: unknown): NormalizedItem[] {
 
 function formatDecisionCode(value?: string): string {
   const normalized = (value || '').trim();
-  if (!normalized) return 'Decision Pending';
+  if (!normalized) return 'Decision controlled by signed gates';
   return normalized
     .replace(/_/g, ' ')
     .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
-    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
-    .replace(/\bDecision EV\b/gi, 'Model output - not release authority')
+    .replace(/\bRelease Differently\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\bGated negotiation only\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\bHold pending signed gates\b/gi, 'Hold under signed-gate control')
+    .replace(/\bDecision EV\b/gi, 'Route outcome read - not release authority')
     .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
+    .replace(/\bEvidence pending\b/gi, 'Evidence mapped')
+    .replace(/\bpending\b/gi, 'gate-controlled')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -410,18 +453,22 @@ function formatDecisionCode(value?: string): string {
 function principalSafeMemoText(value?: string | null): string {
   if (!value) return '';
   return value
-    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
+    .replace(/\bRelease Differently\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\bGated negotiation only\b/gi, 'Approved to negotiate under signed gates; no capital release')
     .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
-    .replace(/\bDecision EV\b/gi, 'Model output - not release authority')
+    .replace(/\bDecision EV\b/gi, 'Route outcome read - not release authority')
     .replace(/\bHouse Signal Rail\b/gi, 'Route Control Summary')
     .replace(/\bOPEN GATES\b/gi, 'Release Gate Status')
     .replace(/\bOpen Gates\b/gi, 'Release Gate Status')
     .replace(/\bOpen Release Gates\b/gi, 'Release Gate Status')
-    .replace(/\b0\s+to\s+close\b/gi, 'Evidence pending')
+    .replace(/\b0\s+to\s+close\b/gi, 'Evidence mapped')
     .replace(/\bDOCUMENTED\b/g, 'Indexed for review')
     .replace(/\bDocumented\b/g, 'Indexed for review')
-    .replace(/\bAll listed release gates have assigned owners\b/gi, 'Gate ownership assigned; release evidence pending')
+    .replace(/\bAll listed release gates have assigned owners\b/gi, 'Gate ownership assigned; release evidence mapped')
     .replace(/\bNo open release boundary recorded\b/gi, 'Release evidence remains open until signed evidence is received')
+    .replace(/\bHold pending signed gates\b/gi, 'Hold under signed-gate control')
+    .replace(/\bEvidence pending\b/gi, 'Evidence mapped')
+    .replace(/\bevidence pending\b/gi, 'evidence mapped')
     .replace(/\breleased differently\b/gi, 'advanced under signed gates')
     .replace(/\brelease differently\b/gi, 'advance under signed gates')
     .replace(/\bfuture-grandchild\b/gi, 'next-generation')
@@ -514,8 +561,12 @@ function fallbackEconomicProof(preview: Record<string, any>, memo: Record<string
   const acq = preview.cross_border_audit_summary?.acquisition_audit || {};
   const net = preview.cross_border_audit_summary?.net_yield_audit || {};
   const weighted = preview.wealth_projection_data?.probability_weighted_outcome || {};
-  const decisionEv = preview.scenario_tree_data?.decision_ev_usd || preview.scenario_tree_data?.expected_value_usd;
-  const decisionEvLabel = asText(preview.scenario_tree_data?.decision_ev_label, '');
+  const decisionEv =
+    preview.scenario_tree_data?.decision_ev_usd ??
+    preview.scenario_tree_data?.expected_value_usd ??
+    weighted.expected_value_creation ??
+    weighted.net_benefit_of_move ??
+    weighted.expected_net_worth_delta_usd;
   const annualCarry = toFiniteValue(
     net.annual_carrying_cost_before_opportunity_usd ||
       net.carrying_cost_model?.annual_carrying_cost_before_opportunity_usd,
@@ -539,7 +590,7 @@ function fallbackEconomicProof(preview: Record<string, any>, memo: Record<string
       : opportunityCostPer100Bps
         ? `${formatUsdCompactValue(opportunityCostPer100Bps)} per 100 bps`
         : 'Not relied on for release',
-    decision_ev: typeof decisionEv === 'number' ? `$${Math.round(decisionEv).toLocaleString()}` : decisionEvLabel || 'Release rule',
+    decision_ev: routeOutcomeMetric(decisionEv),
     drawdown_floor: preview.crisis_data?.stress_drawdown_floor || preview.crisis_data?.overall_resilience?.rating || 'Release-critical',
   };
 }
@@ -606,7 +657,7 @@ function fallbackContinuity(preview: Record<string, any>, releasePayload?: Relea
       ? `${Math.round(toFiniteValue(g1.route_control_score) as number)}/100`
       : toFiniteValue(g1.retention_score) !== null
         ? `${Math.round(toFiniteValue(g1.retention_score) as number)}% retained`
-        : 'Release-gated';
+        : 'Signed gate required';
   const compactOrNull = (value: unknown) => {
     const formatted = formatUsdCompactValue(value, '');
     return formatted && formatted !== '—' ? formatted : null;
@@ -623,7 +674,7 @@ function fallbackContinuity(preview: Record<string, any>, releasePayload?: Relea
     },
     {
       label: 'G1 -> G2 retained value',
-      value: asText(g2.net_to_heirs_formatted, '') || compactOrNull(g2Net) || 'Release-gated',
+      value: asText(g2.net_to_heirs_formatted, '') || compactOrNull(g2Net) || 'Signed gate required',
       detail: [g2.compatibility, g2.loss_point].filter(Boolean).join(' ') || 'Net continuity after estate drag and route friction.',
     },
     {
@@ -646,7 +697,7 @@ function fallbackContinuity(preview: Record<string, any>, releasePayload?: Relea
   ];
   const legacyHasValues = legacyItems.some((item) => {
     const value = asText(item.value, '');
-    return value && value !== '—' && value !== 'Release-gated';
+    return value && value !== '—' && value !== 'Release-gated' && value !== 'Signed gate required';
   });
   const releaseItems = releaseContinuityCards.map((card, index) => ({
     label: asText(card.label, `Continuity layer ${index + 1}`),
@@ -727,7 +778,7 @@ function deriveDecisionWindow(preview: Record<string, any>, gates: Record<string
   }
 
   return {
-    value: 'Release-gated',
+    value: 'Sign-off required',
     detail: 'The route remains governable only while bank, title, tax, authority, and source evidence remain synchronized.',
   };
 }
@@ -983,18 +1034,18 @@ function buildOwnershipSeats({
         tone: 'amber',
       },
       {
-        seat: 'UAE Route Counsel',
-        owner: propertyAdvisor ? `${asText(propertyAdvisor.name, 'Advisor')}${propertyAdvisor.role ? ` — ${asText(propertyAdvisor.role, '')}` : ''}` : 'UAE property / transaction counsel',
-        approvalRight: 'Controls whether the chosen UAE purchase route, title package, and SPA mechanics are actually executable.',
-        burden: 'Clear direct individual freehold purchase route, title, encumbrances, service-charge stack, SPA terms, and completion mechanics before any commitment is treated as hard.',
+        seat: 'Property Route Counsel',
+        owner: propertyAdvisor ? `${asText(propertyAdvisor.name, 'Advisor')}${propertyAdvisor.role ? ` — ${asText(propertyAdvisor.role, '')}` : ''}` : 'Property / transaction counsel',
+        approvalRight: 'Controls whether the chosen purchase route, title package, and contract mechanics are actually executable.',
+        burden: 'Clear buyer capacity, title, encumbrances, service-charge or management obligations, contract terms, and completion mechanics before any commitment is treated as hard.',
         stop: 'Title, allocation, or route mechanics fail and the file is still being advanced on broker comfort.',
         tone: 'amber',
       },
       {
         seat: 'Banking Release',
-        owner: bankAdvisor ? `${asText(bankAdvisor.name, 'Advisor')}${bankAdvisor.role ? ` — ${asText(bankAdvisor.role, '')}` : ''}` : 'UAE banking lead to be named',
+        owner: bankAdvisor ? `${asText(bankAdvisor.name, 'Advisor')}${bankAdvisor.role ? ` — ${asText(bankAdvisor.role, '')}` : ''}` : 'Source and receiving bank leads to be named',
         approvalRight: 'Controls whether capital can legally and operationally move through the route on time.',
-        burden: 'Complete onboarding, source-of-funds package, remittance path, and test transfer before the SPA execution window.',
+        burden: 'Complete onboarding, source-of-funds package, remittance path, receiving-bank acceptance, and test transfer before the contract execution window.',
         stop: 'Funds cannot move cleanly, test transfer fails, or onboarding remains conditional while the house is being asked to proceed.',
         tone: 'amber',
       },
@@ -1006,7 +1057,7 @@ function buildOwnershipSeats({
             ? `Family continuity seat — ${heirNames.join(' and ')}`
             : 'Succession counsel / family continuity seat',
         approvalRight: 'Controls whether the asset enters the house as a governed continuity asset rather than an offshore ownership problem for the next generation.',
-        burden: 'Lock the DIFC Will or approved equivalent route, beneficiary logic, governance steps, and heir briefing path before close.',
+        burden: 'Lock the approved succession route, beneficiary logic, governance steps, and next-generation briefing path before close.',
         stop: 'Succession remains open, heirs are uninformed, or the asset is treated as complete before continuity documents are settled.',
         tone: 'amber',
       },
@@ -1033,7 +1084,7 @@ function soundsGenericHeroCopy(text: string): boolean {
 function principalPurposeItems(source: string, destination: string, destinationAsset: string): NormalizedItem[] {
   return [
     {
-      text: `Keep one house answer in charge of the ${source} → ${destination} move so UK tax advice, UAE banking activation, transaction counsel, and family judgment do not diverge at signing.`,
+      text: `Keep one house answer in charge of the ${source} → ${destination} move so route-tax advice, source-bank activation, transaction counsel, and family judgment do not diverge at signing.`,
     },
     {
       text: `Strip out avoidable leakage before the ${destinationAsset} closes: day-one friction, onboarding delay, title slippage, probate drag, and later reporting clean-up.`,
@@ -1180,23 +1231,27 @@ function SignalRail({
   return (
     <SurfaceCard title={title} tone={tone} className="h-full">
       <div className="divide-y divide-border/15">
-        {usable.map((item) => (
-          <div key={item.label} className="py-4 first:pt-0 last:pb-0">
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr),auto] xl:items-start">
-              <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/75">{item.label}</p>
-                {item.note ? <p className="mt-3 max-w-xl break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">{item.note}</p> : null}
-              </div>
-              {item.value ? (
-                <div className="xl:justify-self-end xl:text-right">
-                  <p className={metricValueClass(formatReadableMetric(item.value, 'rail'), 'rail')}>
-                    {formatReadableMetric(item.value, 'rail')}
-                  </p>
+        {usable.map((item) => {
+          const rail = splitRailValue(item.value);
+          const mergedNote = uniqueTexts([rail.note, item.note || '']).join(' ');
+          return (
+            <div key={item.label} className="py-4 first:pt-0 last:pb-0">
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr),minmax(7rem,12rem)] xl:items-start">
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/75">{item.label}</p>
+                  {mergedNote ? <p className="mt-3 max-w-xl break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">{mergedNote}</p> : null}
                 </div>
-              ) : null}
+                {rail.value ? (
+                  <div className="min-w-0 xl:justify-self-end xl:text-right">
+                    <p className={metricValueClass(rail.value, 'rail')}>
+                      {rail.value}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </SurfaceCard>
   );
@@ -1265,6 +1320,7 @@ function CapitalExposurePanel({
   appreciationBasis?: string | null;
   drawdownFloor?: string | null;
 }) {
+  const showDecisionOutcome = isSupportedMetric(decisionEv);
   return (
     <SurfaceCard title="Capital And Exposure Proof" tone="gold">
       <div className="grid gap-8 2xl:grid-cols-[minmax(0,1.05fr),360px]">
@@ -1294,7 +1350,7 @@ function CapitalExposurePanel({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,0.92fr),minmax(0,1.08fr)]">
+          <div className={`mt-4 grid gap-4 ${showDecisionOutcome ? 'md:grid-cols-[minmax(0,0.92fr),minmax(0,1.08fr)]' : ''}`}>
             <div className="min-w-0 rounded-[24px] border border-red-500/15 bg-red-500/[0.04] p-5">
               <p className="text-[11px] uppercase tracking-[0.18em] text-red-500/75">Day-One Loss</p>
               <p className={`${metricValueClass(formatReadableMetric(dayOneLoss, 'proof'), 'proof')} mt-3`}>
@@ -1305,15 +1361,17 @@ function CapitalExposurePanel({
               </p>
             </div>
 
-            <div className="min-w-0 rounded-[24px] border border-gold/20 bg-gold/[0.06] p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-gold/75">Model output</p>
-              <p className={`${metricValueClass(formatReadableMetric(decisionEv, 'proof'), 'proof')} mt-3`}>
-                {formatReadableMetric(decisionEv, 'proof')}
-              </p>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-foreground">
-                {asText(decisionEvNote, 'Validated route expected value after the gate set clears.')}
-              </p>
-            </div>
+            {showDecisionOutcome ? (
+              <div className="min-w-0 rounded-[24px] border border-gold/20 bg-gold/[0.06] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-gold/75">Route outcome read</p>
+                <p className={`${metricValueClass(formatReadableMetric(decisionEv, 'proof'), 'proof')} mt-3`}>
+                  {formatReadableMetric(decisionEv, 'proof')}
+                </p>
+                <p className="mt-3 max-w-xl text-sm leading-relaxed text-foreground">
+                  {asText(decisionEvNote, 'Scenario discipline for the selected route; not a forecast or release authority.')}
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -2200,6 +2258,7 @@ export default function HouseGradeMemoSection({
   citationMap,
   embedDetailedSchedules = true,
   releaseReadinessSharePayload,
+  hideEvidenceAppendix = false,
   chapterId,
 }: HouseGradeMemoSectionProps) {
   const preview = previewData || {};
@@ -2228,6 +2287,9 @@ export default function HouseGradeMemoSection({
       Object.entries(memoEconomics).filter(([, value]) => asText(value, '') && asText(value, '') !== '—'),
     ),
   };
+  if (!isSupportedMetric(economics.decision_ev)) {
+    economics.decision_ev = '';
+  }
   const executionSequence = memo.execution_sequence || fallbackExecutionSequence(preview);
   const failureLogic = memo.failure_logic || fallbackFailureLogic(preview);
   const fallbackContinuityData: Record<string, any> = fallbackContinuity(preview, releaseReadinessSharePayload);
@@ -2395,8 +2457,8 @@ export default function HouseGradeMemoSection({
   ]
     .map((value) => typeof value === 'number' && Number.isFinite(value) ? value : 0)
     .find((value) => value > 0) ?? 0;
-  const routeWitnessLabel = routePatternSourceCount ? `${routePatternSourceCount} route-pattern source records` : 'the route-pattern source set';
   const decisionWindow = deriveDecisionWindow(preview, gates);
+  const routeOutcomeValue = asText(economics.decision_ev, '');
 
   const witnessCards = [
     {
@@ -2411,18 +2473,16 @@ export default function HouseGradeMemoSection({
       note: `${dayOneLossLabel} is paid before the house has proved the route.`,
       tone: 'red' as Tone,
     },
-    {
-      label: 'Model output',
-      value: asText(economics.decision_ev || scenarioTree.decision_ev_label, '—'),
-      note: scenarioTree.decision_ev_note || 'Validated route expected value after the gate set clears.',
-      tone: 'gold' as Tone,
-    },
-    {
-      label: 'Methodology records',
-      value: routePatternSourceCount ? `${routePatternSourceCount}` : 'Evidence gated',
-      note: routeEvidenceBasisNote || `${routeWitnessLabel} and governing objects inform why the release gate matters; they do not prove bank, title, tax, or family authority.`,
-      tone: 'default' as Tone,
-    },
+    ...(isSupportedMetric(routeOutcomeValue)
+      ? [
+          {
+            label: 'Route outcome read',
+            value: routeOutcomeValue,
+            note: scenarioTree.decision_ev_note || 'Scenario discipline for the selected route; not a forecast or release authority.',
+            tone: 'gold' as Tone,
+          },
+        ]
+      : []),
   ];
 
   const purposeSource = sourceJurisdiction || preview.source_jurisdiction || 'the source jurisdiction';
@@ -2807,10 +2867,10 @@ export default function HouseGradeMemoSection({
 
   const marketSignalRows = [
     {
-      label: 'Route-Pattern Source Records',
-      value: routePatternSourceCount ? `${routePatternSourceCount}` : 'Evidence gated',
-      displayValue: routePatternSourceCount ? `${routePatternSourceCount.toLocaleString()}` : 'Evidence gated',
-      detail: `${corridorReadLabel} route-pattern source records and corridor-adjacent purchase cases informing why each release gate matters.`,
+      label: 'Market File Depth',
+      value: routePatternSourceCount ? `${routePatternSourceCount}` : null,
+      displayValue: routePatternSourceCount ? `${routePatternSourceCount.toLocaleString()}` : null,
+      detail: `${corridorReadLabel} market, route, and purchase-case records inform bid discipline, seller timing, and release-gate priority.`,
     },
     {
       label: 'Current Decision Window',
@@ -2820,23 +2880,23 @@ export default function HouseGradeMemoSection({
     },
     {
       label: 'Tracked Market File',
-      value: developmentsCount ? `${developmentsCount.toLocaleString()}` : routePatternSourceCount ? `${routePatternSourceCount.toLocaleString()}` : 'Evidence gated',
-      displayValue: developmentsCount ? `${developmentsCount.toLocaleString()}` : routePatternSourceCount ? `${routePatternSourceCount.toLocaleString()}` : 'Evidence gated',
-      detail: `Tracked market records, source records, and related objects shaping the current ${corridorLabel} read.`,
+      value: developmentsCount ? `${developmentsCount.toLocaleString()}` : routePatternSourceCount ? `${routePatternSourceCount.toLocaleString()}` : null,
+      displayValue: developmentsCount ? `${developmentsCount.toLocaleString()}` : routePatternSourceCount ? `${routePatternSourceCount.toLocaleString()}` : null,
+      detail: `Tracked market records and related route objects shaping the current ${corridorLabel} read.`,
     },
     {
       label: 'Evidence Basis',
       value: routeEvidenceBasisNote ? 'Locked' : 'Partial',
       displayValue: routeEvidenceBasisNote ? 'Locked' : 'Partial',
-      detail: routeEvidenceBasisNote || `${routeWitnessLabel} and governing objects are present; private release conditions still require signed evidence.`,
+      detail: routeEvidenceBasisNote || 'Route-core evidence and governing objects are present; private release conditions still require signed title, tax, bank, and authority evidence.',
     },
   ];
 
   const resilienceRows = [
     {
       label: 'Overall Resilience',
-      value: 'Evidence gated',
-      displayValue: 'Evidence gated',
+      value: 'Conditional resilience',
+      displayValue: 'Conditional resilience',
       detail: asText(
         normalizedCrisis?.overall?.rating || crisis.overall_resilience?.rating,
         'Conditional resilience posture depends on source wealth, bank rails, counterparties, insurance, and settlement path.',
@@ -2923,7 +2983,7 @@ export default function HouseGradeMemoSection({
   const showValidatedRoute = !chapterId || chapterId === 'validated-route';
   const showLiveMarketCrisis = !chapterId || chapterId === 'live-market-crisis';
   const showContinuityOfficeCarry = !chapterId || chapterId === 'continuity-office-carry';
-  const showEvidence = !chapterId || chapterId === 'evidence';
+  const showEvidence = !hideEvidenceAppendix && (!chapterId || chapterId === 'evidence');
 
   const decisionRequirementColumns = [
     {
@@ -3079,8 +3139,8 @@ export default function HouseGradeMemoSection({
                 },
                 {
                   label: 'Route Confidence Signal',
-                  value: preview.hnwi_trends_confidence ? `${Math.round(preview.hnwi_trends_confidence * 100)}%` : 'Evidence gated',
-                  detail: `Methodology signal drawn from route-core evidence, ${routeWitnessLabel}, and the legal / banking rails under review. It is not legal, bank, title, or family-authority proof.`,
+                  value: preview.hnwi_trends_confidence ? `${Math.round(preview.hnwi_trends_confidence * 100)}%` : 'Sign-off required',
+                  detail: 'Route signal is drawn from route-core evidence, legal and tax posture, bank readiness, title work, and family-authority rails under review.',
                 },
               ]}
               tone="default"
@@ -3171,8 +3231,8 @@ export default function HouseGradeMemoSection({
           transactionValue={asText(economics.transaction_value, '—')}
           capitalDeployed={asText(economics.capital_deployed, '—')}
           dayOneLoss={asText(economics.day_one_loss, '—')}
-          decisionEv={asText(economics.decision_ev || scenarioTree.decision_ev_label, '—')}
-          decisionEvNote={scenarioTree.decision_ev_note || 'Validated route expected value after the gate set clears.'}
+          decisionEv={asText(economics.decision_ev, '')}
+          decisionEvNote={scenarioTree.decision_ev_note || 'Scenario discipline for the selected route; not a forecast or release authority.'}
           grossYield={asText(economics.gross_yield, '—')}
           netYield={asText(economics.net_yield, '—')}
           appreciationBasis={asText(economics.appreciation_basis, '—')}
@@ -3393,7 +3453,7 @@ export default function HouseGradeMemoSection({
                 </>
               ) : (
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Succession trigger remains release-gated until authority, use, fairness, veto, carry, and decision-memory records are signed.
+                  Succession trigger remains blocked until authority, use, fairness, veto, carry, and decision-memory records are signed.
                 </p>
               )}
             </SurfaceCard>

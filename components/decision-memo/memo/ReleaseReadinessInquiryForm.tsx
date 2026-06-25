@@ -98,7 +98,7 @@ export function ReleaseReadinessInquiryForm({
       </label>
       <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs leading-relaxed text-muted-foreground">
-          No names, account numbers, passports, or private documents are required in this form.
+          No names, account numbers, passports, or private documents are needed in this form.
         </p>
         <button
           type="submit"

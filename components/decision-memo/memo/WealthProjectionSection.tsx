@@ -185,7 +185,7 @@ function ScenarioTrajectoryChart({
               textAnchor="end"
               className="fill-muted-foreground text-[10px]"
             >
-              ${tick.toFixed(1)}M
+              {tick === 0 ? '' : `$${tick.toFixed(1)}M`}
             </text>
           </g>
         );
@@ -1282,7 +1282,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
   })();
 
   const weightedOutcome = pwOutcome;
-  const weightedStayValue = ((weightedOutcome as any)?.vs_cash_at_4pct ?? weightedOutcome?.vs_stay_expected ?? 0) as number;
+  const weightedStayValue = ((weightedOutcome as any)?.vs_cash_at_4pct ?? weightedOutcome?.vs_stay_expected) as number | undefined;
   const weightedRoiPct = (((weightedOutcome as any)?.true_roi_pct ?? weightedOutcome?.percentage_return ?? 0) as number);
   // Dynamic metrics for the selected scenario (structured data)
   // Display backend data directly - no frontend calculations
@@ -1576,7 +1576,11 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                 </div>
                 <div className="text-center p-4 bg-card rounded-lg">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">If Stay (4% cash)</p>
-                  <p className="text-xl font-bold text-muted-foreground">{formatCurrency(weightedStayValue)}</p>
+                  <p className="text-xl font-bold text-muted-foreground">
+                    {typeof weightedStayValue === 'number' && Number.isFinite(weightedStayValue)
+                      ? formatCurrency(weightedStayValue)
+                      : 'Comparator not used'}
+                  </p>
                 </div>
                 <div className="text-center p-4 bg-primary/20 rounded-lg border-2 border-primary/50">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Route discipline read</p>

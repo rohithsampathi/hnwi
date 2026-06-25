@@ -156,7 +156,7 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
             <AlertTriangle className="h-5 w-5 text-primary" />
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Release Gate Status</p>
             <p className="mt-1 text-sm font-semibold text-foreground">
-              {openGates.length ? `${openGates.length} unresolved` : 'Evidence pending'}
+              {openGates.length ? `${openGates.length} unresolved` : 'Evidence mapped'}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Gate ownership complete; release evidence remains open until signed evidence is received.

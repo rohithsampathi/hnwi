@@ -31,8 +31,10 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // API routes — NEVER browser-cache (auth-dependent, dynamic data)
-        source: '/api/:path*',
+        // API routes — NEVER browser-cache (auth-dependent, dynamic data).
+        // Keep the public release-readiness share read model out of this rule
+        // so its route handler can cache success and no-store failures.
+        source: '/api/:path((?!release-readiness/share).*)',
         headers: [
           {
             key: 'Cache-Control',

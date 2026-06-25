@@ -369,20 +369,40 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
     || !!audit.capital_gains_audit?.ftc_available
     || !!(audit.estate_tax_audit && !audit.estate_tax_audit.worldwide_applies);
   const footerLabel = hasAnyFtc ? 'Cross-Border Tax Audit  |  FTC Analysis' : 'Cross-Border Tax Audit  |  Route Tax Analysis';
+  const jurisdictionText = `${sourceJurisdiction} ${destinationJurisdiction}`.toLowerCase();
   const isDubaiResidentialRoute =
     !!acquisitionAudit
     && (
       acquisitionAudit.dld_transfer_fee !== undefined
       || /dubai|uae/i.test(destinationJurisdiction)
     );
+  const isUkResidentialRoute =
+    !!acquisitionAudit
+    && !isDubaiResidentialRoute
+    && /\b(uk|united kingdom|london|england|mayfair)\b/i.test(jurisdictionText);
+  const isSingaporeResidentialRoute =
+    !!acquisitionAudit
+    && !isDubaiResidentialRoute
+    && !isUkResidentialRoute
+    && /singapore/i.test(jurisdictionText);
   const primaryFeeLabel = acquisitionAudit?.primary_fee_label
     || (isDubaiResidentialRoute
       ? acquisitionAudit?.transfer_tax_schedule_rate_pct
         ? `DLD Registration Fee (${Number(acquisitionAudit.transfer_tax_schedule_rate_pct).toFixed(1)}%)`
         : 'DLD Registration Fee'
-      : 'BSD Stamp Duty');
+      : isUkResidentialRoute
+        ? 'Base SDLT'
+        : isSingaporeResidentialRoute
+          ? 'BSD Stamp Duty'
+          : 'Primary transfer duty');
   const secondaryFeeLabel = acquisitionAudit?.secondary_fee_label
-    || (isDubaiResidentialRoute ? 'Additional Transfer Charges' : 'ABSD (Foreign)');
+    || (isDubaiResidentialRoute
+      ? 'Additional Transfer Charges'
+      : isUkResidentialRoute
+        ? 'Non-resident + additional-dwelling surcharges'
+        : isSingaporeResidentialRoute
+          ? 'ABSD (Foreign)'
+          : 'Additional buyer surcharge');
   const primaryFeeValue = isDubaiResidentialRoute
     ? acquisitionAudit?.dld_transfer_fee
     : acquisitionAudit?.bsd_stamp_duty;

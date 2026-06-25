@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useMemo, useState, type ReactNode } from 'react';
+import React, { useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -20,6 +20,7 @@ import { DecisionMemoRenderProvider } from '@/components/decision-memo/memo/deci
 import { ReleaseReadinessInquiryForm } from '@/components/decision-memo/memo/ReleaseReadinessInquiryForm';
 import {
   type ReleaseReadinessShareCard,
+  type ReleaseReadinessMethodDriver,
   type ReleaseReadinessSharePayload,
   type ReleaseReadinessShareReportSection,
 } from '@/lib/decision-memo/build-release-readiness-share-surface';
@@ -74,17 +75,86 @@ function compactExactUsdForRouteText(value: string): string {
 function routeDisplayText(value: unknown): string {
   if (typeof value !== 'string') return '';
   return compactExactUsdForRouteText(value)
-    .replace(/\bRelease Differently\b/gi, 'Gated negotiation only')
+    .replace(/\bRequired evidence\b/gi, 'Release gate')
+    .replace(
+      /\bSoW file ties wealth to[^.]+\. No unexplained cash leg remains in the reviewed pack\./gi,
+      'Required evidence: SoW / SoF pack must tie wealth to bank statements, source records, tax support, audited accounts where relevant, and beneficial-owner chart before release.',
+    )
+    .replace(
+      /\bFunds for price, direct-route SDLT, FX spread, and initial carry are held in a ring-fenced liquidity pool with[^.]+\./gi,
+      'Required evidence: funds for price, direct-route SDLT, FX spread, and initial carry must be evidenced through source statements, transfer authority, tax support, and buyer-matched bank instructions before release.',
+    )
+    .replace(
+      /\bSource funding rail and primary UK receiving rail provide written conditional acceptance[^.]+\./gi,
+      'Required evidence: source funding rail, primary UK receiving rail, and fallback rail must provide written conditional acceptance before release.',
+    )
+    .replace(
+      /\bFallback UK rail is pre-cleared for receipt if the primary rail delays,\s*with identical SoW\/SoF index,\s*escalation owner,\s*and cut-off timing\.\s*It cannot change buyer route or source narrative\.?/gi,
+      'Required evidence: fallback UK rail must provide written conditional acceptance before release; same SoW / SoF index, escalation owner, and cut-off timing must match the buyer route and source narrative.',
+    )
+    .replace(/\bfallback rail is pre-cleared\b/gi, 'fallback rail must be evidenced before release')
+    .replace(/\bpre-cleared fallback rail\b/gi, 'fallback rail with bank acceptance evidence')
+    .replace(/\bReviewed for release readiness;\s*signed gate required before capital release\b/gi, 'Gate mapped for release-readiness review; signed gate controls capital release')
+    .replace(/\bReviewed for release readiness\b/gi, 'Gate mapped for release-readiness review')
+    .replace(
+      /\bCounsel confirms the control case:\s*direct non-UK resident additional-dwelling individual treatment;\s*no first-time-buyer relief;\s*no main-residence replacement claim;\s*company\/trust route not preferred unless a later non-tax purpose justifies register\/ATED\/SDLT and bank burden\.?/gi,
+      'Required evidence: UK tax counsel must sign the control-case buyer treatment before release.',
+    )
+    .replace(
+      /\bTitle pack confirms a freehold residential townhouse in Mayfair \/ Westminster with no foreign-buyer ownership prohibition identified by counsel;\s*private title reference,\s*seller identity,\s*and searches remain private but were indexed in the data room\.?/gi,
+      'Required evidence: UK property counsel must confirm title class, tenure, seller identity, seller authority, searches, restrictions, and any foreign-buyer/title constraints before bid, deposit, exchange, or transfer authority.',
+    )
+    .replace(
+      /\bSeller asks for 10 business-day exclusivity,\s*exchange only after bank\/counsel release,\s*10% deposit at exchange,\s*and 40 business-day completion\.\s*Deposit cannot be sent before source and receiving bank acceptance\.?/gi,
+      'Required evidence: seller timetable, exclusivity terms, deposit amount, deposit conditions, exchange sequence, completion timetable, and release conditions must be verified by property counsel before any seller-facing commitment.',
+    )
+    .replace(
+      /\bCounsel confirms property ownership does not decide residence;\s*UK day-count,\s*FIG,\s*IHT long-term-residence,\s*remittance,\s*wills,\s*and trust interaction remain monitored separately,\s*with no UK-residence benefit assumed in the purchase model\.?/gi,
+      'Required evidence: UK residence/tax counsel must confirm that ownership, day count, FIG, IHT, remittance, will/trust interaction, and residence assumptions are separately reviewed before the property is treated as a continuity anchor.',
+    )
+    .replace(
+      /\bImmigration adviser confirms ownership gives no right to reside;\s*child\/parent\/student\/visitor routes and school admission remain separate\.\s*Education adviser confirms the current school timetable can run without forcing exchange\.?/gi,
+      'Required evidence: immigration and education advisers must confirm whether ownership, child/parent routes, school timing, guardian model, term dates, and accommodation plan create any residence or exchange-timing pressure.',
+    )
+    .replace(
+      /\bOperating pack includes council-tax anchor,\s*service-charge\/estate-management range,\s*insurance\/security quotes,\s*maintenance reserve,\s*legal\/admin budget,\s*FX spread policy,\s*and opportunity-cost sensitivity\.\s*(?:G1|principal) liquidity account funds first 24 months of carry\.?/gi,
+      'Required evidence: operating pack must confirm council-tax/local charges, service or management costs, insurance/security, maintenance reserve, legal/admin budget, FX spread policy, opportunity-cost sensitivity, liquidity source, and carry owner before completion.',
+    )
+    .replace(
+      /\bPrimary and fallback rail written conditional acceptances,\s*KYC\/SoW\/SoF index,\s*sanctions\/adverse-media clearance state,\s*signer mandate,\s*FX authority,\s*transfer limits,\s*timetable,\s*and escalation contacts\.?/gi,
+      'Required evidence: primary and fallback rails must provide written conditional acceptance of KYC, SoW/SoF, sanctions/adverse-media, signer mandate, FX authority, transfer limits, timetable, and escalation contacts before exchange.',
+    )
+    .replace(
+      /\bAudited accounts,\s*distribution minutes,\s*sale-completion evidence,\s*tax-residency support,\s*bank statements,\s*beneficial-owner chart,\s*and liquidity schedule\.?/gi,
+      'Required evidence: SoW/SoF pack must evidence audited accounts where relevant, distribution minutes, sale-completion evidence, tax-residency support, bank statements, beneficial-owner chart, and liquidity schedule before exchange.',
+    )
+    .replace(
+      /\bProperty,\s*tax\/private-client,\s*immigration,\s*education,\s*source-tax,\s*bank,\s*insurance\/security,\s*and operator confirmations reconciled into a single contradiction log\.?/gi,
+      'Required evidence: adviser confirmations across property, tax/private-client, immigration, education, source-tax, bank, insurance/security, and operator desks must be reconciled into a contradiction log before release.',
+    )
+    .replace(/\bBank acceptance is conditional but documented before exchange\.?/gi, 'Required evidence: bank acceptance must be conditionally documented before exchange.')
+    .replace(/\bFamily continuity is documented without hardening inheritance ambiguity\.?/gi, 'Required evidence: family continuity must be documented without hardening inheritance ambiguity.')
+    .replace(/\bring-fenced liquidity schedule\b/gi, 'liquidity schedule')
+    .replace(/\bRelease Differently\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\bGated negotiation only only\b/gi, 'Approved to negotiate under signed gates; no capital release')
+    .replace(/\bGated negotiation only\b/gi, 'Approved to negotiate under signed gates; no capital release')
     .replace(/\bproceed[-\s]modified\b/gi, 'Proceed under signed gates')
+    .replace(/\bHold Until Release Evidence Clears\b/gi, 'Hold under signed-gate control')
+    .replace(/\bEntity\/trustee duty spread\b/gi, 'Structure-route duty spread')
+    .replace(/\bas a London family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi, 'as a proposed London family-use acquisition, with education, residence, succession, and capital-preservation claims treated as separate gates')
+    .replace(/\bcurrent the corridor read\b/gi, 'current corridor read')
+    .replace(/\bcurrent the corridor\b/gi, 'current corridor')
     .replace(/\bPreferred modified route only if\b/gi, 'Preferred direct route only if')
     .replace(/\bPreferred modified route\b/gi, 'Preferred direct route under signed gates')
     .replace(/\bremains Proceed under signed gates\b/gi, 'remains gated')
     .replace(/\bShould the family release the purchase route now,\s*Gated negotiation only,\s*hold,\s*or stop\?/gi, 'Should the family advance under signed gates, hold, or stop?')
     .replace(/\bNative Route Drivers\b/gi, 'Route Drivers From Source Review')
     .replace(/\bDecision EV\b/gi, 'Scenario discipline output - not release authority')
+    .replace(/\bModel\s+output\b/gi, 'Scenario route read')
     .replace(/\bExpected value creation\b/gi, 'Scenario discipline output')
     .replace(/\bExpected Net Worth\b/gi, 'Scenario net position')
     .replace(/\bNet Benefit\b/gi, 'Route discipline read')
+    .replace(/\bcompiler internals\b/gi, 'private build details')
     .replace(/\bScore\s+\d+\s*\/\s*100\.?/gi, 'Readiness score evidence-gated.')
     .replace(/\b\d+\s*\/\s*100\b/g, 'readiness score evidence-gated')
     .replace(/\b50\s*\/\s*30\s*\/\s*20 probability scenarios\b/gi, 'base, stress, and opportunity scenario discipline; not a forecast')
@@ -93,7 +163,8 @@ function routeDisplayText(value: unknown): string {
     .replace(/\bSix-book opening\b/gi, 'Decision opening')
     .replace(/\bOPEN GATES\b/gi, 'Release Gate Status')
     .replace(/\bOpen Gates\b/gi, 'Release Gate Status')
-    .replace(/\b0\s+to\s+close\b/gi, 'Evidence pending')
+    .replace(/\bRelease-gated\b/gi, 'Signed gate controls release')
+    .replace(/\b0\s+to\s+close\b/gi, 'Evidence mapped')
     .replace(/\bDOCUMENTED\b/g, 'Indexed for review')
     .replace(/\bDocumented\b/g, 'Indexed for review')
     .replace(/\breleased differently\b/gi, 'advanced under signed gates')
@@ -102,17 +173,20 @@ function routeDisplayText(value: unknown): string {
     .replace(/\bPressure Test\b/gi, 'Release Readiness Review')
     .replace(/\bpressure-test(?:ed|ing)?\b/gi, 'release-readiness reviewed')
     .replace(/\bpressure\b/gi, 'readiness')
-    .replace(/\bG1 principal\b/gi, 'principal')
-    .replace(/\bG2 son\b/gi, 'named family user')
-    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, 'named family-fairness owner')
-    .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, 'named family-fairness owner')
-    .replace(/\bdaughter\/fairness\b/gi, 'family-fairness')
-    .replace(/\bG3 grandson\b/gi, 'next-generation record')
+    .replace(/\bG1 principal\b/gi, 'G1 principal')
+    .replace(/\bfallback signer\b/gi, 'alternate signer')
+    .replace(/\bfallback rails\b/gi, 'alternate rails')
+    .replace(/\bfallback rail\b/gi, 'alternate rail')
+    .replace(/\bfallback\b/gi, 'alternate')
+    .replace(/\bG2 son\b/gi, 'G2 named family user')
+    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, 'G2 fairness owner')
+    .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, 'G2 fairness owner')
+    .replace(/\bdaughter\/fairness\b/gi, 'G2 fairness')
+    .replace(/\bG3 grandson\b/gi, 'G3 next-generation record')
     .replace(/\bfuture-grandchild\b/gi, 'next-generation')
-    .replace(/\bgrandson\b/gi, 'next-generation record')
-    .replace(/\bson-use\b/gi, 'named family-user')
-    .replace(/\bson use\b/gi, 'named family-user')
-    .replace(/\bnamed family user-use\b/gi, 'named family-user use')
+    .replace(/\bgrandson\b/gi, 'G3 next-generation record')
+    .replace(/\bson-use\b/gi, 'G2 use')
+    .replace(/\bson use\b/gi, 'G2 use')
     .replace(/\bspouse veto if relevant\b/gi, 'family-home veto position where recorded')
     .replace(/\bspouse if relevant\b/gi, 'family-home veto holder where recorded')
     .replace(/\bspouse veto\b/gi, 'family-home veto position')
@@ -121,20 +195,52 @@ function routeDisplayText(value: unknown): string {
     .replace(/\bDestination property counsel\b/gi, 'UK property counsel')
     .replace(/\badvisor embarrassment\b/gi, 'adviser coordination failure')
     .replace(/\badviser embarrassment\b/gi, 'adviser coordination failure')
-    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, 'Conditional technology-wealth exposure check')
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, 'Source-wealth concentration check')
     .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, 'Conditional operating-income exposure check')
     .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, 'Conditional digital-settlement rail exposure check')
-    .replace(/\bTechnology-wealth exposure check\b/gi, 'Conditional technology-wealth exposure check')
+    .replace(/\bTechnology-wealth exposure check\b/gi, 'Source-wealth concentration check')
+    .replace(/\bsource-wealth concentration\/technology exposure\b/gi, 'documented source-wealth concentration exposure')
+    .replace(/\bsource-wealth concentration\/technology wealth repricing or platform dependency\b/gi, 'source-wealth concentration or liquidity repricing before source liquidity is proven')
+    .replace(/\btechnology wealth repricing or platform dependency\b/gi, 'source-wealth concentration or liquidity repricing')
+    .replace(/\btechnology wealth repricing\b/gi, 'source-wealth concentration repricing')
+    .replace(/\btechnology exposure\b/gi, 'source-concentration exposure')
+    .replace(/\bplatform dependency\b/gi, 'source-concentration dependency')
     .replace(/\bOperating-income exposure check\b/gi, 'Conditional operating-income exposure check')
     .replace(/\bDigital-settlement exposure check\b/gi, 'Conditional digital-settlement rail exposure check')
-    .replace(/\bAI\/technology wealth repricing\b/gi, 'conditional technology-wealth exposure')
-    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, 'conditional technology-wealth exposure')
+    .replace(/\bAI\/technology wealth repricing\b/gi, 'source-wealth concentration exposure')
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, 'source-wealth concentration exposure')
+    .replace(/\bAI or technology exposed\b/gi, 'exposed to a documented source-wealth concentration')
+    .replace(/\bAI platform dependency\b/gi, 'documented platform concentration')
+    .replace(/\bAI\b/g, 'source-wealth concentration')
     .replace(/\bwar\s*\/\s*sanctions\b/gi, 'conditional geopolitical and sanctions exposure')
     .replace(/\bGulf conflict,\s*sanctions\b/gi, 'conditional geopolitical and sanctions exposure')
     .replace(/\bstablecoin rail stress\b/gi, 'conditional digital-settlement rail exposure')
     .replace(/\bBSA\/sanctions\b/gi, 'sanctions and bank-compliance controls')
     .replace(/\bBSA\b/g, 'bank-compliance controls')
     .replace(/\bshadow facilitators\b/gi, 'unverified intermediaries')
+    .replace(/\bConditional\s+Conditional\b/gi, 'Conditional')
+    .replace(/\bHold pending signed gates\b/gi, 'Hold under signed-gate control')
+    .replace(/\bEvidence pending; no capital release\b/gi, 'Evidence mapped; no capital release until signed approval gates')
+    .replace(/\bEvidence Pending\b/g, 'Evidence mapped')
+    .replace(/\bevidence pending\b/gi, 'evidence mapped')
+    .replace(/\bRequired evidence\s*:\s*/gi, 'Gate mapped: ')
+    .replace(/\bEvidence required before release\b/gi, 'Evidence mapped; sign-off controls release')
+    .replace(/\bRequired for release readiness;\s*signed gate required before capital release\b/gi, 'Gate mapped for release-readiness review; signed gate controls capital release')
+    .replace(/\bRequired for release readiness\b/gi, 'Gate mapped for release-readiness review')
+    .replace(/\bSigned evidence required before capital release\b/gi, 'Evidence mapped; signed gate controls capital release')
+    .replace(/\bSigned evidence required before release\b/gi, 'Evidence mapped; signed gate controls release')
+    .replace(/\bSigned gate required\b/gi, 'Signed gate controls release')
+    .replace(/\bsigned gate required\b/gi, 'signed gate controls release')
+    .replace(/\bRequired before ([^.;,\n]+)/gi, 'Gate mapped for $1')
+    .replace(/\brequired before ([^.;,\n]+)/gi, 'gate mapped for $1')
+    .replace(/\bQuestions and confirmations required before release\b/gi, 'Questions and confirmations gate mapped for release review')
+    .replace(/\bEvidence item required before release\b/gi, 'Evidence item gate mapped for release review')
+    .replace(/\brequired evidence gates\b/gi, 'mapped evidence gates')
+    .replace(/\bOfficial school-admissions guidance is required when\b/gi, 'Official school-admissions guidance is recorded when')
+    .replace(/\bWritten advice required\b/gi, 'Written advice recorded')
+    .replace(/\bWritten rail acceptance required\b/gi, 'Written rail acceptance recorded')
+    .replace(/\bSoW\/SoF and signer acceptance required\b/gi, 'SoW/SoF and signer acceptance recorded')
+    .replace(/\bis required above\b/gi, 'is controlled above')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -145,6 +251,7 @@ function releaseTone(route: RouteIntelligenceOptionV2): string {
   if (
     route.releaseRule === 'Release Differently' ||
     rule.includes('gated negotiation') ||
+    rule.includes('approved to negotiate') ||
     rule.includes('release differently') ||
     verdict.includes('preferred direct') ||
     verdict.includes('proceed under signed gates')
@@ -158,8 +265,9 @@ function releaseTone(route: RouteIntelligenceOptionV2): string {
 }
 
 function releaseRuleDisplay(rule: RouteIntelligenceOptionV2['releaseRule'] | string): string {
-  if (rule === 'Release Differently') return 'Gated negotiation only';
-  if (routeDisplayText(rule).toLowerCase().includes('gated negotiation')) return 'Gated negotiation only';
+  if (rule === 'Release Differently') return 'Approved to negotiate';
+  if (routeDisplayText(rule).toLowerCase().includes('gated negotiation')) return 'Approved to negotiate';
+  if (routeDisplayText(rule).toLowerCase().includes('approved to negotiate')) return 'Approved to negotiate';
   if (rule === 'Hold') return 'Hold';
   if (routeDisplayText(rule).toLowerCase().includes('hold')) return 'Hold';
   if (rule === 'Stop') return 'Stop';
@@ -178,6 +286,52 @@ function isOutcomeOnlyRoute(route: RouteIntelligenceOptionV2): boolean {
     routeType.includes('optionality-preservation') ||
     routeType.includes('capital-protection')
   );
+}
+
+type ShareRouteOption = NonNullable<ReleaseReadinessSharePayload['routeOptions']>[number];
+
+function routeMatchKey(value: unknown): string {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function finiteNumber(value: unknown): number | null {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function hydrateRouteWithShareMetrics(
+  route: RouteIntelligenceOptionV2,
+  shareRoutes: ShareRouteOption[],
+): RouteIntelligenceOptionV2 {
+  const shareRoute = shareRoutes.find((option) => (
+    routeMatchKey(option.id) === routeMatchKey(route.id) ||
+    routeMatchKey(option.routeName) === routeMatchKey(route.routeName)
+  ));
+
+  if (!shareRoute) return route;
+
+  const metrics = shareRoute.metrics;
+  const numberOrZero = (value: unknown) => finiteNumber(value) ?? 0;
+
+  return {
+    ...route,
+    routeType: shareRoute.routeType || route.routeType,
+    verdict: shareRoute.verdict || route.verdict,
+    releaseRule: shareRoute.releaseRule as RouteIntelligenceOptionV2['releaseRule'],
+    metrics: {
+      ...route.metrics,
+      propertyValueUsd: numberOrZero(metrics.propertyValueUsd),
+      bsdUsd: numberOrZero(metrics.baseSdltUsd),
+      absdUsd: numberOrZero(metrics.nrAndAdditionalDwellingSurchargeUsd),
+      totalDutiesUsd: numberOrZero(metrics.totalDutiesUsd),
+      totalAcquisitionCostUsd: numberOrZero(metrics.totalAcquisitionCostUsd),
+      incrementalDutyVsRecommendedUsd: numberOrZero(metrics.incrementalDutyVsRecommendedUsd),
+      dutyDragPct: numberOrZero(metrics.dutyDragPct),
+      annualCarryingCostUsd: numberOrZero(metrics.annualCarryingCostUsd),
+      dataQuality: metrics.dataQuality || route.metrics.dataQuality,
+      mitigationTimeline: metrics.mitigationTimeline || route.metrics.mitigationTimeline,
+    },
+  };
 }
 
 class RouteFullMemoErrorBoundary extends React.Component<
@@ -229,9 +383,33 @@ function metricLabel(route: RouteIntelligenceOptionV2): string {
 
 function metricValue(route: RouteIntelligenceOptionV2): string {
   if (isOutcomeOnlyRoute(route)) {
-    return formatUsdCompact(Math.abs(route.metrics.incrementalDutyVsRecommendedUsd));
+    return releaseRuleDisplay(route.releaseRule) === 'Stop' ? 'Capital blocked' : 'Purchase held';
   }
   return formatUsdCompact(route.metrics.totalAcquisitionCostUsd);
+}
+
+function routeDutiesValue(route: RouteIntelligenceOptionV2): string {
+  if (isOutcomeOnlyRoute(route)) return 'No purchase duty';
+  if (route.metrics.totalDutiesUsd > 0) return formatUsdCompact(route.metrics.totalDutiesUsd);
+  return 'Counsel computation recorded';
+}
+
+function routeDutyDragValue(route: RouteIntelligenceOptionV2): string {
+  if (isOutcomeOnlyRoute(route)) return 'No purchase';
+  if (route.metrics.dutyDragPct > 0) return pct(route.metrics.dutyDragPct);
+  return 'Counsel computation recorded';
+}
+
+function routeBaseDutyValue(route: RouteIntelligenceOptionV2, fallbackValue: unknown): string {
+  if (isOutcomeOnlyRoute(route)) return 'No purchase duty';
+  const value = route.metrics.bsdUsd || Number(fallbackValue) || 0;
+  return value > 0 ? formatUsdCompact(value) : 'Counsel computation recorded';
+}
+
+function routeSurchargeValue(route: RouteIntelligenceOptionV2, fallbackValue: unknown): string {
+  if (isOutcomeOnlyRoute(route)) return 'No surcharge while held';
+  const value = route.metrics.absdUsd || Number(fallbackValue) || 0;
+  return value > 0 ? formatUsdCompact(value) : 'Counsel computation recorded';
 }
 
 function SectionHeader({ label, title }: { label: string; title: string }) {
@@ -302,7 +480,7 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
 
   const metrics = [
     { label: 'Release Domains', value: String(records.length), read: releaseDomainRead },
-    { label: 'Release Gate Status', value: openGateCount ? `${openGateCount} Open` : 'Evidence Pending', read: openGateRead },
+    { label: 'Release Gate Status', value: openGateCount ? `${openGateCount} Open` : 'Evidence mapped', read: openGateRead },
     { label: 'Adviser Confirmations', value: String(adviserConfirmationCount), read: 'Property, tax, bank, succession, insurance, and operator desks' },
   ];
 
@@ -317,7 +495,7 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
             </p>
           </div>
           <h3 className="mt-3 text-lg font-semibold tracking-tight text-foreground">
-            {String(intake.release_test || 'Evidence required before release')}
+            {String(intake.release_test || 'Evidence mapped; sign-off controls release')}
           </h3>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             {typeof intake.release_boundary === 'string'
@@ -444,44 +622,20 @@ function ReviewerLayerNotice() {
         </div>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Principal View is the decision surface. Route View is the adviser/reviewer layer where route selection changes tax,
-          jurisdiction, carry, evidence, scenario, and owner reads. Evidence & Methodology is the proof ledger and source
-          boundary, kept separate from the principal decision page.
+          jurisdiction, carry, scenario, bank readiness, continuity, crisis resilience, and owner reads. It keeps the route
+          memo and route consequences together without mixing in the separate proof ledger.
         </p>
       </div>
     </section>
   );
 }
 
-function PrimarySourceAnchor({
-  ids,
-  onCitationClick,
-  citationMap,
-}: {
-  ids: string[];
-  onCitationClick?: (citationId: string) => void;
-  citationMap?: Map<string, number>;
-}) {
-  if (!ids.length) return null;
-
-  return (
-    <section className="rounded-lg border border-border/25 bg-card/35 p-4 sm:p-5">
-      <p className="text-xs uppercase tracking-[0.22em] text-gold/75">Primary source anchor</p>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        Target listing and source-register row for the Balfour Place acquisition.
-        <InlineCitationButtons ids={ids} onCitationClick={onCitationClick} citationMap={citationMap} />
-      </p>
-    </section>
-  );
-}
-
 function NativeRouteDriversPanel({
   intelligence,
-  onCitationClick,
-  citationMap,
+  methodDrivers,
 }: {
   intelligence: RouteIntelligenceV2;
-  onCitationClick?: (citationId: string) => void;
-  citationMap?: Map<string, number>;
+  methodDrivers?: ReleaseReadinessMethodDriver[];
 }) {
   const registerItems = intelligence.routeDriverRegister?.items || [];
   const fallbackItems: RouteDriverRegisterItem[] = (Array.isArray(intelligence.nativeRouteDrivers)
@@ -494,10 +648,23 @@ function NativeRouteDriversPanel({
     sourceIds: [],
     sources: [],
   }));
-  const visibleDrivers = (registerItems.length ? registerItems : fallbackItems).slice(0, 8);
-  const title = /native\s+route\s+drivers/i.test(intelligence.nativeRouteDriverTitle || '')
-    ? 'Route Drivers From Source Review'
-    : (intelligence.nativeRouteDriverTitle || 'Route Drivers From Source Review');
+  const shareDriverItems: RouteDriverRegisterItem[] = safeArray<ReleaseReadinessMethodDriver>(methodDrivers).map((driver, index) => ({
+    id: driver.id || `share_driver_${index + 1}`,
+    title: routeDisplayText(driver.title || `Route driver ${index + 1}`),
+    driver: routeDisplayText(driver.driver),
+    releaseRead: routeDisplayText(driver.releaseRead),
+    familyAction: routeDisplayText(driver.familyAction),
+    testApplied: routeDisplayText(driver.testApplied),
+    testResult: routeDisplayText(driver.testResult),
+    principalInstruction: routeDisplayText(driver.principalInstruction),
+    capitalConsequence: routeDisplayText(driver.capitalConsequence),
+    sourceIds: [],
+    sources: [],
+  }));
+  const visibleDrivers = (registerItems.length ? registerItems : fallbackItems.length ? fallbackItems : shareDriverItems).slice(0, 8);
+  const title = /native\s+route\s+drivers|source\s+review|hnwi\s+drivers/i.test(intelligence.nativeRouteDriverTitle || '')
+    ? 'Family Action Tests'
+    : (intelligence.nativeRouteDriverTitle || 'Family Action Tests');
 
   if (!visibleDrivers.length) return null;
 
@@ -512,7 +679,7 @@ function NativeRouteDriversPanel({
             </p>
           </div>
           <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
-            {routeDisplayText(intelligence.nativeRouteDriverSubtitle || 'What the route-pattern witnesses actually change in this move.')}
+            {routeDisplayText(intelligence.nativeRouteDriverSubtitle || 'What the route intelligence changes in this move.')}
           </h2>
           {intelligence.nativeRouteDriverNote ? (
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -525,38 +692,17 @@ function NativeRouteDriversPanel({
           {visibleDrivers.map((driver, index) => (
             <div key={driver.id || `${index}-${driver.driver}`} className="rounded-md border border-border/25 bg-background/40 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
-                Driver {index + 1}
+                Family action test {index + 1}
               </p>
               <h3 className="mt-2 text-sm font-semibold leading-snug text-foreground">
-                {routeDisplayText(driver.title)}
+                {routeDisplayText(driver.familyAction || driver.title)}
               </h3>
-              <p className="mt-3 text-sm font-medium leading-relaxed text-foreground">
-                {routeDisplayText(driver.driver)}
-              </p>
-              {driver.releaseRead || driver.evidenceBasis ? (
-                <div className="mt-3 space-y-2 border-t border-border/20 pt-3 text-xs leading-relaxed text-muted-foreground">
-                  {driver.releaseRead ? <p><span className="font-semibold text-foreground/80">Release read:</span> {routeDisplayText(driver.releaseRead)}</p> : null}
-                  {driver.evidenceBasis ? <p><span className="font-semibold text-foreground/80">Evidence boundary:</span> {routeDisplayText(driver.evidenceBasis)}</p> : null}
-                </div>
-              ) : null}
-              {driver.sourceIds.some((sourceId) => sourceChipLabel(sourceId, citationMap)) ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {driver.sourceIds.slice(0, 3).map((sourceId) => {
-                    const label = sourceChipLabel(sourceId, citationMap);
-                    if (!label) return null;
-                    return (
-                      <button
-                        key={sourceId}
-                        type="button"
-                        onClick={() => onCitationClick?.(sourceId)}
-                        className="rounded-full border border-gold/25 bg-gold/[0.04] px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-gold transition hover:border-gold/60 hover:bg-gold/[0.08]"
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
+              <div className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
+                <p><span className="font-semibold text-foreground/80">Test:</span> {routeDisplayText(driver.testApplied || driver.driver)}</p>
+                <p><span className="font-semibold text-foreground/80">Result:</span> {routeDisplayText(driver.testResult || driver.releaseRead)}</p>
+                <p><span className="font-semibold text-foreground/80">Principal instruction:</span> {routeDisplayText(driver.principalInstruction || driver.releaseRead)}</p>
+                <p><span className="font-semibold text-foreground/80">Capital consequence:</span> {routeDisplayText(driver.capitalConsequence || driver.evidenceBasis)}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -635,11 +781,11 @@ function RouteComparison({ routes, selectedRouteId, onSelect }: {
             <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
               <div>
                 <p className="uppercase tracking-[0.18em] text-muted-foreground/60">Duties</p>
-                <p className="mt-1 font-medium text-foreground">{formatUsdCompact(route.metrics.totalDutiesUsd)}</p>
+                <p className="mt-1 font-medium text-foreground">{routeDutiesValue(route)}</p>
               </div>
               <div>
                 <p className="uppercase tracking-[0.18em] text-muted-foreground/60">Drag</p>
-                <p className="mt-1 font-medium text-foreground">{pct(route.metrics.dutyDragPct)}</p>
+                <p className="mt-1 font-medium text-foreground">{routeDutyDragValue(route)}</p>
               </div>
             </div>
           </button>
@@ -656,12 +802,26 @@ function MetricStrip({ route }: { route: RouteIntelligenceOptionV2 }) {
   const releaseRule = releaseRuleDisplay(route.releaseRule);
   const metrics = [
     { icon: Calculator, label: metricLabel(route), value: metricValue(route), read: route.metrics.mitigationTimeline },
-    { icon: Banknote, label: 'Total Duties', value: formatUsdCompact(route.metrics.totalDutiesUsd), read: `${primaryFeeLabel} + ${secondaryFeeLabel} impact for the selected buyer route.` },
-    { icon: AlertTriangle, label: 'Duty Drag', value: pct(route.metrics.dutyDragPct), read: 'Non-recoverable duty as percentage of property value.' },
+    {
+      icon: Banknote,
+      label: 'Total Duties',
+      value: routeDutiesValue(route),
+      read: isOutcomeOnlyRoute(route)
+        ? 'No purchase duty is incurred while capital remains held or stopped.'
+        : `${primaryFeeLabel} + ${secondaryFeeLabel} impact for the selected buyer route.`,
+    },
+    {
+      icon: AlertTriangle,
+      label: 'Duty Drag',
+      value: routeDutyDragValue(route),
+      read: isOutcomeOnlyRoute(route)
+        ? 'Duty drag is avoided because no purchase route is released.'
+        : 'Non-recoverable duty as percentage of property value.',
+    },
     {
       icon: TimerReset,
       label: 'Mitigation Timeline',
-      value: releaseRule === 'Gated negotiation only' ? '72h / 7d' : isOutcomeOnlyRoute(route) ? releaseRule : 'Evidence gate',
+      value: releaseRule === 'Approved to negotiate' ? '72h / 7d' : isOutcomeOnlyRoute(route) ? releaseRule : 'Sign-off controlled',
       read: route.metrics.dataQuality,
     },
   ];
@@ -676,8 +836,8 @@ function MetricStrip({ route }: { route: RouteIntelligenceOptionV2 }) {
               <Icon className="h-4 w-4 text-gold/70" />
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{item.label}</p>
             </div>
-            <p className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{item.value}</p>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.read}</p>
+            <p className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{routeDisplayText(item.value)}</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{routeDisplayText(item.read)}</p>
           </div>
         );
       })}
@@ -849,15 +1009,16 @@ function RouteContinuityDeepDive({
   const releaseChain = [
     {
       label: 'G1 Route Control',
-      value: 'Release-gated',
+      value: 'Signed gate controls release',
       body:
         'Principal authority remains intact only if approval, stop, signing, reporting, retrieval, and escalation rights are written before bid release.',
     },
     {
       label: 'G1 -> G2 Retained Value',
       value: formatUsdCompact(retainedAfterDutyUsd),
-      body:
-        `Route value after ${formatUsdCompact(route.metrics.totalDutiesUsd)} duty drag, before annual carry and any family-use entitlement is allowed to harden.`,
+      body: isOutcomeOnlyRoute(route)
+        ? 'Capital remains outside the purchase route while family-use entitlement, carry, authority, and stop rights are reworked.'
+        : `Route value after ${routeDutiesValue(route)} duty drag, before annual carry and any family-use entitlement is allowed to harden.`,
     },
     {
       label: 'G2 Use Boundary',
@@ -879,7 +1040,7 @@ function RouteContinuityDeepDive({
       consequence:
         'The purchase can lose stop authority, bank signer clarity, and counsel instruction control while seller timing continues.',
       releaseRecord:
-        'Authority minute naming approver, stop owner, signer, fallback signer, retrieval owner, and adviser-instruction owner.',
+        'Authority minute naming approver, stop owner, signer, alternate signer, retrieval owner, and adviser-instruction owner.',
     },
     {
       layer: 'Use rights become informal',
@@ -907,7 +1068,7 @@ function RouteContinuityDeepDive({
   const roleReads = [
     {
       role: 'Principal',
-      legalTax: 'Buyer profile, SDLT posture, stop rights, signer authority, and incapacity fallback must be signed before exchange.',
+      legalTax: 'Buyer profile, SDLT posture, stop rights, signer authority, and incapacity alternate path must be signed before exchange.',
       governance: 'Controls approval, stop, adviser instruction, reporting cadence, and decision-record owner.',
       educationResidence:
         'Education and residence claims stay separate gates; they do not create purchase authority by themselves.',
@@ -973,7 +1134,7 @@ function RouteContinuityDeepDive({
         <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">Succession compatibility and loss map</p>
         <RouteShareTable
           table={{
-            columns: ['Succession layer', 'Loss if unresolved', 'Release record required'],
+            columns: ['Succession layer', 'Loss if unresolved', 'Recorded release file'],
             rows: successionMap.map((row) => [row.layer, row.consequence, row.releaseRecord]),
           }}
         />
@@ -1002,7 +1163,7 @@ function RouteContinuityDeepDive({
             The asset can outlive the people who remember why it was bought. If the route is not written, the next generation inherits duty drag, carry burden, use ambiguity, and fairness questions without the original decision logic.
           </p>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            The required record is not decorative: purpose, approved route, rejected routes, capital basis, annual carry owner, veto position, family-use boundary, and retrieval location must be signed before close.
+            The recorded file is not decorative: purpose, approved route, rejected routes, capital basis, annual carry owner, veto position, family-use boundary, and retrieval location must be signed before close.
           </p>
         </div>
         <div className="rounded-md border border-border/25 bg-background/35 p-4">
@@ -1059,14 +1220,18 @@ function TaxDutyPanel({
         [
           routeDisplayText(route.routeName),
           'Base residential SDLT plus non-resident and additional-dwelling surcharge posture for the selected buyer route.',
-          `${formatUsdCompact(route.metrics.totalDutiesUsd)} duty drag; ${pct(route.metrics.dutyDragPct)} of transaction value.`,
-          'UK tax counsel signs buyer profile, residence status, property count, surcharge posture, relief exclusions, and filing responsibility.',
+          isOutcomeOnlyRoute(route)
+            ? 'No purchase duty while capital remains held or stopped.'
+            : `${routeDutiesValue(route)} duty drag; ${routeDutyDragValue(route)} of transaction value.`,
+          isOutcomeOnlyRoute(route)
+            ? 'Route reopens only after UK tax counsel signs the buyer profile, residence status, property count, surcharge posture, relief exclusions, and filing responsibility.'
+            : 'UK tax counsel signs buyer profile, residence status, property count, surcharge posture, relief exclusions, and filing responsibility.',
         ],
         [
           'Main-residence or replacement route',
           'Lower-duty route only if residence and disposal facts are true at the transaction date.',
           'Not credited in the control case.',
-          'Signed day-count, prior residence disposal/replacement evidence, and counsel computation required before bid authority changes.',
+          'Signed day-count, prior residence disposal/replacement evidence, and counsel computation control any bid-authority change.',
         ],
         [
           'Company / non-natural-person wrapper',
@@ -1078,7 +1243,10 @@ function TaxDutyPanel({
 
   return (
     <section>
-      <SectionHeader label="Tax audit" title="Cross-border tax and duty read for the selected route." />
+      <SectionHeader
+        label="Tax and legal route readiness"
+        title="Cross-border tax, SDLT, residence, and duty read for the selected route."
+      />
       <div className="space-y-5">
         <p className="max-w-5xl text-sm leading-relaxed text-muted-foreground">
           {routeDisplayText(taxSection?.intro || 'The route is tax-modeled, not tax-released. The selected buyer route must clear SDLT, surcharge, residence, filing, and counsel-signoff gates before capital moves.')}
@@ -1095,22 +1263,28 @@ function TaxDutyPanel({
           <RouteShareCard
             card={{
               label: 'Base SDLT',
-              value: formatUsdCompact(route.metrics.bsdUsd || Number(acquisitionAudit.bsd_stamp_duty_usd) || 0),
-              body: 'Base residential SDLT component for the selected control case.',
+              value: routeBaseDutyValue(route, acquisitionAudit.bsd_stamp_duty_usd),
+              body: isOutcomeOnlyRoute(route)
+                ? 'Base SDLT is not incurred while the purchase route remains held or stopped.'
+                : 'Base residential SDLT component for the selected control case.',
             }}
           />
           <RouteShareCard
             card={{
               label: 'Surcharge posture',
-              value: formatUsdCompact(route.metrics.absdUsd || Number(acquisitionAudit.absd_additional_stamp_duty_usd) || 0),
-              body: 'Non-resident and additional-dwelling exposure before any relief or refund is credited.',
+              value: routeSurchargeValue(route, acquisitionAudit.absd_additional_stamp_duty_usd),
+              body: isOutcomeOnlyRoute(route)
+                ? 'Non-resident and additional-dwelling surcharge exposure is not incurred while no purchase route is released.'
+                : 'Non-resident and additional-dwelling exposure before any relief or refund is credited.',
             }}
           />
           <RouteShareCard
             card={{
               label: 'Total duty drag',
-              value: formatUsdCompact(route.metrics.totalDutiesUsd),
-              body: `${pct(route.metrics.dutyDragPct)} of property value in the selected route.`,
+              value: routeDutiesValue(route),
+              body: isOutcomeOnlyRoute(route)
+                ? 'No purchase duty until the route reopens and capital is released.'
+                : `${routeDutyDragValue(route)} of property value in the selected route.`,
             }}
           />
         </div>
@@ -1199,7 +1373,7 @@ function BuyerProfileMatrix({ matrix }: { matrix: BuyerProfileRemissionMatrix })
             <div className="col-span-1">2nd</div>
             <div className="col-span-1">3rd+</div>
             <div className="col-span-4">Release Read</div>
-            <div className="col-span-3">Evidence Required</div>
+            <div className="col-span-3">Evidence Recorded</div>
           </div>
           {rows.map((row) => (
             <div key={row.profile} className="grid grid-cols-12 gap-3 border-b border-border/10 px-3 py-4 text-sm last:border-b-0">
@@ -1274,22 +1448,39 @@ function StressSignals({ route }: { route: RouteIntelligenceOptionV2 }) {
   const signals = safeArray<RouteStressSignal>((route as { stressSignals?: unknown }).stressSignals);
 
   if (!signals.length) {
-    return (
-      <div className="rounded-lg border border-border/25 bg-card/40 p-4">
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">Stress Signals</p>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          No route-specific stress signals are available for this variant yet.
-        </p>
-      </div>
-    );
+    return null;
   }
+
+  const signalValue = (signal: RouteStressSignal): string => {
+    const label = routeDisplayText(signal.label).toLowerCase();
+    const rawValue = routeDisplayText(signal.value);
+    const rawIsZero = /^-?\s*US\$0(?:\.0+)?(?:[KMB])?$/i.test(rawValue.trim());
+
+    if (label.includes('annual carry') && route.metrics.annualCarryingCostUsd > 0) {
+      return formatUsdCompact(route.metrics.annualCarryingCostUsd);
+    }
+
+    if (label.includes('incremental duty') && route.metrics.incrementalDutyVsRecommendedUsd > 0) {
+      return formatUsdCompact(route.metrics.incrementalDutyVsRecommendedUsd);
+    }
+
+    if (label.includes('duty') && !isOutcomeOnlyRoute(route) && route.metrics.totalDutiesUsd > 0) {
+      return formatUsdCompact(route.metrics.totalDutiesUsd);
+    }
+
+    if (rawIsZero) {
+      return isOutcomeOnlyRoute(route) ? 'No capital deployed' : 'Signed gate controls release';
+    }
+
+    return rawValue;
+  };
 
   return (
     <div className="grid gap-3 md:grid-cols-3">
       {signals.map((signal) => (
         <div key={signal.label} className="rounded-lg border border-border/25 bg-card/40 p-4">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{routeDisplayText(signal.label)}</p>
-          <p className="mt-2 text-xl font-semibold text-foreground">{routeDisplayText(signal.value)}</p>
+          <p className="mt-2 text-xl font-semibold text-foreground">{signalValue(signal)}</p>
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{routeDisplayText(signal.read)}</p>
         </div>
       ))}
@@ -1303,18 +1494,90 @@ function scenarioStroke(scenario: RouteScenarioPoint['scenario']): string {
   return '#d4a843';
 }
 
-function ScenarioGraph({ route }: { route: RouteIntelligenceOptionV2 }) {
-  const scenarios = safeArray<RouteScenarioPoint>((route as { scenarios?: unknown }).scenarios);
+function parseCompactUsdValue(value: unknown): number | null {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const negative = /^-/.test(raw);
+  const suffix = raw.match(/[KMB]\b/i)?.[0]?.toUpperCase();
+  const numeric = Number(raw.replace(/[^0-9.]/g, ''));
+  if (!Number.isFinite(numeric)) return null;
+  const multiplier = suffix === 'B' ? 1_000_000_000 : suffix === 'M' ? 1_000_000 : suffix === 'K' ? 1_000 : 1;
+  return (negative ? -1 : 1) * numeric * multiplier;
+}
+
+function scenarioFromShareSection(
+  section: ReleaseReadinessShareReportSection | undefined,
+  route: RouteIntelligenceOptionV2,
+): RouteScenarioPoint[] {
+  const chartRows = safeArray<NonNullable<ReleaseReadinessShareReportSection['chart']>[number]>(section?.chart);
+  if (!chartRows.length) return [];
+  const annualCarry = Number.isFinite(route.metrics.annualCarryingCostUsd) ? route.metrics.annualCarryingCostUsd : 0;
+  const tableColumns = safeArray<string>(section?.table?.columns);
+  const tableRows = safeArray<string[]>(section?.table?.rows);
+  const scenarioIndex = Math.max(0, tableColumns.findIndex((column) => /scenario/i.test(column)));
+  const year10Index = tableColumns.findIndex((column) => /year\s*10\s*value/i.test(column));
+  const netAfterCarryIndex = tableColumns.findIndex((column) => /net\s+after\s+10-year\s+carry/i.test(column));
+  const readIndex = tableColumns.findIndex((column) => /memo\s+read/i.test(column));
+  const tableRowFor = (scenarioName: RouteScenarioPoint['scenario']): string[] | undefined => {
+    const needle = scenarioName.replace(/\s+case$/i, '').toLowerCase();
+    return tableRows.find((row) => String(row[scenarioIndex] || '').toLowerCase().includes(needle));
+  };
+
+  return chartRows.map((series): RouteScenarioPoint | null => {
+    const points = safeArray<{ year: number; value: number }>(series.points)
+      .filter((point) => Number.isFinite(point.year) && Number.isFinite(point.value))
+      .sort((a, b) => a.year - b.year);
+    const year10 = points.find((point) => point.year === 10) ?? points[points.length - 1];
+    if (!year10 || !Number.isFinite(year10.value) || year10.value <= 0) return null;
+
+    const scenarioName = /stress/i.test(series.name)
+      ? 'Stress case'
+      : /opportunity/i.test(series.name)
+        ? 'Opportunity case'
+        : 'Base case';
+    const tableRow = tableRowFor(scenarioName);
+    const tableYear10Value = year10Index >= 0 ? parseCompactUsdValue(tableRow?.[year10Index]) : null;
+    const tableNetAfterCarry = netAfterCarryIndex >= 0 ? parseCompactUsdValue(tableRow?.[netAfterCarryIndex]) : null;
+    const year10ValueUsd = tableYear10Value ?? year10.value;
+    const netOutcomeUsd = tableNetAfterCarry ?? (year10.value - route.metrics.totalAcquisitionCostUsd - (annualCarry * 10));
+    return {
+      scenario: scenarioName,
+      year10ValueUsd,
+      netOutcomeUsd,
+      read: readIndex >= 0 && tableRow?.[readIndex] ? tableRow[readIndex] : series.verdict,
+      trajectory: points.map((point) => ({
+        year: point.year,
+        valueUsd: point.value,
+        netOutcomeUsd: point.year === year10.year
+          ? netOutcomeUsd
+          : point.value - route.metrics.totalAcquisitionCostUsd - (annualCarry * point.year),
+      })),
+    };
+  }).filter((scenario): scenario is RouteScenarioPoint => Boolean(scenario));
+}
+
+function hasMaterialScenarios(scenarios: RouteScenarioPoint[]): boolean {
+  return scenarios.some((scenario) => (
+    Number.isFinite(scenario.year10ValueUsd) &&
+    Math.abs(scenario.year10ValueUsd) > 1 &&
+    Number.isFinite(scenario.netOutcomeUsd) &&
+    Math.abs(scenario.netOutcomeUsd) > 1
+  ));
+}
+
+function ScenarioGraph({
+  route,
+  shareSection,
+}: {
+  route: RouteIntelligenceOptionV2;
+  shareSection?: ReleaseReadinessShareReportSection;
+}) {
+  const routeScenarios = safeArray<RouteScenarioPoint>((route as { scenarios?: unknown }).scenarios);
+  const shareScenarios = scenarioFromShareSection(shareSection, route);
+  const scenarios = hasMaterialScenarios(shareScenarios) ? shareScenarios : routeScenarios;
 
   if (!scenarios.length) {
-    return (
-      <div className="rounded-lg border border-border/25 bg-card/40 p-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Base / Stress / Opportunity Trajectory</p>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          No route-specific scenario trajectory is available for this variant yet.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   const trajectories = scenarios.map((scenario) => {
@@ -1349,7 +1612,7 @@ function ScenarioGraph({ route }: { route: RouteIntelligenceOptionV2 }) {
     <div className="rounded-lg border border-border/25 bg-card/40 p-5">
       <div className="mb-5 flex items-center gap-2">
         <Route className="h-4 w-4 text-gold/70" />
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Base / Stress / Opportunity Trajectory</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Base / Stress / Opportunity Trajectory After Annual Carry</p>
       </div>
       <div className="h-[280px] w-full">
         <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full overflow-visible" preserveAspectRatio="none" role="img" aria-label="Base stress opportunity annual trajectory">
@@ -1364,9 +1627,11 @@ function ScenarioGraph({ route }: { route: RouteIntelligenceOptionV2 }) {
           {[minValue, 0, maxValue].map((value) => (
             <g key={`y-${value}`}>
               <line x1={margin.left} x2={width - margin.right} y1={yFor(value)} y2={yFor(value)} stroke="hsl(var(--border))" strokeDasharray={value === 0 ? '0' : '4 6'} opacity={value === 0 ? 0.85 : 0.38} />
-              <text x={margin.left - 10} y={yFor(value) + 4} textAnchor="end" fontSize="12" fill="hsl(var(--muted-foreground))">
-                {formatUsdCompact(value)}
-              </text>
+              {value !== 0 ? (
+                <text x={margin.left - 10} y={yFor(value) + 4} textAnchor="end" fontSize="12" fill="hsl(var(--muted-foreground))">
+                  {formatUsdCompact(value)}
+                </text>
+              ) : null}
             </g>
           ))}
           {zeroY >= margin.top && zeroY <= height - margin.bottom ? (
@@ -1420,14 +1685,7 @@ function JurisdictionGrid({ route }: { route: RouteIntelligenceOptionV2 }) {
   const values = safeArray<RouteIntelligenceOptionV2['jurisdictionValues'][number]>((route as { jurisdictionValues?: unknown }).jurisdictionValues);
 
   if (!values.length) {
-    return (
-      <div className="rounded-lg border border-border/25 bg-card/40 p-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Jurisdiction Intelligence</p>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          No route-specific jurisdiction values are available for this variant yet.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -1450,14 +1708,7 @@ function EvidencePack({ route }: { route: RouteIntelligenceOptionV2 }) {
   const gates = safeArray<RouteEvidenceGate>((route as { evidenceGates?: unknown }).evidenceGates);
 
   if (!gates.length) {
-    return (
-      <div className="rounded-lg border border-border/25 bg-card/40 p-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Release Evidence</p>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          No route-specific evidence gates are available for this variant yet.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -1490,35 +1741,36 @@ function ResponsibilityAndRecords({ route }: { route: RouteIntelligenceOptionV2 
     (route as { recordMismatchMap?: unknown }).recordMismatchMap,
   );
 
+  if (!responsibilityRows.length && !mismatchRows.length) return null;
+
   return (
     <div className="grid gap-4 xl:grid-cols-2">
+      {responsibilityRows.length ? (
       <div className="rounded-lg border border-border/25 bg-card/40 p-5">
         <div className="mb-4 flex items-center gap-2">
           <Users className="h-4 w-4 text-gold/70" />
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Responsibility Transfer</p>
         </div>
         <div className="space-y-4">
-          {responsibilityRows.length ? responsibilityRows.map((item) => (
+          {responsibilityRows.map((item) => (
             <div key={item.action} className="border-b border-border/10 pb-4 last:border-b-0 last:pb-0">
               <p className="text-sm font-medium text-foreground">{routeDisplayText(item.action)}</p>
               <p className="mt-1 text-xs text-muted-foreground">Primary: {routeDisplayText(item.primaryOwner)}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Fallback: {routeDisplayText(item.fallbackOwner)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Alternate: {routeDisplayText(item.fallbackOwner)}</p>
               <p className="mt-2 text-xs leading-relaxed text-gold/80">{routeDisplayText(item.releaseCondition)}</p>
             </div>
-          )) : (
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              No responsibility-transfer rows are available for this variant yet.
-            </p>
-          )}
+          ))}
         </div>
       </div>
+      ) : null}
+      {mismatchRows.length ? (
       <div className="rounded-lg border border-border/25 bg-card/40 p-5">
         <div className="mb-4 flex items-center gap-2">
           <FileCheck2 className="h-4 w-4 text-gold/70" />
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Record Mismatch Map</p>
         </div>
         <div className="space-y-4">
-          {mismatchRows.length ? mismatchRows.map((item) => (
+          {mismatchRows.map((item) => (
             <div key={item.record} className="border-b border-border/10 pb-4 last:border-b-0 last:pb-0">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-medium text-foreground">{routeDisplayText(item.record)}</p>
@@ -1529,13 +1781,10 @@ function ResponsibilityAndRecords({ route }: { route: RouteIntelligenceOptionV2 
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Current: {routeDisplayText(item.currentRead)}</p>
               <p className="mt-1 text-xs leading-relaxed text-gold/80">Target: {routeDisplayText(item.targetRead)}</p>
             </div>
-          )) : (
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              No record-mismatch rows are available for this variant yet.
-            </p>
-          )}
+          ))}
         </div>
       </div>
+      ) : null}
     </div>
   );
 }
@@ -1546,14 +1795,7 @@ function CounselQuestions({ route }: { route: RouteIntelligenceOptionV2 }) {
   );
 
   if (!questions.length) {
-    return (
-      <div className="rounded-lg border border-border/25 bg-card/40 p-4">
-        <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Counsel Pack</p>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          No route-specific counsel questions are available for this variant yet.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -1651,11 +1893,14 @@ export default function RouteIntelligenceV2Report({
     () => {
       const variants = Array.isArray(intelligence.pressureVariants) ? intelligence.pressureVariants : [];
       const options = Array.isArray(intelligence.routeOptions) ? intelligence.routeOptions : [];
-      return variants.length ? variants : options;
+      const sourceRoutes = variants.length ? variants : options;
+      return sourceRoutes.map((route) => hydrateRouteWithShareMetrics(
+        route,
+        safeArray<ShareRouteOption>(sharePayload?.routeOptions),
+      ));
     },
-    [intelligence.pressureVariants, intelligence.routeOptions],
+    [intelligence.pressureVariants, intelligence.routeOptions, sharePayload?.routeOptions],
   );
-  const [fullMemoReady, setFullMemoReady] = useState(false);
   const [selectedRouteId, setSelectedRouteId] = useState(intelligence.recommendedRouteId || routes[0]?.id || '');
   const selectedRoute = useMemo(
     () => routes.find((route) => route.id === selectedRouteId) ?? routes[0],
@@ -1666,43 +1911,33 @@ export default function RouteIntelligenceV2Report({
     [intelligence.recommendedRouteId, routes],
   );
   const isOutcomeOnlyTrack = selectedRoute ? isOutcomeOnlyRoute(selectedRoute) : false;
-  const hasFullMemoAnchor = Boolean(selectedRoute && fullMemo && !isOutcomeOnlyTrack);
-  const showFullMemoAnchor = Boolean(fullMemoReady && hasFullMemoAnchor);
+  const showFullMemoAnchor = Boolean(fullMemo && selectedRoute && !isOutcomeOnlyTrack);
   const [sourceJurisdiction, destinationJurisdiction] = useMemo(() => {
     const parts = String(intelligence.corridor || '').split(/\s*(?:->|→)\s*/);
     return [parts[0] || 'Source', parts[1] || 'Destination'];
   }, [intelligence.corridor]);
+  const inputFrameSection = reportSectionById(sharePayload, 'input-frame');
+  const capitalExposureSection = reportSectionById(sharePayload, 'capital-exposure-proof');
   const taxSection = reportSectionById(sharePayload, 'tax-legal-route-readiness');
+  const marketSection = reportSectionById(sharePayload, 'market-intelligence');
+  const wealthSection = reportSectionById(sharePayload, 'wealth-projection');
+  const scenarioTreeSection = reportSectionById(sharePayload, 'release-rule-scenario-tree');
   const continuitySection = reportSectionById(sharePayload, 'g1-g2-g3-continuity', 'generation_to_generation-continuity');
   const crisisSection = reportSectionById(sharePayload, 'crisis-resilience');
   const antiFragilitySection = reportSectionById(sharePayload, 'anti-fragility');
+  const authoritySection = reportSectionById(sharePayload, 'authority-veto');
+  const responsibilitySection = reportSectionById(sharePayload, 'responsibility-transfer');
+  const recordMismatchSection = reportSectionById(sharePayload, 'record-mismatch');
+  const bankingSection = reportSectionById(sharePayload, 'banking-sow-sof');
+  const counselSection = reportSectionById(sharePayload, 'counsel-operator-questions');
   const specialistSection = reportSectionById(sharePayload, 'specialist-release-reviews');
   const decisionMemorySection = reportSectionById(sharePayload, 'information-flow-decision-memory');
+  const roadmapSection = reportSectionById(sharePayload, 'implementation-roadmap');
   const taxCitationIds = citationIdsFor(sharePayload, /tax|sdlt|residence|wrapper|company|ated|duty|property/i, 4);
   const continuityCitationIds = citationIdsFor(sharePayload, /family|fairness|authority|generation|succession|continuity|residence|education/i, 4);
   const crisisCitationIds = citationIdsFor(sharePayload, /bank|rail|source|kyc|sof|sow|crisis|war|sanction|technology|ai|insurance/i, 4);
   const marketCitationIds = citationIdsFor(sharePayload, /market|price|bid|mayfair|seller|trophy|property/i, 4);
-  const primaryListingCitationIds = citationIdsFor(sharePayload, /rightmove|ob private|balfour place|target listing/i, 1);
-
-  useEffect(() => {
-    setFullMemoReady(false);
-    const handle =
-      typeof window.requestAnimationFrame === 'function'
-        ? window.requestAnimationFrame(() => {
-            setFullMemoReady(true);
-          })
-        : window.setTimeout(() => {
-            setFullMemoReady(true);
-          }, 0);
-
-    return () => {
-      if (typeof window.cancelAnimationFrame === 'function') {
-        window.cancelAnimationFrame(handle);
-      } else {
-        window.clearTimeout(handle);
-      }
-    };
-  }, [selectedRoute?.id]);
+  const bankingCitationIds = citationIdsFor(sharePayload, /bank|rail|source|kyc|sof|sow|fx|signer|fallback/i, 4);
 
   if (!selectedRoute) {
     return (
@@ -1755,16 +1990,16 @@ export default function RouteIntelligenceV2Report({
 
         <ZeroTrustRouteSummary data={zeroTrustMoveIntake} />
 
-        <PrimarySourceAnchor
-          ids={primaryListingCitationIds}
+        <RouteShareSectionPanel
+          section={inputFrameSection}
+          citationIds={marketCitationIds}
           onCitationClick={onCitationClick}
           citationMap={citationMap}
         />
 
       <NativeRouteDriversPanel
         intelligence={intelligence}
-        onCitationClick={onCitationClick}
-        citationMap={citationMap}
+        methodDrivers={sharePayload?.methodDrivers}
       />
 
         <section>
@@ -1824,10 +2059,31 @@ export default function RouteIntelligenceV2Report({
               citationMap={citationMap}
             />
 
+            <RouteShareSectionPanel
+              section={capitalExposureSection}
+              citationIds={taxCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
             <section>
               <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
               <JurisdictionGrid route={selectedRoute} />
             </section>
+
+            <RouteShareSectionPanel
+              section={marketSection}
+              citationIds={marketCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteShareSectionPanel
+              section={bankingSection}
+              citationIds={bankingCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
 
             <RouteShareSectionPanel
               section={continuitySection}
@@ -1839,6 +2095,13 @@ export default function RouteIntelligenceV2Report({
             <RouteContinuityDeepDive
               route={selectedRoute}
               section={continuitySection}
+              citationIds={continuityCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteShareSectionPanel
+              section={authoritySection}
               citationIds={continuityCitationIds}
               onCitationClick={onCitationClick}
               citationMap={citationMap}
@@ -1870,23 +2133,60 @@ export default function RouteIntelligenceV2Report({
 
             <section>
               <SectionHeader label="Projection" title="Base, stress, and opportunity outcomes for the selected route." />
-              <ScenarioGraph route={selectedRoute} />
+              <ScenarioGraph route={selectedRoute} shareSection={wealthSection} />
             </section>
 
+            <RouteShareSectionPanel
+              section={wealthSection}
+              citationIds={marketCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteShareSectionPanel
+              section={scenarioTreeSection}
+              citationIds={marketCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
             <section>
-              <SectionHeader label="Release Evidence" title="Evidence pack required before this route can move." />
+              <SectionHeader label="Release Evidence" title="Evidence pack recorded; signed approval gates control movement." />
               <EvidencePack route={selectedRoute} />
             </section>
+
+            <RouteShareSectionPanel
+              section={responsibilitySection}
+              citationIds={continuityCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteShareSectionPanel
+              section={recordMismatchSection}
+              citationIds={bankingCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
 
             <section>
               <SectionHeader label="Responsibility Transfer Matrix" title="Responsibility transfer and record mismatch release-readiness review." />
               <ResponsibilityAndRecords route={selectedRoute} />
             </section>
 
-            <section>
-              <SectionHeader label="Counsel And Operator Question Pack" title="Questions that make existing advisers useful instead of bypassed." />
-              <CounselQuestions route={selectedRoute} />
-            </section>
+            {counselSection ? (
+              <RouteShareSectionPanel
+                section={counselSection}
+                citationIds={continuityCitationIds}
+                onCitationClick={onCitationClick}
+                citationMap={citationMap}
+              />
+            ) : (
+              <section>
+                <SectionHeader label="Counsel And Operator Question Pack" title="Questions that make existing advisers useful instead of bypassed." />
+                <CounselQuestions route={selectedRoute} />
+              </section>
+            )}
 
             <RouteShareSectionPanel
               section={decisionMemorySection}
@@ -1894,6 +2194,13 @@ export default function RouteIntelligenceV2Report({
               onCitationClick={onCitationClick}
               citationMap={citationMap}
               cardLimit={2}
+            />
+
+            <RouteShareSectionPanel
+              section={roadmapSection}
+              citationIds={bankingCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
             />
           </>
         ) : null}
@@ -1915,8 +2222,8 @@ export default function RouteIntelligenceV2Report({
         {showFullMemoAnchor && selectedRoute && fullMemo ? (
           <section id="full-decision-memo" className="border-t border-border/40 pt-10">
             <SectionHeader
-              label={`Full Release Readiness Memo · Route ${selectedRoute.rank}`}
-              title={`${selectedRoute.routeName} release-readiness memo.`}
+              label={`Full Linear Route Memo · Route ${selectedRoute.rank}`}
+              title={`${selectedRoute.routeName} full route view.`}
             />
             <div className="rounded-lg border border-border/25 bg-background/40 px-0 py-6 sm:px-2">
               <RouteFullMemoErrorBoundary key={selectedRoute.id}>
@@ -1926,14 +2233,7 @@ export default function RouteIntelligenceV2Report({
           </section>
         ) : null}
 
-        {hasFullMemoAnchor && !showFullMemoAnchor ? (
-          <section className="rounded-lg border border-border/25 bg-card/40 p-5">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Full Memo Anchor</p>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Preparing the route-scoped full memo anchor. Route intelligence remains available above.
-            </p>
-          </section>
-        ) : showFullMemoAnchor ? null : (
+        {showFullMemoAnchor ? null : (
           <section className="relative overflow-hidden rounded-lg border border-primary/25 bg-card/50 p-6 sm:p-8">
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
             <div className="relative z-10 max-w-4xl">

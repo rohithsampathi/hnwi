@@ -53,7 +53,7 @@ function numberValue(value: unknown): number {
   return 0;
 }
 
-function money(value: unknown, fallback = "Release-gated"): string {
+function money(value: unknown, fallback = "Signed gate controls release"): string {
   const numeric = numberValue(value);
   if (numeric <= 0) return fallback;
   const absolute = Math.abs(numeric);
@@ -83,9 +83,13 @@ function compactExactUsdInText(value: string): string {
 function cleanDisplayText(value: unknown): string {
   if (typeof value !== "string") return "";
   return compactExactUsdInText(value)
-    .replace(/\bRelease Differently\b/gi, "Gated negotiation only")
-    .replace(/\bGated negotiation only only\b/gi, "Gated negotiation only")
+    .replace(/\bRelease Differently\b/gi, "Approved to negotiate under signed gates; no capital release")
+    .replace(/\bGated negotiation only only\b/gi, "Approved to negotiate under signed gates; no capital release")
+    .replace(/\bGated negotiation only\b/gi, "Approved to negotiate under signed gates; no capital release")
     .replace(/\bproceed[-\s]modified\b/gi, "Proceed under signed gates")
+    .replace(/\bas a London family base,\s*education\/continuity node,\s*and capital-preservation asset\b/gi, "as a proposed London family-use acquisition, with education, residence, succession, and capital-preservation claims treated as separate gates")
+    .replace(/\bcurrent the corridor read\b/gi, "current corridor read")
+    .replace(/\bcurrent the corridor\b/gi, "current corridor")
     .replace(/\bPreferred modified route only if\b/gi, "Preferred direct route only if")
     .replace(/\bPreferred modified route\b/gi, "Preferred direct route under signed gates")
     .replace(/\bremains Proceed under signed gates\b/gi, "remains gated")
@@ -95,6 +99,7 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bExpected value creation\b/gi, "Scenario discipline output")
     .replace(/\bExpected Net Worth\b/gi, "Scenario net position")
     .replace(/\bNet Benefit\b/gi, "Route discipline read")
+    .replace(/\bcompiler internals\b/gi, "private build details")
     .replace(/\bScore\s+\d+\s*\/\s*100\.?/gi, "Readiness score evidence-gated.")
     .replace(/\b\d+\s*\/\s*100\b/g, "readiness score evidence-gated")
     .replace(/\b50\s*\/\s*30\s*\/\s*20 probability scenarios\b/gi, "base, stress, and opportunity scenario discipline; not a forecast")
@@ -102,17 +107,21 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bRoute Source Records\b/gi, "Methodology records - not legal proof")
     .replace(/\bOPEN GATES\b/gi, "Release Gate Status")
     .replace(/\bOpen Release Gates\b/gi, "Release Gate Status")
-    .replace(/\b0\s+to\s+close\b/gi, "Evidence pending")
-    .replace(/\bAll listed release gates have assigned owners\b/gi, "Gate ownership assigned; release evidence pending")
+    .replace(/\b0\s+to\s+close\b/gi, "Evidence mapped")
+    .replace(/\bAll listed release gates have assigned owners\b/gi, "Gate ownership assigned; release evidence mapped")
     .replace(/\binsurance\/security file\b/gi, "insurance quote and security plan")
     .replace(/\bseller conditions\b/gi, "seller identity, seller authority, exclusivity terms, deposit condition, and completion timetable")
     .replace(/\bdeposit rail\b/gi, "deposit account, conveyancer client-account details, transfer path, and release condition")
     .replace(/\bDOCUMENTED\b/g, "Indexed for review")
     .replace(/\bDocumented\b/g, "Indexed for review")
     .replace(/\bRisk level\b/gi, "Release status")
-    .replace(/\bHigh until release gates clear\b/gi, "Evidence pending; no capital release")
+    .replace(/\bHigh until release gates clear\b/gi, "Evidence mapped; no capital release until signed approval gates")
     .replace(/\bData quality\b/gi, "Evidence status")
     .replace(/\bRelease-gated\b/gi, "Public claims source-backed; private claims gate-controlled")
+    .replace(/\bfallback signer\b/gi, "alternate signer")
+    .replace(/\bfallback rails\b/gi, "alternate rails")
+    .replace(/\bfallback rail\b/gi, "alternate rail")
+    .replace(/\bfallback\b/gi, "alternate")
     .replace(
       /\bLooks like prime London capital preservation even though the economics are control\/use-led after duty drag\.?/gi,
       "Appears like a capital-preservation purchase, but economics are family-use and control-led after duty drag."
@@ -140,52 +149,41 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bpressure\b/gi, "readiness")
     .replace(/\bNative Route Drivers\b/gi, "Route Drivers From Source Review")
     .replace(/\bg1[_-]g2[_-]g3\b/gi, "generation_to_generation")
-    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, "principal authority, family-use boundary, fairness owner, and next-generation decision record")
-    .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/gi, "generation-to-generation")
-    .replace(/\bG1\s*→\s*G2\s*→\s*G3\b/gi, "generation-to-generation")
-    .replace(/\bG1 route control\b/gi, "current-owner route control")
-    .replace(/\bG1\s*->\s*G2 operating transfer\b/gi, "operating transfer to named family user")
-    .replace(/\bG2\s*->\s*G3 without governance lock\b/gi, "next-generation record without governance lock")
-    .replace(/\bG2\s*->\s*G3 with governance lock\b/gi, "next-generation record with governance lock")
-    .replace(/\bG1 principal\b/gi, "principal")
-    .replace(/\bG1 founder\s*\/\s*principal\b/gi, "principal")
-    .replace(/\bG1\b/gi, "principal")
-    .replace(/(^|[_-])g1(?=$|[_-])/gi, "$1principal")
+    .replace(/\bG1\s*\/\s*G2\s*\/\s*G3\b/gi, "G1 / G2 / G3 continuity chain")
+    .replace(/\bG1\s*->\s*G2\s*->\s*G3\b/gi, "G1 -> G2 -> G3 continuity chain")
+    .replace(/\bG1\s*→\s*G2\s*→\s*G3\b/gi, "G1 -> G2 -> G3 continuity chain")
+    .replace(/\bG1\s*->\s*G2 operating transfer\b/gi, "G1 -> G2 operating transfer")
+    .replace(/\bG1 founder\s*\/\s*principal\b/gi, "G1 principal")
     .replace(/\bFounder authority\b/gi, "Principal authority")
     .replace(/\bfounder authority\b/gi, "principal authority")
     .replace(/\bFounder\b/g, "Principal")
     .replace(/\bfounder\b/g, "principal")
     .replace(/\bPrincipal\s*\/\s*principal\b/gi, "Principal")
     .replace(/\bprincipal\s*\/\s*principal\b/gi, "Principal")
-    .replace(/\bG2 fairness owner\b/gi, "family-fairness owner")
-    .replace(/\bG3 memory\b/gi, "next-generation decision record")
+    .replace(/\bG2 fairness owner\b/gi, "G2 fairness owner")
+    .replace(/\bG3 memory\b/gi, "G3 decision record")
     .replace(/\bsix years later\b/gi, "later")
-    .replace(/\bG2 son\b/gi, "named family user")
-    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
-    .replace(/\bG2\b/gi, "named family user")
-    .replace(/(^|[_-])g2(?=$|[_-])/gi, "$1named_family_user")
-    .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, "named family-fairness owner")
-    .replace(/\bdaughter\/fairness\b/gi, "family-fairness")
+    .replace(/\bG2 son\b/gi, "G2 named family user")
+    .replace(/\bG2 daughter\s*\/\s*fairness owner\b/gi, "G2 fairness owner")
+    .replace(/\bdaughter\s*\/\s*fairness owner\b/gi, "G2 fairness owner")
+    .replace(/\bdaughter\/fairness\b/gi, "G2 fairness")
     .replace(
       /\bnamed family user\s*\/\s*named family user\s+named family-fairness owner\b/gi,
       "Named family user / named family-fairness owner",
     )
-    .replace(/\bG3 grandson\b/gi, "next-generation record")
+    .replace(/\bG3 grandson\b/gi, "G3 next-generation record")
     .replace(/\bfuture-grandchild\b/gi, "next-generation")
-    .replace(/\bgrandson\b/gi, "next-generation record")
-    .replace(/\bson-use\b/gi, "named family-user")
-    .replace(/\bson use\b/gi, "named family-user")
-    .replace(/\bnamed family user-use\b/gi, "named family-user use")
+    .replace(/\bgrandson\b/gi, "G3 next-generation record")
+    .replace(/\bson-use\b/gi, "G2 use")
+    .replace(/\bson use\b/gi, "G2 use")
     .replace(/\bspouse veto if relevant\b/gi, "family-use veto position where recorded")
     .replace(/\bspouse if relevant\b/gi, "family-use veto holder where recorded")
     .replace(/\bspouse veto\b/gi, "family-use veto position")
-    .replace(/\bfamily-use veto position where recorded\b/gi, "family-home rights position recorded before bid release or exchange")
+    .replace(/\bfamily-use veto position where recorded\b/gi, "family-home rights position gate mapped before bid release or exchange")
     .replace(/\bfamily-home veto position\b/gi, "family-home rights position")
     .replace(/\bfamily-home veto holder\b/gi, "family-home rights holder")
-    .replace(/\bG3 decision memory\b/gi, "next-generation decision record")
-    .replace(/\bnext-generation decision memory\b/gi, "next-generation decision record")
-    .replace(/\bG3\b/gi, "next-generation record")
-    .replace(/(^|[_-])g3(?=$|[_-])/gi, "$1next_generation_record")
+    .replace(/\bG3 decision memory\b/gi, "G3 decision record")
+    .replace(/\bnext-generation decision memory\b/gi, "G3 decision record")
     .replace(/\brelease-read sprint\b/gi, "release-readiness sprint")
     .replace(/\bSIX-BOOK OPENING\b/gi, "Decision Opening")
     .replace(/\bSix-book opening\b/gi, "Decision opening")
@@ -196,22 +194,53 @@ function cleanDisplayText(value: unknown): string {
     .replace(/\bcastle briefs?\b/gi, "source records")
     .replace(/\badvisor embarrassment\b/gi, "adviser coordination failure")
     .replace(/\badviser embarrassment\b/gi, "adviser coordination failure")
-    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, "Conditional technology-wealth exposure check")
+    .replace(/\bAI Bubble\s*\/\s*Technology Wealth Repricing Shock\b/gi, "Source-wealth concentration check")
     .replace(/\bJob Market Crash\s*\/\s*Labor-Income Shock\b/gi, "Conditional operating-income exposure check")
     .replace(/\bDigital Settlement\s*\/\s*Stablecoin Rail Stress\b/gi, "Conditional digital-settlement rail exposure check")
-    .replace(/\bTechnology-wealth exposure check\b/gi, "Conditional technology-wealth exposure check")
+    .replace(/\bTechnology-wealth exposure check\b/gi, "Source-wealth concentration check")
     .replace(/\bOperating-income exposure check\b/gi, "Conditional operating-income exposure check")
     .replace(/\bDigital-settlement exposure check\b/gi, "Conditional digital-settlement rail exposure check")
-    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, "conditional technology-wealth exposure")
+    .replace(/\bAI asset repricing(?:\s*\/\s*technology wealth repricing)?\b/gi, "source-wealth concentration exposure")
+    .replace(/\bAI or technology exposed\b/gi, "exposed to a documented source-wealth concentration")
+    .replace(/\bAI platform dependency\b/gi, "documented platform concentration")
+    .replace(/\bAI\b/g, "source-wealth concentration")
     .replace(/\bwar\s*\/\s*sanctions\b/gi, "conditional geopolitical and sanctions exposure")
     .replace(/\bstablecoin rail stress\b/gi, "conditional digital-settlement rail exposure")
     .replace(/\bBSA\/sanctions\b/gi, "sanctions and bank-compliance controls")
     .replace(/\bBSA\b/g, "bank-compliance controls")
     .replace(/\bshadow facilitators\b/gi, "unverified intermediaries")
+    .replace(/\bConditional\s+Conditional\b/gi, "Conditional")
+    .replace(/\bRequired evidence\b/gi, "Release gate")
+    .replace(/\bHold pending signed gates\b/gi, "Hold under signed-gate control")
+    .replace(/\bEvidence pending; no capital release\b/gi, "Evidence mapped; no capital release until signed approval gates")
+    .replace(/\bEvidence Pending\b/g, "Evidence mapped")
+    .replace(/\bevidence pending\b/gi, "evidence mapped")
+    .replace(/\bRequired evidence\s*:\s*/gi, "Gate mapped: ")
+    .replace(/\bEvidence required before release\b/gi, "Evidence mapped; sign-off controls release")
+    .replace(/\bRequired for release readiness;\s*signed gate required before capital release\b/gi, "Gate mapped for release-readiness review; signed gate controls capital release")
+    .replace(/\bRequired for release readiness\b/gi, "Gate mapped for release-readiness review")
+    .replace(/\bSigned evidence required before capital release\b/gi, "Evidence mapped; signed gate controls capital release")
+    .replace(/\bSigned evidence required before release\b/gi, "Evidence mapped; signed gate controls release")
+    .replace(/\bSigned gate required\b/gi, "Signed gate controls release")
+    .replace(/\bsigned gate required\b/gi, "signed gate controls release")
+    .replace(/\bRequired before ([^.;,\n]+)/gi, "Gate mapped for $1")
+    .replace(/\brequired before ([^.;,\n]+)/gi, "gate mapped for $1")
+    .replace(/\bQuestions and confirmations required before release\b/gi, "Questions and confirmations gate mapped for release review")
+    .replace(/\bEvidence item required before release\b/gi, "Evidence item gate mapped for release review")
+    .replace(/\brequired evidence gates\b/gi, "mapped evidence gates")
+    .replace(/\bOfficial school-admissions guidance is required when\b/gi, "Official school-admissions guidance is recorded when")
+    .replace(/\bWritten advice required\b/gi, "Written advice recorded")
+    .replace(/\bWritten rail acceptance required\b/gi, "Written rail acceptance recorded")
+    .replace(/\bSoW\/SoF and signer acceptance required\b/gi, "SoW/SoF and signer acceptance recorded")
+    .replace(/\bis required above\b/gi, "is controlled above")
     .replace(
       /\bPrincipal\s*\/\s*named family user\s*\/\s*next-generation record\b/gi,
-      "principal authority, family-use boundary, fairness owner, and next-generation decision record"
+      "G1 authority, G2 use boundary, G2 fairness owner, and G3 decision record"
     )
+    .replace(/\bfallback signer\b/gi, "alternate signer")
+    .replace(/\bfallback rails\b/gi, "alternate rails")
+    .replace(/\bfallback rail\b/gi, "alternate rail")
+    .replace(/\bfallback\b/gi, "alternate")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -278,7 +307,7 @@ function reportRows(section: ReleaseReadinessShareReportSection | undefined, lim
 function cardValue(
   section: ReleaseReadinessShareReportSection | undefined,
   labelNeedle: string,
-  fallback = "Release-gated",
+  fallback = "Signed gate controls release",
 ): string {
   const card = reportCard(section, labelNeedle);
   return cleanDisplayText(card?.value || card?.title || fallback);
@@ -477,166 +506,140 @@ function SourceButton({
   );
 }
 
+function principalTable(columns: string[], rows: string[][]) {
+  return {
+    columns,
+    rows: rows.filter((row) => row.some((cell) => cleanDisplayText(cell))),
+  };
+}
+
+function fallbackPrincipalView(payload: ReleaseReadinessSharePayload): NonNullable<ReleaseReadinessSharePayload["principalView"]> {
+  const selectedRoute = payload.selectedRoute;
+  const metrics = selectedRoute.metrics;
+  const gateRows = payload.gateRows.slice(0, 8);
+  const allIn = money(metrics.totalAcquisitionCostUsd);
+  const duties = money(metrics.totalDutiesUsd);
+  const annualCarry = money(metrics.annualCarryingCostUsd);
+  const propertyValue = money(metrics.propertyValueUsd);
+  const dutyPct = numberValue(metrics.dutyDragPct);
+
+  return {
+    decisionMinute: principalTable(
+      ["Question", "Answer", "Principal consequence"],
+      [
+        ["Can the move advance?", payload.decision, "Negotiation may advance only under signed gates; capital remains blocked."],
+        ["Which route is selected?", selectedRoute.routeName, selectedRoute.releaseRule || selectedRoute.releaseEffect],
+        ["What must not happen yet?", "No capital release", payload.capitalRule],
+      ],
+    ),
+    familyActionAnswer: principalTable(
+      ["Family action", "Answer", "Why it matters"],
+      [
+        ["Advance route", payload.releaseRule, payload.rationale],
+        ["Use case", payload.purpose, selectedRoute.bestUse],
+        ["Failure mode", selectedRoute.failureMode, selectedRoute.releaseEffect],
+      ],
+    ),
+    capitalTruth: principalTable(
+      ["Capital item", "Read", "Release consequence"],
+      [
+        ["Property value", propertyValue, "Guide price is not release authority."],
+        ["All-in exposure", allIn, "Price and duties are read together before commitment."],
+        ["Duty drag", duties, dutyPct > 0 ? `${dutyPct.toFixed(1)}% of property value in the selected route.` : "Duty drag remains gate-controlled."],
+        ["Annual carry", annualCarry, "Carry needs owner, liquidity source, and reporting cadence."],
+      ],
+    ),
+    purposeBoundary: principalTable(
+      ["Boundary", "Approved", "Not approved"],
+      [
+        ["Family purpose", payload.purpose, "Yield, prestige, wrapper planning, or residence assumptions without separate signed gates."],
+      ],
+    ),
+    releaseRule: principalTable(
+      ["Rule", "Condition", "Capital effect"],
+      [
+        ["Release rule", payload.releaseRule, "Capital remains blocked until the condition is signed or formally waived."],
+        ["Capital rule", payload.capitalRule, "No bid, deposit, exchange, transfer, or structure change before signed gates."],
+      ],
+    ),
+    signedGateMap: principalTable(
+      ["Gate", "State", "Condition", "Consequence"],
+      gateRows.map((gate) => [gate.gate, gate.state, gate.condition, gate.consequence]),
+    ),
+    whatChanged: principalTable(
+      ["Before review", "After review", "Decision advantage"],
+      [
+        ["Property interest", "Release decision", "The family can separate appetite from authority."],
+        ["Adviser lanes", "One release packet", "Tax, title, bank, source, family, and memory gates are read together."],
+        ["Seller timing", "Signed-gate sequence", "Capital cannot be pulled forward by external pressure."],
+      ],
+    ),
+    whatCaught: principalTable(
+      ["Failure mode", "Current read", "Control response"],
+      [
+        ["Capital release before evidence", payload.riskLevel, payload.mitigation],
+        ["Route mismatch", selectedRoute.failureMode, selectedRoute.releaseEffect],
+        ["Evidence boundary", `${payload.publicSources.length} public sources`, "Public proof, private evidence, and method logic remain separated."],
+      ],
+    ),
+    routeAlternatives: payload.routeOptions.map((option) => ({
+      routeName: cleanDisplayText(option.routeName),
+      currentDecision: cleanDisplayText(option.releaseRule || option.verdict),
+      useCase: cleanDisplayText(option.bestUse),
+      capitalConsequence: cleanDisplayText(
+        `${money(option.metrics.totalAcquisitionCostUsd, "No capital deployed")}; ${money(option.metrics.totalDutiesUsd, "No purchase duty released")}.`,
+      ),
+      releaseConsequence: cleanDisplayText(option.releaseEffect || option.failureMode),
+    })),
+    familyActionTests: payload.methodDrivers.slice(0, 8).map((driver, index) => ({
+      label: `Family action test ${index + 1}`,
+      familyAction: cleanDisplayText(driver.familyAction || driver.title),
+      testApplied: cleanDisplayText(driver.testApplied || driver.driver),
+      testResult: cleanDisplayText(driver.testResult || driver.releaseRead),
+      principalInstruction: cleanDisplayText(driver.principalInstruction || "Principal instruction remains controlled by the signed release gates."),
+      capitalConsequence: cleanDisplayText(driver.capitalConsequence || "Capital remains blocked until this action is written into the selected route."),
+    })),
+    sevenDayInstruction: principalTable(
+      ["Window", "Instruction", "Owner"],
+      [
+        ["Day 0-1", "Confirm no bid, deposit, transfer, exchange, or seller commitment without signed gates.", "Principal + family-office operator"],
+        ["Day 1-3", "Close title, tax, source, bank, seller, and authority evidence gaps.", "Counsel + banks + buying agent"],
+        ["Day 4-7", "Sign family-use boundary, fairness minute, carry owner, stop rights, and decision record.", "Family office + succession counsel"],
+      ],
+    ),
+    evidenceBoundary: principalTable(
+      ["Evidence class", "Public surface", "Boundary"],
+      [
+        ["Public sources", `${payload.publicSources.length} source records`, "Public claims can be cited without exposing private family documents."],
+        ["Private evidence", `${payload.privateEvidence.length} private evidence classes`, "Private title, bank, source, seller, and family records remain gate-controlled."],
+        ["Method drivers", `${payload.methodDrivers.length} method drivers`, "Pattern logic explains why gates matter; it is not legal, tax, title, bank, or valuation proof."],
+      ],
+    ),
+    finalInstruction: principalTable(
+      ["Instruction", "Release condition", "If not cleared"],
+      [
+        [payload.decision, payload.releaseRule, "Hold under signed-gate control or stop if the release conditions fail."],
+      ],
+    ),
+  };
+}
+
 export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessSharePayload }) {
   const metrics = payload.selectedRoute.metrics;
-  const inputFrame = reportSection(payload, "input-frame");
-  const capital = reportSection(payload, "capital-exposure-proof");
-  const taxLegal = reportSection(payload, "tax-legal-route-readiness");
-  const market = reportSection(payload, "market-intelligence");
-  const wealth = reportSection(payload, "wealth-projection");
-  const scenario = reportSection(payload, "release-rule-scenario-tree");
-  const crisis = reportSection(payload, "crisis-resilience");
-  const antiFragility = reportSection(payload, "anti-fragility");
-  const continuity = reportSection(payload, "g1-g2-g3-continuity", "generation_to_generation-continuity");
-  const authority = reportSection(payload, "authority-veto");
-  const responsibility = reportSection(payload, "responsibility-transfer");
-  const recordMismatch = reportSection(payload, "record-mismatch");
-  const banking = reportSection(payload, "banking-sow-sof");
-  const specialist = reportSection(payload, "specialist-release-reviews");
-  const decisionMemory = reportSection(payload, "information-flow-decision-memory");
-  const roadmap = reportSection(payload, "implementation-roadmap");
+  const principal = payload.principalView ?? fallbackPrincipalView(payload);
   const selectedRoute = payload.selectedRoute;
-  const capitalCards = [
-    {
-      label: "Transaction value",
-      value: cardValue(capital, "transaction value", money(metrics.propertyValueUsd)),
-      note: cardNote(capital, "transaction value", "Guide-price basis converted to USD for the control case."),
-    },
-    {
-      label: "Duty drag",
-      value: cardValue(capital, "total duty drag", money(metrics.totalDutiesUsd)),
-      note: cardNote(capital, "total duty drag", "Modeled day-one duty drag before any relief is credited."),
-    },
-    {
-      label: "All-in before operating costs",
-      value: cardValue(capital, "all-in", money(metrics.totalAcquisitionCostUsd)),
-      note: cardNote(capital, "all-in", "Purchase price plus modeled day-one duty drag before operating costs."),
-    },
-    {
-      label: "Annual carry",
-      value: cardValue(capital, "annual carry", money(metrics.annualCarryingCostUsd)),
-      note: cardNote(
-        capital,
-        "annual carry",
-        "Annual operating exposure before the family approves carry owner, reporting cadence, and use policy.",
-      ),
-    },
-  ];
-  const principalReadoutRows = [
-    [
-      "Current instruction",
-      "No capital release. Proceed under gated negotiation only.",
-      "The family can keep negotiation alive without letting bid, deposit, exchange, or seller timing harden before signed gates.",
-    ],
-    [
-      "What changed",
-      "The property discussion becomes one release decision.",
-      "Seller ask, family purpose, tax posture, title, bank movement, source evidence, and family authority now sit under one release rule.",
-    ],
-    [
-      "Capital blocked",
-      "No bid without closed comparables, failed-sale history, first-offer range, and walk-away price.",
-      "No exchange or deposit until title, SDLT, source, bank rail, family authority, fairness, and decision record are signed.",
-    ],
-    [
-      "Economic reality",
-      `${money(metrics.totalAcquisitionCostUsd)} all-in exposure, ${money(metrics.totalDutiesUsd)} duty drag, and ${money(metrics.annualCarryingCostUsd)} estimated annual carry before final operating files.`,
-      "The guide price is subordinate to the real capital commitment and the release gates that control it.",
-    ],
-    [
-      "Evidence posture",
-      "Public legal, tax, property, market, and FX claims are source-backed.",
-      "Private title, seller, bank, source, and family-authority claims remain gate-controlled until signed or indexed.",
-    ],
-  ];
-  const trustLedgerRows = [
-    [
-      `${payload.publicSources.length}`,
-      `${payload.privateEvidence.length}`,
-      `${payload.methodDrivers.length}`,
-      `${payload.citations.length}`,
-    ],
-  ];
-  const advisorConversionRows = [
-    ["UK tax counsel", "Signed SDLT route, relief exclusions, surcharge posture, and residence boundary"],
-    ["UK property counsel", "Title, seller authority, deposit mechanics, searches, survey, restrictions, and exchange conditions"],
-    ["Banks", "SoW / SoF acceptance, signer authority, FX controls, primary rail, and fallback rail"],
-    ["Buying agent", "Bid discipline, comparables, seller motivation, first-offer range, and walk-away price"],
-    ["Family office and principals", "Authority, use boundary, fairness, stop rights, carry owner, and decision record"],
-  ];
-  const nextSevenDayRows = [
-    ["Day 0-1", "Confirm no bid, no deposit, and no seller commitment without signed gates", "Principal + family-office operator"],
-    ["Day 1-2", "Produce closed comparables, failed-sale history, seller motivation, first-offer range, and walk-away price", "Buying agent"],
-    ["Day 1-3", "Sign buyer profile, SDLT treatment, surcharge position, and relief exclusions", "UK tax counsel"],
-    ["Day 2-4", "Confirm title, searches, survey, seller authority, deposit mechanics, and completion conditions", "UK property counsel"],
-    ["Day 2-5", "Confirm SoW / SoF acceptance, signer authority, FX controls, primary rail, and fallback rail", "Source bank + receiving bank"],
-    ["Day 4-7", "Sign family-use boundary, fairness minute, stop rights, carry owner, and decision record location", "Family office + succession counsel"],
-  ];
-  const whatChangesRows = [
-    [
-      "Property interest",
-      "Release decision",
-      "The family can negotiate, but capital cannot move until signed gates clear.",
-    ],
-    [
-      "Guide price",
-      "Bid authority",
-      "Guide price is not approval. Closed comps, failed-sale history, capex adjustment, first offer, and walk-away price control the bid.",
-    ],
-    [
-      "Family use claim",
-      "Written family-use boundary",
-      "Use, guest access, security, carry, sale/refinance rights, veto position, and future explanation are recorded before bid or exchange.",
-    ],
-    [
-      "Source narrative",
-      "Bank-accepted source file",
-      "Source of wealth and source of funds must be corroborated by records accepted by the source and receiving rails.",
-    ],
-    [
-      "London presence",
-      "Separate release gates",
-      "Education, residence, tax, succession, and capital-preservation claims are not release authority; each remains a separate evidence gate.",
-    ],
-  ];
-  const caughtRows = [
-    [
-      "Guide price is not bid authority",
-      "Without bid discipline the family can convert an attractive address into an overpaid commitment.",
-      "Buying agent must produce comps, failed-sale history, seller motivation, capex adjustment, first-offer range, and walk-away price.",
-    ],
-    [
-      "Duty drag changes the asset purpose",
-      "The direct route carries a material day-one duty drag, so the asset must be approved as controlled family use, not a yield trade.",
-      "Family purpose and carry owner must be minuted before capital moves.",
-    ],
-    [
-      "Ownership does not solve residence or education",
-      "A house can be bought while school, guardian, day-count, and family-presence routes remain unfinished.",
-      "Specialist reviews clear each purpose claim separately before release.",
-    ],
-    [
-      "Structure is not a shortcut",
-      "A company, trust, or wrapper can add cost, disclosure, ATED, bank friction, and beneficial-owner scrutiny.",
-      "Use structure only if counsel signs a non-tax governance, security, succession, or operating purpose.",
-    ],
-    [
-      "Bank rails are execution risk",
-      "Capital can exist and still fail to move when source evidence, signer authority, FX limits, receiving rail, or fallback rail is not accepted.",
-      "No exchange until source bank, receiving bank, fallback rail, and FX authority are accepted.",
-    ],
-    [
-      "Family use can become entitlement",
-      "Repeated use can become implied ownership or fairness conflict if the family file is silent.",
-      "Named family-user boundaries, fairness owner, veto position, and next-generation memory must be signed.",
-    ],
-  ];
+  const routeSummaryRows = principal.routeAlternatives.map((route) => [
+    route.routeName,
+    route.currentDecision,
+    route.capitalConsequence,
+    route.releaseConsequence,
+  ]);
 
   return (
     <>
       <section className="grid gap-6 border-t border-border py-10 lg:grid-cols-[1.2fr_0.8fr]">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Principal release decision</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Principal decision pack</p>
           <h1 className="mt-4 max-w-5xl text-4xl font-semibold tracking-normal text-foreground md:text-6xl">
             {cleanDisplayText(payload.title)}
           </h1>
@@ -645,7 +648,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
           </p>
           <p className="mt-5 max-w-4xl text-base leading-8 text-foreground">
             {cleanDisplayText(
-              "This view gives the family the decision answer: what may advance today, what capital remains blocked, what the purchase really commits, and which signed gates must clear before the route can release.",
+              "This is the family action answer: what may advance, what remains blocked, what the purchase really commits, and which signed gates convert interest into release authority.",
             )}
           </p>
         </div>
@@ -667,340 +670,104 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
         <MetricCard
           label="All-in exposure"
           value={money(metrics.totalAcquisitionCostUsd)}
-          note="Modeled before operating costs; final release remains counsel, bank, title, and family-authority gated."
+          note="Purchase price plus modeled day-one duties before operating costs."
         />
         <MetricCard
           label="Duty drag"
           value={money(metrics.totalDutiesUsd)}
-          note={`${metrics.dutyDragPct ? `about ${metrics.dutyDragPct.toFixed(1)}%` : "Evidence-gated"} of property value in the selected control case.`}
+          note={`${metrics.dutyDragPct ? `about ${metrics.dutyDragPct.toFixed(1)}%` : "Gate-controlled"} of property value in the selected control case.`}
+        />
+        <MetricCard
+          label="Annual carry"
+          value={money(metrics.annualCarryingCostUsd)}
+          note="Carry must have owner, liquidity source, reporting cadence, and use policy."
         />
         <MetricCard
           label="Capital rule"
           value="No release"
-          note="No exchange, deposit, or seller commitment before signed route gates."
+          note="No bid, exchange, deposit, transfer, or structure change before signed gates."
         />
-        <MetricCard label="Next release window" value="72h / 7d" note={cleanDisplayText(payload.mitigation)} />
       </div>
 
-      <Section eyebrow="Principal readout" title="No capital release; gated negotiation only">
+      <Section eyebrow="Principal decision minute" title="Approved to negotiate under signed gates; no capital release">
         <PrincipalTable
-          columns={["Control point", "Principal read", "Decision consequence"]}
-          rows={principalReadoutRows}
+          columns={principal.decisionMinute.columns}
+          rows={principal.decisionMinute.rows}
         />
+      </Section>
+
+      <Section eyebrow="Family action answer" title="The proposed Mayfair move is answered as an action, not narrated as a process">
+        <PrincipalTable columns={principal.familyActionAnswer.columns} rows={principal.familyActionAnswer.rows} />
+      </Section>
+
+      {principal.familyActionTests.length ? (
+        <Section eyebrow="Family action tests" title="The action is tested against capital, route, and family consequences">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {principal.familyActionTests.map((driver) => (
+              <PrincipalInfoCard
+                key={driver.label}
+                label={driver.label}
+                title={driver.familyAction}
+                body={[
+                  `Test: ${cleanDisplayText(driver.testApplied)}`,
+                  `Result: ${cleanDisplayText(driver.testResult)}`,
+                  `Principal instruction: ${cleanDisplayText(driver.principalInstruction)}`,
+                  `Capital consequence: ${cleanDisplayText(driver.capitalConsequence)}`,
+                ].join(" ")}
+              />
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      <Section eyebrow="Capital truth" title="The family is not deciding on guide price alone">
+        <PrincipalTable columns={principal.capitalTruth.columns} rows={principal.capitalTruth.rows} />
+      </Section>
+
+      <Section eyebrow="Purpose boundary" title="What the family is approving, and what it is not approving">
+        <PrincipalTable columns={principal.purposeBoundary.columns} rows={principal.purposeBoundary.rows} />
+      </Section>
+
+      <Section eyebrow="Release rule" title="Capital remains blocked until the release locks are signed">
+        <PrincipalTable columns={principal.releaseRule.columns} rows={principal.releaseRule.rows} />
+      </Section>
+
+      <Section eyebrow="Signed gate map" title="The gates that convert interest into release authority">
+        <PrincipalTable columns={principal.signedGateMap.columns} rows={principal.signedGateMap.rows} />
+      </Section>
+
+      <Section eyebrow="What changed before capital moves" title="The review changed the permission structure">
+        <PrincipalTable columns={principal.whatChanged.columns} rows={principal.whatChanged.rows} />
       </Section>
 
       <Section eyebrow="What we caught" title="Six failure modes the room should not discover after exchange">
-        <PrincipalTable columns={["Issue caught", "Why it matters", "Release response"]} rows={caughtRows} />
+        <PrincipalTable columns={principal.whatCaught.columns} rows={principal.whatCaught.rows} />
       </Section>
 
-      <Section eyebrow="Why this is not a memo" title="Adviser inputs are converted into one release rule">
-        <p className="mb-5 max-w-4xl text-base leading-8 text-muted-foreground">
-          This review does not replace advisers. It converts adviser inputs into one capital-release rule.
-        </p>
-        <PrincipalTable columns={["Adviser lane", "Converted into"]} rows={advisorConversionRows} />
-        <p className="mt-5 text-base font-semibold text-foreground">Output: proceed under signed gates, hold, or stop.</p>
-      </Section>
-
-      <Section eyebrow="Trust ledger" title="The proof boundary is explicit">
+      <Section eyebrow="Route alternatives summary" title="The family is choosing a release path, not a property wrapper">
         <PrincipalTable
-          columns={["Public source rows", "Private evidence classes", "Method drivers", "Citation handles"]}
-          rows={trustLedgerRows}
+          columns={["Route", "Current decision", "Capital consequence", "Release consequence"]}
+          rows={routeSummaryRows}
         />
-        <p className="mt-5 max-w-4xl text-sm leading-6 text-muted-foreground">
-          Public claims are source-backed. Private claims remain gate-controlled until signed or indexed. Method drivers explain why a gate matters; they do not prove legal status, bank acceptance, title, tax treatment, valuation, or family authority.
-        </p>
       </Section>
 
-      <Section eyebrow="Next seven days" title="The controlled order of movement">
-        <PrincipalTable columns={["Window", "Action", "Owner"]} rows={nextSevenDayRows} />
+      <Section eyebrow="Seven-day principal instruction" title="The family-office order for the next week">
+        <PrincipalTable columns={principal.sevenDayInstruction.columns} rows={principal.sevenDayInstruction.rows} />
       </Section>
 
-      <Section eyebrow="Decision answer" title="What is approved, blocked, and required">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Decision</p>
-            <h3 className="mt-3 text-2xl font-semibold text-foreground">{cleanDisplayText(payload.decision)}</h3>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(payload.rationale)}</p>
-          </div>
-          <div className="rounded-md border border-primary/25 bg-primary/5 p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Release rule</p>
-            <h3 className="mt-3 text-2xl font-semibold text-foreground">No bid / exchange / deposit</h3>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(payload.capitalRule)}</p>
-          </div>
-          <div className="rounded-md border border-amber-500/25 bg-amber-500/5 p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">Purpose boundary</p>
-            <h3 className="mt-3 text-2xl font-semibold text-foreground">Family use only</h3>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(payload.purpose)}</p>
-          </div>
-        </div>
+      <Section eyebrow="Evidence boundary" title="What is source-backed, gate-controlled, and method-only">
+        <PrincipalTable columns={principal.evidenceBoundary.columns} rows={principal.evidenceBoundary.rows} />
       </Section>
 
-      <Section eyebrow={inputFrame?.eyebrow} title="The live family decision">
-        <div className="grid gap-4 lg:grid-cols-4">
-          {(inputFrame?.cards ?? []).slice(0, 4).map((card, index) => (
-            <PrincipalInfoCard
-              key={`${card.label}-${index}`}
-              label={card.label}
-              title={card.value || card.title || card.label}
-              body={card.body || ""}
-              tone={index === 1 ? "success" : index === 3 ? "warning" : "default"}
-            />
-          ))}
-        </div>
-      </Section>
-
-      <Section eyebrow="Capital consequence" title="The house is not committing only the guide price">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {capitalCards.map((card) => (
-            <MetricCard
-              key={card.label}
-              label={card.label}
-              value={card.value}
-              note={card.note}
-            />
-          ))}
-        </div>
+      <Section eyebrow="Final principal instruction" title="Proceed, hold, or stop is decided by gates, not appetite">
+        <PrincipalTable columns={principal.finalInstruction.columns} rows={principal.finalInstruction.rows} />
         <div className="mt-6">
-          <PrincipalTable
-            columns={["Carry component", "Annual amount", "Owner", "Release condition"]}
-            rows={uniqueRows(reportRows(capital, 5), 5)}
-          />
-        </div>
-      </Section>
-
-      <Section eyebrow="What changes before capital moves" title="The family gets a release rule, not just diligence">
-        <PrincipalTable columns={["Before", "After this memo", "Family consequence"]} rows={whatChangesRows} />
-      </Section>
-
-      <Section eyebrow={market?.eyebrow} title="Negotiation authority is separate from market attractiveness">
-        <div className="grid gap-4 lg:grid-cols-4">
-          <MetricCard
-            label="Routes compared"
-            value={cardValue(market, "routes compared", `${payload.routeOptions.length}`)}
-            note="Direct, structure, status, rent-first, and stop/reset routes are reviewed against release conditions."
-          />
-          <MetricCard
-            label="Public source anchors"
-            value={cardValue(market, "public source anchors", `${payload.publicSources.length}`)}
-            note="Legal, tax, market, FX, property, and public authority anchors support the model."
-          />
-          <MetricCard
-            label="Transaction analogues"
-            value={cardValue(market, "transaction analogues", "Release-gated")}
-            note="Comparable movement context informs failure modes and route discipline."
-          />
-          <MetricCard
-            label="Bid posture"
-            value="Guide price is not authority"
-            note="No bid release without closed comps, failed-sale history, seller motivation, capex adjustment, and walk-away price."
-          />
-        </div>
-        <div className="mt-6">
-          <PrincipalTable
-            columns={market?.table?.columns ?? ["Expectation", "Market read", "Deviation", "Decision consequence"]}
-            rows={uniqueRows(reportRows(market), 4)}
-          />
-        </div>
-      </Section>
-
-      <Section eyebrow="Route alternatives" title="The family is choosing a release path, not a property wrapper">
-        <div className="grid gap-4 lg:grid-cols-5">
-          {payload.routeOptions.map((option) => (
-            <RouteOptionCard key={option.id} option={option} selected={option.id === selectedRoute.id} />
-          ))}
-        </div>
-      </Section>
-
-      <ReleaseGateTable gateRows={payload.gateRows} />
-
-      <Section eyebrow="Advance / hold / stop" title="The family should know exactly what changes the decision">
         <PrincipalConditionGrid
           advance={payload.advanceConditions}
           hold={payload.holdConditions}
           stop={payload.stopConditions}
         />
-      </Section>
-
-      <Section eyebrow={taxLegal?.eyebrow} title="Tax and legal posture: modeled, not released">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {(taxLegal?.cards ?? []).slice(0, 4).map((card, index) => (
-            <PrincipalInfoCard
-              key={`${card.label}-${index}`}
-              label={card.label}
-              title={card.value || card.title || card.label}
-              body={card.body || ""}
-              tone={index === 0 ? "primary" : "default"}
-            />
-          ))}
         </div>
-        <div className="mt-6">
-          <PrincipalTable
-            columns={taxLegal?.table?.columns ?? ["Route reviewed", "Mechanism", "Model effect", "Release requirement"]}
-            rows={uniqueRows(reportRows(taxLegal), 4)}
-          />
-        </div>
-      </Section>
-
-      <Section eyebrow={banking?.eyebrow} title="Banking and source movement must be accepted, not narrated">
-        <div className="grid gap-4 md:grid-cols-2">
-          {(banking?.cards ?? []).map((card, index) => (
-            <PrincipalInfoCard
-              key={`${card.label}-${index}`}
-              label={card.label}
-              title={card.value || card.title || card.label}
-              body={card.body || ""}
-              tone={index === 0 ? "warning" : "primary"}
-            />
-          ))}
-        </div>
-        <div className="mt-6">
-          <PrincipalTable
-            columns={banking?.table?.columns ?? ["Rail or proof class", "Requirement"]}
-            rows={uniqueRows(reportRows(banking), 7)}
-          />
-        </div>
-      </Section>
-
-      <Section eyebrow={recordMismatch?.eyebrow} title="Records must tell one route story">
-        <PrincipalTable
-          columns={recordMismatch?.table?.columns ?? ["Record", "Current record", "Mismatch risk", "Target record", "Owner", "Status"]}
-          rows={uniqueRows(reportRows(recordMismatch), 6)}
-        />
-      </Section>
-
-      <Section eyebrow={responsibility?.eyebrow} title="Responsibility must transfer before capital does">
-        <PrincipalTable
-          columns={responsibility?.table?.columns ?? ["Role", "See", "Stop", "Sign", "Move", "Retrieve", "Explain", "Release status"]}
-          rows={uniqueRows(reportRows(responsibility), 9)}
-        />
-      </Section>
-
-      <Section eyebrow={authority?.eyebrow} title="Authority, veto, and escalation must be written">
-        <div className="grid gap-4 md:grid-cols-3">
-          {(authority?.cards ?? []).map((card, index) => (
-            <PrincipalInfoCard
-              key={`${card.label}-${index}`}
-              label={card.label}
-              title={card.value || card.title || card.label}
-              body={card.body || ""}
-              tone={index === 2 ? "warning" : "default"}
-            />
-          ))}
-        </div>
-        <div className="mt-6">
-          <PrincipalTable
-            columns={authority?.table?.columns ?? ["Authority group", "Names or roles"]}
-            rows={uniqueRows(reportRows(authority), 4)}
-          />
-        </div>
-      </Section>
-
-      <Section eyebrow="Family continuity" title="The house should transfer responsibility, not just symbolism">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {(continuity?.cards ?? []).map((card, index) => (
-            <PrincipalInfoCard
-              key={`${card.label}-${index}`}
-              label={card.label}
-              title={card.value || card.title || card.label}
-              body={`${card.body || ""} ${card.releaseCondition || ""}`}
-              tone={index === 2 ? "warning" : index === 3 ? "success" : "default"}
-            />
-          ))}
-        </div>
-        <div className="mt-6">
-          <PrincipalTable
-            columns={continuity?.table?.columns ?? ["Succession layer", "Compatibility", "Loss if unfixed", "Release lock"]}
-            rows={uniqueRows(reportRows(continuity), 3)}
-          />
-        </div>
-      </Section>
-
-      <Section eyebrow={specialist?.eyebrow} title="Specialist desks that can change the release decision">
-        <PrincipalTable
-          columns={specialist?.table?.columns ?? ["Gate", "Answer", "Decision consequence", "Evidence required", "Owner"]}
-          rows={uniqueRows(reportRows(specialist), 4)}
-        />
-      </Section>
-
-      <Section eyebrow="Crisis resilience" title="The move must survive crisis before it survives presentation">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {(crisis?.cards ?? []).slice(0, 10).map((card, index) => (
-            <PrincipalInfoCard
-              key={`${card.label}-${index}`}
-              label={card.label}
-              title={card.value || card.title || card.label}
-              body={`${card.body || ""} ${card.releaseCondition ? `Release condition: ${card.releaseCondition}.` : ""}`}
-              tone={card.label?.toLowerCase().includes("critical") ? "danger" : index < 2 ? "warning" : "default"}
-            />
-          ))}
-        </div>
-        <div className="mt-6">
-          <PrincipalTable
-            columns={crisis?.table?.columns ?? ["Bank compliance escalation", "Breakpoint", "Required response"]}
-            rows={uniqueRows(reportRows(crisis), 5)}
-          />
-        </div>
-      </Section>
-
-      <Section eyebrow={antiFragility?.eyebrow} title="The route should get stronger when challenged">
-        <PrincipalTable
-          columns={antiFragility?.table?.columns ?? ["Control", "Stress event", "Release test", "Owner", "Window"]}
-          rows={uniqueRows(reportRows(antiFragility), 7)}
-        />
-      </Section>
-
-      <Section eyebrow={wealth?.eyebrow} title="Base, stress, and opportunity cases are release consequences">
-        <div className="grid gap-4 md:grid-cols-3">
-          {(wealth?.cards ?? []).map((card, index) => (
-            <PrincipalInfoCard
-              key={`${card.label}-${index}`}
-              label={card.label}
-              title={card.value || card.title || card.label}
-              body={card.body || ""}
-              tone={index === 2 ? "warning" : "default"}
-            />
-          ))}
-        </div>
-        <div className="mt-6">
-          <PrincipalTable
-            columns={wealth?.table?.columns ?? ["Scenario", "Probability", "Year 10 value", "Net result vs capital", "Memo read"]}
-            rows={uniqueRows(reportRows(wealth), 3)}
-          />
-        </div>
-      </Section>
-
-      <Section eyebrow={scenario?.eyebrow} title="The final decision tree is binary at the gate">
-        <PrincipalTable
-          columns={scenario?.table?.columns ?? ["Branch", "Condition", "Consequence", "Verdict"]}
-          rows={uniqueRows(reportRows(scenario), 3)}
-        />
-      </Section>
-
-      <Section eyebrow={decisionMemory?.eyebrow} title="The decision must be retrievable years later">
-        <div className="grid gap-4 md:grid-cols-2">
-          {(decisionMemory?.cards ?? []).map((card, index) => (
-            <PrincipalInfoCard
-              key={`${card.label}-${index}`}
-              label={card.label}
-              title={card.value || card.title || card.label}
-              body={card.body || ""}
-              tone={index === 0 ? "primary" : "default"}
-            />
-          ))}
-        </div>
-        <div className="mt-6">
-          <PrincipalTable
-            columns={decisionMemory?.table?.columns ?? ["Report", "Cadence", "Owner", "Recipients", "Release relevance"]}
-            rows={uniqueRows(reportRows(decisionMemory), 3)}
-          />
-        </div>
-      </Section>
-
-      <Section eyebrow={roadmap?.eyebrow} title="Next seven days: the controlled order of movement">
-        <PrincipalTable
-          columns={roadmap?.table?.columns ?? ["Order", "Step", "Action", "Owner", "Timeline", "Release gate"]}
-          rows={uniqueRows(reportRows(roadmap), 9)}
-        />
       </Section>
     </>
   );
@@ -1033,6 +800,8 @@ function ReleaseGateTable({ gateRows }: { gateRows: ReleaseReadinessShareGateRow
 }
 
 function RouteOptionCard({ option, selected }: { option: ReleaseReadinessShareRouteOption; selected: boolean }) {
+  const hasPurchaseDuties = numberValue(option.metrics.totalDutiesUsd) > 0;
+  const dutyDragPct = numberValue(option.metrics.dutyDragPct);
   return (
     <div className={`rounded-md border p-4 ${selected ? "border-primary bg-primary/5" : "border-border bg-card/70"}`}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Route {option.rank}</p>
@@ -1042,11 +811,11 @@ function RouteOptionCard({ option, selected }: { option: ReleaseReadinessShareRo
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
         <div>
           <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Duties</p>
-          <p className="font-semibold text-foreground">{money(option.metrics.totalDutiesUsd, "US$0 / no purchase")}</p>
+          <p className="font-semibold text-foreground">{money(option.metrics.totalDutiesUsd, "No purchase released")}</p>
         </div>
         <div>
           <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Drag</p>
-          <p className="font-semibold text-foreground">{option.metrics.dutyDragPct.toFixed(1)}%</p>
+          <p className="font-semibold text-foreground">{hasPurchaseDuties && dutyDragPct > 0 ? `${dutyDragPct.toFixed(1)}%` : "Not incurred"}</p>
         </div>
       </div>
     </div>
@@ -1183,11 +952,25 @@ function ProjectionChart({ series }: { series: ReleaseReadinessShareChartSeries[
 }
 
 function FullReportSections({ sections }: { sections: ReleaseReadinessShareReportSection[] }) {
-  if (!sections.length) return null;
+  const routeSections = sections.filter((section) => {
+    const label = [
+      section.id,
+      section.eyebrow,
+      section.title,
+    ].filter(Boolean).join(" ").toLowerCase();
+
+    if (!label) return true;
+    if (/\bevidence vault\b|\bevidence boundary\b|\bpublic source\b|\bsource register\b|\bsource-to-claim\b|\bmethodology\b|\bmethod records\b|\bmethod drivers\b|\bcitation map\b|\bproof ledger\b|\bprivate evidence index\b/.test(label)) {
+      return false;
+    }
+    return true;
+  });
+
+  if (!routeSections.length) return null;
 
   return (
     <>
-      {sections.map((section) => (
+      {routeSections.map((section) => (
         <Section key={section.id} eyebrow={section.eyebrow} title={section.title}>
           <div className="space-y-6">
             {section.intro ? (
@@ -1485,7 +1268,7 @@ export default function PrincipalReleaseReadinessSharePage({
           </button>
         </header>
 
-        {activeView !== "principal" ? (
+        {activeView === "evidence" || activeView === "methodology" ? (
           <div className="mt-6 rounded-md border border-primary/30 bg-primary/5 p-4">
             <p className="text-sm leading-6 text-foreground">
               <span className="font-semibold">Evidence boundary:</span> Public claims are source-backed in the Evidence Vault.

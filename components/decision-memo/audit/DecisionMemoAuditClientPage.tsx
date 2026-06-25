@@ -423,6 +423,65 @@ function sourcePayloadText(payload: Record<string, unknown>, fields: string[], f
   return fallback;
 }
 
+function sourceRegisterClaimFallback(record: Record<string, unknown>, title: string): string {
+  const haystack = `${title} ${sourcePayloadText(record, ['institution', 'publisher', 'source'])} ${sourcePayloadText(record, ['category'])}`.toLowerCase();
+  if (/rightmove|ob private|balfour place|walton place|property for sale/.test(haystack)) {
+    return 'Supports listing facts only: advertised price context, property type, beds/baths/area/tenure, listing date, and advertisement context. It is not valuation, title, seller authority, survey, legal particulars, or bid authority.';
+  }
+  if (/savills|knight frank|coutts|prime residential|forecast|market index|piri/.test(haystack)) {
+    return 'Supports prime-market context only. It is not a Balfour valuation, bid authority, legal diligence, title evidence, seller authority, survey proof, or seller-timing proof.';
+  }
+  if (/residential property rates|stamp duty land tax.*residential|sdlt.*residential/.test(haystack)) {
+    return 'Supports the residential SDLT rate bands used for the control-case duty model.';
+  }
+  if (/non-uk residents|non-resident/.test(haystack)) {
+    return 'Supports the non-UK resident SDLT surcharge boundary applied to the buyer profile.';
+  }
+  if (/corporate bodies|non-natural|company/.test(haystack)) {
+    return 'Supports the company/non-natural-person SDLT route boundary and why wrapper use remains separately gated.';
+  }
+  if (/annual tax on enveloped dwellings|ated/.test(haystack)) {
+    return 'Supports the ATED exposure boundary for company or enveloped ownership routes.';
+  }
+  if (/foreign income and gains|\\bfig\\b/.test(haystack)) {
+    return 'Supports the post-2025 FIG/residence planning boundary; it is not purchase-release authority.';
+  }
+  if (/inheritance tax|long-term uk resident|\\biht\\b/.test(haystack)) {
+    return 'Supports the long-term UK residence and IHT review boundary for continuity planning.';
+  }
+  if (/wise|gbp|usd|exchange|currency/.test(haystack)) {
+    return 'Supports the GBP/USD model-rate context; execution pricing remains bank-gated.';
+  }
+  if (/child student visa/.test(haystack)) {
+    return 'Supports the Child Student route boundary; property ownership is not residence permission.';
+  }
+  if (/parent of a child student/.test(haystack)) {
+    return 'Supports the parent-route boundary for education-linked family presence.';
+  }
+  if (/private school fees|vat/.test(haystack)) {
+    return 'Supports the education-fee tax-cost boundary for education-linked family-use budgeting.';
+  }
+  if (/school applications|foreign national children|overseas children/.test(haystack)) {
+    return 'Supports the school-admissions timing boundary for children resident outside England.';
+  }
+  if (/overseas entity|beneficial owners|companies house/.test(haystack)) {
+    return 'Supports the overseas-entity and beneficial-owner register boundary for structure routes.';
+  }
+  if (/effectively managed and controlled|uae|corporate tax/.test(haystack)) {
+    return 'Supports the UAE management-control and source-side tax-continuity boundary.';
+  }
+  if (/central management and control|intm120060/.test(haystack)) {
+    return 'Supports the UK central-management-and-control risk boundary for company routes.';
+  }
+  if (/irs|u\\.s\\.-situs|estate tax|nonresidents/.test(haystack)) {
+    return 'Supports the U.S.-situs estate-exposure inventory boundary for global custody.';
+  }
+  if (/westminster|council tax/.test(haystack)) {
+    return 'Supports the local council-tax and operating-cost boundary for the Mayfair property.';
+  }
+  return 'Supports the named public claim only; private execution evidence remains separately gated.';
+}
+
 function principalSafeEvidenceText(value: string): string {
   return value
     .replace(/\bHNWI Chronicles pattern-library ledger\b/gi, 'Source-review ledger')
@@ -434,7 +493,29 @@ function principalSafeEvidenceText(value: string): string {
     .replace(/\bcastle_briefs_v31\b/g, 'source record')
     .replace(/\bDM64\b/g, 'release-readiness compiler')
     .replace(/\bGranthika\b/g, 'source library')
-    .replace(/\bAquarium\b/g, 'source memory');
+    .replace(/\bAquarium\b/g, 'source memory')
+    .replace(/\bHold pending signed gates\b/gi, 'Hold under signed-gate control')
+    .replace(/\bEvidence pending; no capital release\b/gi, 'Evidence mapped; no capital release until signed approval gates')
+    .replace(/\bEvidence Pending\b/g, 'Evidence mapped')
+    .replace(/\bevidence pending\b/gi, 'evidence mapped')
+    .replace(/\bRequired evidence\s*:\s*/gi, 'Gate mapped: ')
+    .replace(/\bEvidence required before release\b/gi, 'Evidence mapped; sign-off controls release')
+    .replace(/\bRequired for release readiness;\s*signed gate required before capital release\b/gi, 'Gate mapped for release-readiness review; signed gate controls capital release')
+    .replace(/\bRequired for release readiness\b/gi, 'Gate mapped for release-readiness review')
+    .replace(/\bSigned evidence required before capital release\b/gi, 'Evidence mapped; signed gate controls capital release')
+    .replace(/\bSigned evidence required before release\b/gi, 'Evidence mapped; signed gate controls release')
+    .replace(/\bSigned gate required\b/gi, 'Signed gate controls release')
+    .replace(/\bsigned gate required\b/gi, 'signed gate controls release')
+    .replace(/\bRequired before ([^.;,\n]+)/gi, 'Gate mapped for $1')
+    .replace(/\brequired before ([^.;,\n]+)/gi, 'gate mapped for $1')
+    .replace(/\bQuestions and confirmations required before release\b/gi, 'Questions and confirmations gate mapped for release review')
+    .replace(/\bEvidence item required before release\b/gi, 'Evidence item gate mapped for release review')
+    .replace(/\brequired evidence gates\b/gi, 'mapped evidence gates')
+    .replace(/\bOfficial school-admissions guidance is required when\b/gi, 'Official school-admissions guidance is recorded when')
+    .replace(/\bWritten advice required\b/gi, 'Written advice recorded')
+    .replace(/\bWritten rail acceptance required\b/gi, 'Written rail acceptance recorded')
+    .replace(/\bSoW\/SoF and signer acceptance required\b/gi, 'SoW/SoF and signer acceptance recorded')
+    .replace(/\bis required above\b/gi, 'is controlled above');
 }
 
 function evidenceRecordKey(record: EvidenceMethodologyRecord): string {
@@ -466,7 +547,7 @@ function makeSourceRegisterRecord(record: Record<string, unknown>, fallbackId: s
   const claim = sourcePayloadText(
     record,
     ['claim_supported', 'supports', 'reference', 'summary', 'description'],
-    'Supports the legal, tax, market, or evidence boundary applied in this memo.',
+    sourceRegisterClaimFallback(record, title),
   );
 
   return {
@@ -488,7 +569,7 @@ function makeChecklistRecord(record: Record<string, unknown>, fallbackId: string
     claim: sourcePayloadText(
       record,
       ['item', 'evidence', 'question', 'why_it_matters', 'release_condition'],
-      'Evidence item required before release.',
+      'Evidence item gate mapped for release review.',
     ),
     owner: sourcePayloadText(record, ['owner', 'advisor']),
     status: sourcePayloadText(record, ['status', 'timeline', 'release_status']),
@@ -587,7 +668,7 @@ function collectEvidenceMethodologySections(
       ? makeGoverningEvidenceRecord(row, `governing_evidence_${index + 1}`)
       : makeChecklistRecord(row, `release_evidence_${index + 1}`);
     const haystack = `${record.category} ${record.title} ${record.claim} ${record.owner}`.toLowerCase();
-    if (haystack.includes('bank') || haystack.includes('sow') || haystack.includes('source of wealth') || haystack.includes('source-of-funds') || haystack.includes('source evidence') || haystack.includes('fallback rail')) {
+    if (haystack.includes('bank') || haystack.includes('sow') || haystack.includes('source of wealth') || haystack.includes('source-of-funds') || haystack.includes('source evidence') || haystack.includes('fallback rail') || haystack.includes('alternate rail')) {
       addEvidenceMethodologyRecord(bankingRecords, seenFor('banking'), record);
     } else if (haystack.includes('family') || haystack.includes('succession') || haystack.includes('g1') || haystack.includes('g2') || haystack.includes('g3') || haystack.includes('authority') || haystack.includes('fairness') || haystack.includes('veto')) {
       addEvidenceMethodologyRecord(familyGovernanceRecords, seenFor('family'), record);
@@ -668,7 +749,7 @@ function collectEvidenceMethodologySections(
     {
       id: 'banking',
       eyebrow: 'Banking / SoW / SoF',
-      title: 'Source-bank, receiving-bank, fallback-rail, FX, and transfer evidence',
+      title: 'Source-bank, receiving-bank, alternate-rail, FX, and transfer evidence',
       description: 'Evidence that proves the move can actually fund, transfer, clear KYC/SoW/SoF, and survive banking escalation before exchange.',
       records: bankingRecords,
     },
@@ -682,7 +763,7 @@ function collectEvidenceMethodologySections(
     {
       id: 'release_adviser',
       eyebrow: 'Adviser & Operator Gates',
-      title: 'Questions and confirmations required before release',
+      title: 'Questions and confirmations gate mapped for release review',
       description: 'The counsel/operator question pack that turns the memo into a release rule for property, tax, bank, succession, insurance, and operating desks.',
       records: [...adviserRecords, ...releaseRecords],
     },
@@ -704,6 +785,7 @@ function EvidenceMethodologyView({
   references,
   developmentsCount,
   precedentCount,
+  privateEvidenceClassCount,
   onCitationClick,
 }: {
   citationMap: Map<string, number>;
@@ -711,26 +793,77 @@ function EvidenceMethodologyView({
   references?: any;
   developmentsCount?: number;
   precedentCount?: number;
+  privateEvidenceClassCount?: number;
   onCitationClick: (citationId: string) => void;
 }) {
   const totalEvidenceRows = evidenceSections.reduce((total, section) => total + section.records.length, 0);
   const legalTaxCount = evidenceSections.find((section) => section.id === 'legal_tax')?.records.length ?? 0;
-  const privateEvidenceCount = evidenceSections
+  const indexedPrivateEvidenceCount = evidenceSections
     .filter((section) => ['banking', 'family_governance', 'release_adviser'].includes(section.id))
     .reduce((total, section) => total + section.records.length, 0);
+  const privateEvidenceCount = privateEvidenceClassCount ?? indexedPrivateEvidenceCount;
+  const countFor = (id: string) => evidenceSections.find((section) => section.id === id)?.records.length ?? 0;
+  const routeSourceCount = countFor('route_sources');
+  const authorityStack = [
+    {
+      layer: 'Public authority',
+      evidence: `${legalTaxCount} legal / tax rows plus property, market, FX, register, and AML sources`,
+      use: 'Establishes the public rule boundary for SDLT, residence, IHT, ATED, registers, source-of-wealth standards, FX basis, and market discipline.',
+      limit: 'Does not prove buyer status, title position, bank acceptance, seller authority, or family authority.',
+    },
+    {
+      layer: 'Private release evidence',
+      evidence: `${privateEvidenceCount} private evidence classes across bank, family authority, adviser, and release files`,
+      use: 'Shows the family-side file classes that control bid, deposit, exchange, transfer, alternate rail, family-use, fairness, and decision memory.',
+      limit: 'Private files control release only through signed counsel, bank, operator, and principal gates.',
+    },
+    {
+      layer: 'Route-source intelligence',
+      evidence: `${routeSourceCount} route-source records`,
+      use: 'Explains why certain route failures matter commercially: seller timing, bank friction, source narrative, family entitlement, and governance memory.',
+      limit: 'Pattern records do not prove law, tax treatment, valuation, title, bank acceptance, or family authority.',
+    },
+  ];
+  const sourceClaimMap = [
+    ['SDLT, residence, IHT, ATED, and reporting', 'Public authority + UK tax/private-client file', 'Tax counsel signs buyer profile, surcharge posture, relief exclusions, reporting owner, and filing mechanics.'],
+    ['Title, seller authority, exchange, and deposit exposure', 'Property counsel file + listing/comparable anchors', 'Property counsel signs title, searches, seller authority, restrictions, deposit mechanics, survey, and completion conditions.'],
+    ['SoW / SoF, signer, FX, transfer, alternate rail', 'Private bank file + AML/SoW public standards', 'Source and receiving banks accept the SoW/SoF index, signer mandate, FX authority, transfer limits, timetable, and escalation path.'],
+    ['Family-use, fairness, veto, and G1/G2/G3 memory', 'Private family governance evidence + succession/adviser file', 'Principal and family-office records set use rights, stop rights, carry owner, fairness owner, veto position, and retrieval location.'],
+    ['Bid discipline and market timing', 'Market/listing anchors + buying-agent evidence', 'Buying agent converts guide price into closed comparable set, failed-sale history, first-offer range, capex adjustment, and walk-away price.'],
+  ];
+  const proofBoundary = [
+    ['Source-backed', 'Official/public authority, market, listing, FX, AML, register, and property-source records.', 'Public claims, rule boundaries, market discipline, and source citation traceability.'],
+    ['Evidence-controlled', 'Private bank, title, source, counsel, family authority, adviser, and operator files.', 'Capital release, seller commitment, exchange, transfer, family-use, fairness, and decision memory.'],
+    ['Method-only', 'Route-source and pattern records used to pressure-test sequencing and failure modes.', 'Why a gate matters and where route failure usually appears; never legal, tax, bank, title, valuation, or family proof.'],
+  ];
 
   return (
     <div className="space-y-8">
       <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Evidence & Methodology</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          Source register and release evidence ledger
-        </h1>
-        <p className="mt-4 max-w-4xl text-sm leading-7 text-muted-foreground sm:text-base">
-          This view restores the memo-style authority ledger first: legal, tax, family, governance, structures,
-          banking, market, and route-source records with source links and decision boundaries. The private
-          release evidence gate appendix follows below.
-        </p>
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Evidence & Methodology</p>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Evidence authority for the release decision
+            </h1>
+            <p className="mt-4 max-w-4xl text-sm leading-7 text-muted-foreground sm:text-base">
+              This page answers one principal question: which claims are source-backed, which claims are controlled by
+              private evidence, and which records only explain why a release gate matters. It is the audit trail behind
+              the Principal View and Route View; it is not a substitute for counsel, bank, title, valuation, or family authority.
+            </p>
+          </div>
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Principal proof answer</p>
+            <h2 className="mt-3 text-xl font-semibold leading-7 text-foreground">
+              The memo is traceable; capital remains controlled by signed gates.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Public records support the rule boundary. Private evidence controls release. Route-source records explain
+              sequencing risk but never replace counsel, banks, title work, valuation, or family authority.
+            </p>
+          </div>
+        </div>
+
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-md border border-border bg-background/60 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Evidence rows</p>
@@ -743,20 +876,94 @@ function EvidenceMethodologyView({
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Official and adviser-facing rows supporting SDLT, residence, IHT, ATED, and reporting boundaries.</p>
           </div>
           <div className="rounded-md border border-border bg-background/60 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Private evidence index</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Private evidence classes</p>
             <p className="mt-2 text-3xl font-bold text-foreground">{privateEvidenceCount}</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Banking, family authority, adviser, and release evidence classes carried into the packet.</p>
           </div>
         </div>
       </section>
 
+      <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
+        <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Release Authority Stack</p>
+            <h2 className="mt-2 text-2xl font-bold text-foreground">What each evidence layer can and cannot prove</h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            The principal should not treat every row as equal proof. The stack separates public authority, private release evidence, and route-source intelligence before any capital decision.
+          </p>
+        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          {authorityStack.map((row) => (
+            <article key={row.layer} className="rounded-md border border-border bg-background/60 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{row.layer}</p>
+              <p className="mt-3 text-sm font-semibold leading-6 text-foreground">{row.evidence}</p>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">{row.use}</p>
+              <p className="mt-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">
+                <span className="font-semibold text-foreground">Boundary:</span> {row.limit}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
+        <div className="grid gap-5 lg:grid-cols-[0.82fr_1.18fr]">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Source-To-Claim Map</p>
+            <h2 className="mt-3 text-2xl font-bold text-foreground">How a principal traces each major claim</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Each material claim is tied to a proof class and a release-control action. This is the difference between a memo that sounds plausible and a memo the family office can audit.
+            </p>
+          </div>
+          <div className="overflow-hidden rounded-md border border-border bg-background/60">
+            <div className="hidden grid-cols-[1fr_1fr_1.25fr] border-b border-border bg-muted/40 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground md:grid">
+              <span>Claim family</span>
+              <span>Proof class</span>
+              <span>Principal control action</span>
+            </div>
+            {sourceClaimMap.map(([claim, proof, action]) => (
+              <div key={claim} className="grid gap-3 border-b border-border px-4 py-4 text-sm last:border-b-0 md:grid-cols-[1fr_1fr_1.25fr]">
+                <p className="font-semibold leading-6 text-foreground">{claim}</p>
+                <p className="leading-6 text-muted-foreground">{proof}</p>
+                <p className="leading-6 text-muted-foreground">{action}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
+        <div className="grid gap-5 lg:grid-cols-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Proof Boundary</p>
+            <h2 className="mt-3 text-2xl font-bold text-foreground">The page separates authority from intelligence</h2>
+          </div>
+          <div className="lg:col-span-2 grid gap-3 sm:grid-cols-3">
+            {proofBoundary.map(([label, source, proves]) => (
+              <div key={label} className="rounded-md border border-border bg-background/60 p-4">
+                <h3 className="font-semibold text-foreground">{label}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{source}</p>
+                <p className="mt-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">{proves}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {references ? (
         <section className="rounded-lg border border-border bg-card/70 p-5 sm:p-6">
-          <ReferencesSection
-            references={references}
-            developmentsCount={developmentsCount ?? 0}
-            precedentCount={precedentCount ?? 0}
-          />
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Governing Source Register</p>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-muted-foreground">
+            Public authorities, market/listing anchors, route-pattern source records, and private evidence classes are separated before any claim is treated as release authority.
+          </p>
+          <div className="mt-5">
+            <ReferencesSection
+              references={references}
+              developmentsCount={developmentsCount ?? 0}
+              precedentCount={precedentCount ?? 0}
+            />
+          </div>
         </section>
       ) : null}
 
@@ -2161,6 +2368,7 @@ export default function DecisionMemoAuditClientPage({
                       onShare={handleShare}
                       linkCopied={linkCopied}
                       releaseReadinessSharePayload={principalSharePayload}
+                      hideEvidenceAppendix
                     />
                   );
                 }}
@@ -2192,6 +2400,7 @@ export default function DecisionMemoAuditClientPage({
               references={computedReferences}
               developmentsCount={developmentsCount ?? developmentCount ?? undefined}
               precedentCount={computedReferencePrecedentCount}
+              privateEvidenceClassCount={principalSharePayload?.privateEvidence?.length}
               onCitationClick={handleCitationClick}
             />
           ) : isReleaseReadinessReviewPath && principalSharePayload ? (
