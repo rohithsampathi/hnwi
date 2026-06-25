@@ -1,4 +1,3 @@
-import { API_BASE_URL } from '@/config/api';
 import type { ReleaseReadinessSharePayload } from '@/lib/decision-memo/build-release-readiness-share-surface';
 import {
   encodeDecisionMemoIdForPath,
@@ -7,6 +6,10 @@ import {
 
 export const RELEASE_READINESS_PUBLIC_SNAPSHOT_CONTRACT =
   'hnwi_release_readiness_public_snapshot_v1';
+
+const KINGDOM_CORE_PUBLIC_READ_URL =
+  process.env.KINGDOM_CORE_BASE_URL?.trim().replace(/\/$/, '') ||
+  'https://kingdom-core.montaigne.co';
 
 export class ReleaseReadinessPublicSnapshotError extends Error {
   status: number;
@@ -84,7 +87,7 @@ export async function fetchReleaseReadinessPublicSnapshot(
   const publicIntakeId = resolvePublicDecisionMemoId(intakeId);
   const publicPathId = encodeDecisionMemoIdForPath(publicIntakeId);
   const response = await fetch(
-    `${API_BASE_URL}/api/decision-memo/release-readiness/public/${publicPathId}`,
+    `${KINGDOM_CORE_PUBLIC_READ_URL}/api/decision-memo/release-readiness/public/${publicPathId}`,
     {
       method: 'GET',
       headers: {
