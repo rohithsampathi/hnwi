@@ -1001,6 +1001,44 @@ function FullReportSections({ sections }: { sections: ReleaseReadinessShareRepor
   );
 }
 
+function HnwiDriverRail({ drivers }: { drivers: ReleaseReadinessMethodDriver[] }) {
+  if (!drivers.length) return null;
+
+  return (
+    <Section eyebrow="HNWI Drivers" title="Family-action route drivers">
+      <div className="grid gap-4 lg:grid-cols-2">
+        {drivers.map((driver, index) => (
+          <article key={driver.id} className="rounded-md border border-border bg-card/70 p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Driver {index + 1}
+            </p>
+            <h3 className="mt-2 text-lg font-semibold leading-7 text-foreground">{cleanDisplayText(driver.title)}</h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(driver.driver)}</p>
+            {driver.testApplied ? (
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                <span className="font-semibold text-foreground">Route test:</span>{" "}
+                {cleanDisplayText(driver.testApplied)}
+              </p>
+            ) : null}
+            {driver.testResult ? (
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                <span className="font-semibold text-foreground">Family consequence:</span>{" "}
+                {cleanDisplayText(driver.testResult)}
+              </p>
+            ) : null}
+            {driver.capitalConsequence ? (
+              <p className="mt-3 border-t border-border pt-3 text-sm leading-6 text-muted-foreground">
+                <span className="font-semibold text-foreground">Capital consequence:</span>{" "}
+                {cleanDisplayText(driver.capitalConsequence)}
+              </p>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 function EvidenceVaultView({
   publicSources,
   privateEvidence,
@@ -1303,7 +1341,12 @@ export default function PrincipalReleaseReadinessSharePage({
         </nav>
 
         {activeView === "principal" ? <PrincipalRouteView payload={payload} /> : null}
-        {activeView === "route" ? <FullReportSections sections={payload.reportSections} /> : null}
+        {activeView === "route" ? (
+          <>
+            <HnwiDriverRail drivers={payload.methodDrivers} />
+            <FullReportSections sections={payload.reportSections} />
+          </>
+        ) : null}
         {activeView === "evidence" ? (
           <EvidenceVaultView publicSources={payload.publicSources} privateEvidence={payload.privateEvidence} />
         ) : null}
