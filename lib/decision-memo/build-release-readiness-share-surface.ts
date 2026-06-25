@@ -125,6 +125,27 @@ export interface ReleaseReadinessShareReportSection {
   chart?: ReleaseReadinessShareChartSeries[];
 }
 
+export interface ReleaseReadinessEvidenceMethodologyRecord {
+  id: string;
+  title: string;
+  category: string;
+  claim: string;
+  owner?: string;
+  status?: string;
+  date?: string;
+  institution?: string;
+  url?: string;
+  citationId?: string;
+}
+
+export interface ReleaseReadinessEvidenceMethodologySection {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  records: ReleaseReadinessEvidenceMethodologyRecord[];
+}
+
 export interface ReleaseReadinessPrincipalTable {
   columns: string[];
   rows: string[][];
@@ -188,6 +209,7 @@ export interface ReleaseReadinessSharePayload {
   methodDrivers: ReleaseReadinessMethodDriver[];
   citations: ReleaseReadinessShareCitation[];
   reportSections: ReleaseReadinessShareReportSection[];
+  evidenceSections?: ReleaseReadinessEvidenceMethodologySection[];
   principalView?: ReleaseReadinessPrincipalView;
 }
 
@@ -671,15 +693,16 @@ function buildSafeRouteIntelligence(route: RouteIntelligenceV2, reference: strin
 }
 
 function buildDefaultPrivateEvidence() {
+  const gateMappedStatus = "Gate mapped; release remains blocked until signed evidence is received and indexed.";
   return [
-    ["Buyer profile", "Gate mapped for bid gate", "Principal / FO operator", "Identity class, residence posture, property count, and buyer capacity."],
-    ["Title pack", "Indexed in input pack; counsel sign-off controls exchange", "UK property counsel", "Title, searches, survey, restrictions, seller authority, insurance quote and security plan, and exchange mechanics."],
-    ["SDLT computation", "Gate mapped for bid gate / counsel-confirmed", "UK tax counsel", "Signed SDLT treatment, surcharges, relief exclusions, and filing responsibility."],
-    ["SoW / SoF file", "Gate mapped for exchange gate", "Source bank", "Corroborated source narrative, account path, adverse-media checks, and transfer authority."],
-    ["Receiving and alternate rails", "Gate mapped for exchange gate", "Receiving bank", "Primary rail, alternate rail, KYC acceptance, FX authority, limits, and timetable."],
-    ["Family authority minute", "Indexed in input pack; signed authority minute controls bid release or exchange", "Family office / principal", "Use boundary, family-home rights position, title authority, carry owner, sale/refinance limits, and decision memory."],
-    ["Family fairness minute", "Gate mapped for bid release or exchange gate", "Family fairness owner", "Notice, fairness protection, beneficiary treatment, and next-generation record."],
-    ["Operating file", "Gate mapped for completion gate", "FO operator", "Insurance quote, security plan, service contracts, initial carry budget, and reporting cadence."],
+    ["Buyer profile", gateMappedStatus, "Principal / FO operator", "Identity class, residence posture, property count, and buyer capacity."],
+    ["Title pack", gateMappedStatus, "UK property counsel", "Title, searches, survey, restrictions, seller authority, insurance quote and security plan, and exchange mechanics."],
+    ["SDLT computation", gateMappedStatus, "UK tax counsel", "Signed SDLT treatment, surcharges, relief exclusions, and filing responsibility."],
+    ["SoW / SoF file", gateMappedStatus, "Source bank", "Corroborated source narrative, account path, adverse-media checks, and transfer authority."],
+    ["Receiving and alternate rails", gateMappedStatus, "Receiving bank", "Primary rail, alternate rail, KYC acceptance, FX authority, limits, and timetable."],
+    ["Family authority minute", gateMappedStatus, "Family office / principal", "Use boundary, family-home rights position, title authority, carry owner, sale/refinance limits, and decision memory."],
+    ["Family fairness minute", gateMappedStatus, "Family fairness owner", "Notice, fairness protection, beneficiary treatment, and next-generation record."],
+    ["Operating file", gateMappedStatus, "FO operator", "Insurance quote, security plan, service contracts, initial carry budget, and reporting cadence."],
   ].map(([label, status, owner, detail]) => ({
     label,
     status,
@@ -2329,6 +2352,299 @@ function buildPrivateEvidenceForPayload(): ReleaseReadinessPrivateEvidence[] {
   }));
 }
 
+function evidencePreviewRecord(resolved: ResolvedDecisionMemoSurfaceData): RecordLike {
+  const memoData = asRecord(resolved.memoData);
+  const backendData = asRecord(resolved.backendData);
+  const fullArtifact = asRecord((resolved as unknown as RecordLike).fullArtifact);
+  const candidates = [
+    memoData.preview_data,
+    backendData.preview_data,
+    asRecord(backendData.memoData).preview_data,
+    asRecord(fullArtifact.memo_data).preview_data,
+    fullArtifact.preview_data,
+    memoData,
+    backendData,
+    fullArtifact,
+  ];
+
+  for (const candidate of candidates) {
+    if (isRecord(candidate) && Object.keys(candidate).length > 0) return candidate;
+  }
+
+  return {};
+}
+
+function evidenceText(record: RecordLike, fields: string[], fallback = ""): string {
+  for (const field of fields) {
+    const value = record[field];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    if (Array.isArray(value)) {
+      const joined = value
+        .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+        .slice(0, 2)
+        .join(" ");
+      if (joined.trim()) return joined.trim();
+    }
+  }
+  return fallback;
+}
+
+function evidenceSafeText(value: unknown, fallback = ""): string {
+  const cleaned = sanitizeShareText(value ?? fallback)
+    .replace(/\bIndexed in input pack;?.*?(?=\.?$)/gi, "Gate mapped; release remains blocked until signed evidence is received and indexed")
+    .replace(/\bcounsel-confirmed\b/gi, "counsel gate mapped")
+    .replace(/\bpre-cleared\b/gi, "independently cleared")
+    .replace(/\bwritten conditional bank acceptance reviewed\b/gi, "bank acceptance gate mapped")
+    .replace(/\bNo unexplained cash leg remains\b/gi, "Source wealth, source funds, liquidity, primary rail, alternate rail, tax treatment, and transfer authority remain gate mapped")
+    .replace(/\bring-fenced liquidity pool\b/gi, "liquidity source gate")
+    .replace(/\bCounsel confirms\b/gi, "Counsel gate maps")
+    .replace(/\bHold Until Release Evidence Clears\b/gi, "Hold until signed gates clear")
+    .trim();
+  return cleaned || fallback;
+}
+
+function sourceRegisterClaimFallback(record: RecordLike, title: string): string {
+  const haystack = `${title} ${evidenceText(record, ["institution", "publisher", "source"])} ${evidenceText(record, ["category"])}`.toLowerCase();
+  if (/rightmove|ob private|balfour place|walton place|property for sale/.test(haystack)) {
+    return "Supports listing facts and market context only; it is not valuation, title, seller authority, survey, legal particulars, or bid authority.";
+  }
+  if (/hmrc|gov\.uk|sdlt|stamp duty|ated|iht|fig|tax/.test(haystack)) {
+    return "Supports public legal or tax rule boundaries only; buyer facts and counsel computation control release.";
+  }
+  if (/bank|source of wealth|source of funds|aml|sanctions|kyc/.test(haystack)) {
+    return "Supports banking, AML, SoW, SoF, or transfer-control context only; bank acceptance controls release.";
+  }
+  return "Supports public rule, market, or source context; private evidence and adviser sign-off control release.";
+}
+
+function evidenceRecordKey(record: ReleaseReadinessEvidenceMethodologyRecord): string {
+  return `${record.id || record.title}:${record.claim}`.toLowerCase();
+}
+
+function addEvidenceRecord(
+  records: ReleaseReadinessEvidenceMethodologyRecord[],
+  seen: Set<string>,
+  record: ReleaseReadinessEvidenceMethodologyRecord,
+) {
+  const normalizedRecord: ReleaseReadinessEvidenceMethodologyRecord = {
+    ...record,
+    title: evidenceSafeText(record.title),
+    category: evidenceSafeText(record.category),
+    claim: evidenceSafeText(record.claim),
+    owner: record.owner ? evidenceSafeText(record.owner) : undefined,
+    status: record.status ? evidenceSafeText(record.status) : undefined,
+    institution: record.institution ? evidenceSafeText(record.institution) : undefined,
+    date: record.date ? evidenceSafeText(record.date) : undefined,
+    url: record.url ? sanitizeShareText(record.url) : undefined,
+  };
+  const key = evidenceRecordKey(normalizedRecord);
+  if (!normalizedRecord.title || !normalizedRecord.claim || seen.has(key)) return;
+  seen.add(key);
+  records.push(normalizedRecord);
+}
+
+function makeSourceEvidenceRecord(record: RecordLike, fallbackId: string): ReleaseReadinessEvidenceMethodologyRecord {
+  const title = evidenceText(record, ["title", "source_title", "name"], "Source register entry");
+  return {
+    id: evidenceText(record, ["id", "_id", "brief_id", "dev_id", "devid"], fallbackId),
+    title,
+    category: evidenceText(record, ["category"], "Source Register"),
+    claim: evidenceText(record, ["claim_supported", "supports", "reference", "summary", "description"], sourceRegisterClaimFallback(record, title)),
+    date: evidenceText(record, ["date", "source_date", "published_at"]),
+    institution: evidenceText(record, ["institution", "publisher", "source"]),
+    url: evidenceText(record, ["url", "source_url"]),
+    citationId: sourceCitationId(record),
+  };
+}
+
+function makeReleaseEvidenceRecord(record: RecordLike, fallbackId: string): ReleaseReadinessEvidenceMethodologyRecord {
+  return {
+    id: evidenceText(record, ["id", "_id"], fallbackId),
+    title: evidenceText(record, ["title", "category", "domain"], "Release evidence"),
+    category: evidenceText(record, ["category", "domain"], "Release Evidence"),
+    claim: evidenceText(record, ["evidence", "item", "question", "why_it_matters", "release_condition"], "Evidence item gate mapped for release review."),
+    owner: evidenceText(record, ["owner", "advisor"]),
+    status: evidenceText(record, ["release_status", "status", "timeline"]),
+  };
+}
+
+function makeAdviserEvidenceRecord(record: RecordLike, fallbackId: string): ReleaseReadinessEvidenceMethodologyRecord {
+  return {
+    id: evidenceText(record, ["id", "_id"], fallbackId),
+    title: evidenceText(record, ["domain"], "Adviser question"),
+    category: "Adviser Question Pack",
+    claim: evidenceText(record, ["question"], "Question to settle before release."),
+    owner: evidenceText(record, ["owner", "advisor"]),
+    status: evidenceText(record, ["status"], "Gate mapped for adviser answer"),
+  };
+}
+
+function makePrivateEvidenceRecord(record: RecordLike, fallbackId: string): ReleaseReadinessEvidenceMethodologyRecord {
+  return {
+    id: evidenceText(record, ["id", "_id"], fallbackId),
+    title: evidenceText(record, ["label", "detail", "type"], "Private evidence class"),
+    category: evidenceText(record, ["type"], "Private Evidence Class"),
+    claim: evidenceText(record, ["release_effect", "source_ref", "detail"], "Private evidence class used to settle release readiness without exposing family identity."),
+    owner: evidenceText(record, ["owner"]),
+    status: evidenceText(record, ["state", "status"]),
+  };
+}
+
+function buildEvidenceSectionsForPayload(
+  resolved: ResolvedDecisionMemoSurfaceData,
+  methodDrivers: ReleaseReadinessMethodDriver[],
+): ReleaseReadinessEvidenceMethodologySection[] {
+  const preview = evidencePreviewRecord(resolved);
+  const legalReferences = asRecord(preview.legal_references);
+  const zeroTrust = asRecord(preview.zero_trust_move_intake);
+  const ddChecklist = asRecord(preview.dd_checklist);
+  const legalTaxRecords: ReleaseReadinessEvidenceMethodologyRecord[] = [];
+  const propertyMarketRecords: ReleaseReadinessEvidenceMethodologyRecord[] = [];
+  const structuresRecords: ReleaseReadinessEvidenceMethodologyRecord[] = [];
+  const familyGovernanceRecords: ReleaseReadinessEvidenceMethodologyRecord[] = [];
+  const bankingRecords: ReleaseReadinessEvidenceMethodologyRecord[] = [];
+  const releaseRecords: ReleaseReadinessEvidenceMethodologyRecord[] = [];
+  const adviserRecords: ReleaseReadinessEvidenceMethodologyRecord[] = [];
+  const routeSourceRecords: ReleaseReadinessEvidenceMethodologyRecord[] = [];
+  const seen = new Map<string, Set<string>>();
+  const seenFor = (key: string) => {
+    if (!seen.has(key)) seen.set(key, new Set<string>());
+    return seen.get(key)!;
+  };
+
+  [
+    ...asArray(preview.governing_source_register),
+    ...asArray(preview.source_register),
+    ...asArray(preview.regulatory_citations),
+    ...asArray(legalReferences.sources),
+  ].forEach((row, index) => {
+    const record = makeSourceEvidenceRecord(row, `source_register_${index + 1}`);
+    const haystack = `${record.category} ${record.title} ${record.claim} ${record.institution}`.toLowerCase();
+    if (/legal|tax|sdlt|hmrc|gov\.uk|iht|ated|fig|residence|reporting/.test(haystack)) {
+      addEvidenceRecord(legalTaxRecords, seenFor("legal_tax"), record);
+    } else if (/structure|company|trust|overseas|beneficial|owner|register/.test(haystack)) {
+      addEvidenceRecord(structuresRecords, seenFor("structures"), record);
+    } else if (/governance|family|succession|fairness|veto|authority/.test(haystack)) {
+      addEvidenceRecord(familyGovernanceRecords, seenFor("family"), record);
+    } else {
+      addEvidenceRecord(propertyMarketRecords, seenFor("property_market"), record);
+    }
+  });
+
+  [
+    ...asArray(ddChecklist.items),
+    ...asArray(preview.programmatic_dd_checklist),
+    ...asArray(preview.governing_evidence),
+  ].forEach((row, index) => {
+    const record = makeReleaseEvidenceRecord(row, `release_evidence_${index + 1}`);
+    const haystack = `${record.category} ${record.title} ${record.claim} ${record.owner}`.toLowerCase();
+    if (/bank|sow|sof|source of wealth|source-of-funds|source evidence|alternate rail|funding rail|fx|transfer/.test(haystack)) {
+      addEvidenceRecord(bankingRecords, seenFor("banking"), record);
+    } else if (/family|succession|generation|g1|g2|g3|authority|fairness|veto|use-right/.test(haystack)) {
+      addEvidenceRecord(familyGovernanceRecords, seenFor("family"), record);
+    } else if (/tax|sdlt|residence|reporting|iht|ated|fig/.test(haystack)) {
+      addEvidenceRecord(legalTaxRecords, seenFor("legal_tax"), record);
+    } else if (/title|property|seller|insurance|carry|market|listing|survey/.test(haystack)) {
+      addEvidenceRecord(propertyMarketRecords, seenFor("property_market"), record);
+    } else if (/structure|owner|beneficial|entity|company|trust/.test(haystack)) {
+      addEvidenceRecord(structuresRecords, seenFor("structures"), record);
+    } else {
+      addEvidenceRecord(releaseRecords, seenFor("release"), record);
+    }
+  });
+
+  asArray(preview.counsel_operator_question_pack).forEach((row, index) => {
+    addEvidenceRecord(adviserRecords, seenFor("adviser"), makeAdviserEvidenceRecord(row, `adviser_question_${index + 1}`));
+  });
+
+  [
+    ...asArray(zeroTrust.evidence_records),
+    ...asArray(zeroTrust.adviser_confirmations),
+    ...asArray(zeroTrust.adviser_asks),
+    ...asArray(zeroTrust.records),
+  ].forEach((row, index) => {
+    const record = makePrivateEvidenceRecord(row, `private_evidence_${index + 1}`);
+    const haystack = `${record.category} ${record.title} ${record.claim} ${record.owner}`.toLowerCase();
+    if (/bank|rail|fund|source/.test(haystack)) {
+      addEvidenceRecord(bankingRecords, seenFor("banking"), record);
+    } else if (/tax|sdlt/.test(haystack)) {
+      addEvidenceRecord(legalTaxRecords, seenFor("legal_tax"), record);
+    } else if (/family|succession|authority|fairness|veto/.test(haystack)) {
+      addEvidenceRecord(familyGovernanceRecords, seenFor("family"), record);
+    } else {
+      addEvidenceRecord(releaseRecords, seenFor("release"), record);
+    }
+  });
+
+  methodDrivers.forEach((driver, driverIndex) => {
+    driver.sources.forEach((source, sourceIndex) => {
+      addEvidenceRecord(routeSourceRecords, seenFor("route_sources"), {
+        id: source.id || `${driver.id}_source_${sourceIndex + 1}`,
+        citationId: source.id,
+        title: source.title || `Route source ${driverIndex + 1}.${sourceIndex + 1}`,
+        category: "Route Source Review",
+        claim: driver.releaseRead || driver.driver || "Source record supports route sequencing and release-gate relevance.",
+        date: source.date,
+        institution: source.title,
+        url: source.url,
+      });
+    });
+  });
+
+  return [
+    {
+      id: "legal_tax",
+      eyebrow: "Legal & Tax Evidence",
+      title: "SDLT, residence, IHT, ATED, and reporting sources",
+      description: "Official and adviser-facing evidence used to model the direct-buyer control case, surcharge exposure, structure constraints, and tax-reporting boundary.",
+      records: legalTaxRecords,
+    },
+    {
+      id: "structures",
+      eyebrow: "Structures & Ownership",
+      title: "Entity, trustee, beneficial-owner, and register evidence",
+      description: "Sources and release records that decide whether a wrapper solves a real non-tax need or adds cost, reporting, bank, and succession drag.",
+      records: structuresRecords,
+    },
+    {
+      id: "property_market",
+      eyebrow: "Property, Market & Carry",
+      title: "Listing, comparable, council-tax, carry, and bid-discipline evidence",
+      description: "Evidence used to keep guide price, seller timing, all-in exposure, operating cost, and walk-away logic separate from release authority.",
+      records: propertyMarketRecords,
+    },
+    {
+      id: "banking",
+      eyebrow: "Banking / SoW / SoF",
+      title: "Source-bank, receiving-bank, alternate-rail, FX, and transfer evidence",
+      description: "Evidence that proves the move can fund, transfer, clear KYC/SoW/SoF, and survive banking escalation before exchange.",
+      records: bankingRecords,
+    },
+    {
+      id: "family_governance",
+      eyebrow: "Family Governance & Succession",
+      title: "Authority, veto, use-rights, fairness, and generation-continuity evidence",
+      description: "Family-side evidence that determines who can see, stop, sign, move, retrieve, and explain the decision after the asset hardens.",
+      records: familyGovernanceRecords,
+    },
+    {
+      id: "release_adviser",
+      eyebrow: "Adviser & Operator Gates",
+      title: "Questions and confirmations gate mapped for release review",
+      description: "The counsel/operator question pack that turns the memo into a release rule for property, tax, bank, succession, insurance, and operating desks.",
+      records: [...adviserRecords, ...releaseRecords],
+    },
+    {
+      id: "route_sources",
+      eyebrow: "Route Source Review",
+      title: "Source-review records behind route drivers and failure modes",
+      description: "Route-source records explain route sequencing and failure-mode relevance; they are methodology, not legal, tax, title, bank, valuation, or family-authority proof.",
+      records: routeSourceRecords,
+    },
+  ].filter((section) => section.records.length > 0);
+}
+
 function buildMethodDriversForPayload(route: RouteIntelligenceV2): ReleaseReadinessMethodDriver[] {
   return (route.routeDriverRegister?.items ?? []).map((driver, driverIndex) => {
     const driverId = text(driver.id, `method_driver_${driverIndex + 1}`);
@@ -2396,6 +2712,7 @@ export function buildReleaseReadinessSharePayload(
   const publicSources = buildSafePublicSources(resolved);
   const methodDrivers = buildMethodDriversForPayload(route);
   const citations = collectPayloadCitations(methodDrivers, publicSources);
+  const evidenceSections = buildEvidenceSectionsForPayload(resolved, methodDrivers);
   const decision = "Approved to negotiate under signed gates; no capital release";
   const releaseRule =
     "Capital remains blocked until title, SDLT, source, bank, authority, family-use, fairness, and decision-memory gates are signed";
@@ -2470,6 +2787,7 @@ export function buildReleaseReadinessSharePayload(
     methodDrivers,
     citations,
     reportSections,
+    evidenceSections,
     principalView,
   };
 }

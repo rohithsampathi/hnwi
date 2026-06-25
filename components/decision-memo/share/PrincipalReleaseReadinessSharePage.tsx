@@ -10,6 +10,7 @@ import { formatUsdCompact } from "@/lib/decision-memo/route-intelligence-v2";
 import type { Citation } from "@/lib/parse-dev-citations";
 import type { CitationSourceDevelopment } from "@/lib/development-citation";
 import type {
+  ReleaseReadinessEvidenceMethodologySection,
   ReleaseReadinessMethodDriver,
   ReleaseReadinessMethodSource,
   ReleaseReadinessShareGateRow,
@@ -22,7 +23,7 @@ import type {
   ReleaseReadinessShareChartSeries,
 } from "@/lib/decision-memo/build-release-readiness-share-surface";
 
-type ViewMode = "principal" | "route" | "evidence" | "methodology";
+type ViewMode = "principal" | "route" | "evidence";
 
 interface PrincipalReleaseReadinessSharePageProps {
   reference: string;
@@ -33,14 +34,13 @@ interface PrincipalReleaseReadinessSharePageProps {
 const VIEW_LABELS: Array<{ id: ViewMode; label: string; description: string }> = [
   { id: "principal", label: "Principal View", description: "Family decision, capital rule, gates, and consequences." },
   { id: "route", label: "Route View", description: "Full route memo with scenario, crisis, succession, and execution depth." },
-  { id: "evidence", label: "Evidence Vault", description: "Public source register and private evidence index." },
-  { id: "methodology", label: "Methodology", description: "Controlled method receipt, not raw process output." },
+  { id: "evidence", label: "Evidence & Methodology", description: "Source register, evidence boundary, and method receipt." },
 ];
 
 function normalizeViewMode(value: string | null): ViewMode {
   if (value === "route") return "route";
   if (value === "evidence") return "evidence";
-  if (value === "methodology") return "methodology";
+  if (value === "methodology") return "evidence";
   return "principal";
 }
 
@@ -1001,44 +1001,6 @@ function FullReportSections({ sections }: { sections: ReleaseReadinessShareRepor
   );
 }
 
-function HnwiDriverRail({ drivers }: { drivers: ReleaseReadinessMethodDriver[] }) {
-  if (!drivers.length) return null;
-
-  return (
-    <Section eyebrow="HNWI Drivers" title="Family-action route drivers">
-      <div className="grid gap-4 lg:grid-cols-2">
-        {drivers.map((driver, index) => (
-          <article key={driver.id} className="rounded-md border border-border bg-card/70 p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Driver {index + 1}
-            </p>
-            <h3 className="mt-2 text-lg font-semibold leading-7 text-foreground">{cleanDisplayText(driver.title)}</h3>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(driver.driver)}</p>
-            {driver.testApplied ? (
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                <span className="font-semibold text-foreground">Route test:</span>{" "}
-                {cleanDisplayText(driver.testApplied)}
-              </p>
-            ) : null}
-            {driver.testResult ? (
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                <span className="font-semibold text-foreground">Family consequence:</span>{" "}
-                {cleanDisplayText(driver.testResult)}
-              </p>
-            ) : null}
-            {driver.capitalConsequence ? (
-              <p className="mt-3 border-t border-border pt-3 text-sm leading-6 text-muted-foreground">
-                <span className="font-semibold text-foreground">Capital consequence:</span>{" "}
-                {cleanDisplayText(driver.capitalConsequence)}
-              </p>
-            ) : null}
-          </article>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
 function EvidenceVaultView({
   publicSources,
   privateEvidence,
@@ -1212,6 +1174,201 @@ function MethodologyView({
   );
 }
 
+function EvidenceMethodologyShareView({
+  publicSources,
+  privateEvidence,
+  methodDrivers,
+  evidenceSections,
+}: {
+  publicSources: ReleaseReadinessShareSource[];
+  privateEvidence: ReleaseReadinessPrivateEvidence[];
+  methodDrivers: ReleaseReadinessMethodDriver[];
+  evidenceSections?: ReleaseReadinessEvidenceMethodologySection[];
+}) {
+  const sections = evidenceSections?.length ? evidenceSections : [];
+  const totalEvidenceRows = sections.reduce((total, section) => total + section.records.length, 0);
+  const legalTaxRows = sections.find((section) => section.id === "legal_tax")?.records.length ?? 0;
+  const routeSourceRows = sections.find((section) => section.id === "route_sources")?.records.length ?? methodDrivers.reduce((total, driver) => total + driver.sources.length, 0);
+  const authorityStack = [
+    {
+      layer: "Public authority",
+      evidence: `${legalTaxRows} legal / tax rows plus property, market, FX, register, and AML sources`,
+      use: "Establishes the public rule boundary for SDLT, residence, IHT, ATED, registers, source-of-wealth standards, FX basis, and market discipline.",
+      limit: "Does not prove buyer status, title position, bank acceptance, seller authority, or family authority.",
+    },
+    {
+      layer: "Private release evidence",
+      evidence: `${privateEvidence.length} private evidence classes across bank, family authority, adviser, and release files`,
+      use: "Shows the family-side file classes that control bid, deposit, exchange, transfer, alternate rail, family-use, fairness, and decision memory.",
+      limit: "Private files control release only through signed counsel, bank, operator, and principal gates.",
+    },
+    {
+      layer: "Route-source intelligence",
+      evidence: `${routeSourceRows} route-source records`,
+      use: "Explains why certain route failures matter commercially: seller timing, bank friction, source narrative, family entitlement, and governance memory.",
+      limit: "Source-review records do not prove law, tax treatment, valuation, title, bank acceptance, or family authority.",
+    },
+  ];
+  const sourceClaimMap = [
+    ["SDLT, residence, IHT, ATED, and reporting", "Public authority + UK tax/private-client file", "Tax counsel signs buyer profile, surcharge posture, relief exclusions, reporting owner, and filing mechanics."],
+    ["Title, seller authority, exchange, and deposit exposure", "Property counsel file + listing/comparable anchors", "Property counsel signs title, searches, seller authority, restrictions, deposit mechanics, survey, and completion conditions."],
+    ["SoW / SoF, signer, FX, transfer, alternate rail", "Private bank file + AML/SoW public standards", "Source and receiving banks must clear the SoW/SoF index, signer mandate, FX authority, transfer limits, timetable, and escalation path."],
+    ["Family-use, fairness, veto, and generation-continuity record", "Private family governance evidence + succession/adviser file", "Principal and family-office records set use rights, stop rights, carry owner, fairness owner, veto position, and retrieval location."],
+    ["Bid discipline and market timing", "Market/listing anchors + buying-agent evidence", "Buying agent converts guide price into closed comparable set, failed-sale history, first-offer range, capex adjustment, and walk-away price."],
+  ];
+  const proofBoundary = [
+    ["Source-backed", "Official/public authority, market, listing, FX, AML, register, and property-source records.", "Public claims, rule boundaries, market discipline, and source citation traceability."],
+    ["Evidence-controlled", "Private bank, title, source, counsel, family authority, adviser, and operator files.", "Capital release, seller commitment, exchange, transfer, family-use, fairness, and decision memory."],
+    ["Method-only", "Route-source records used to test sequencing and failure modes.", "Why a gate matters and where route failure usually appears; never legal, tax, bank, title, valuation, or family proof."],
+  ];
+
+  if (!sections.length) {
+    return (
+      <>
+        <EvidenceVaultView publicSources={publicSources} privateEvidence={privateEvidence} />
+        <MethodologyView drivers={methodDrivers} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Section eyebrow="Evidence & Methodology" title="Evidence authority for the release decision">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="text-base leading-8 text-foreground">
+              This page answers which claims are source-backed, which claims are controlled by private evidence, and
+              which records only explain why a release gate matters. It is the audit trail behind the Principal View and
+              Route View; it is not a substitute for counsel, bank, title, valuation, or family authority.
+            </p>
+          </div>
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Principal proof answer</p>
+            <h2 className="mt-3 text-xl font-semibold leading-7 text-foreground">
+              The memo is traceable; capital remains controlled by signed gates.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Public records support the rule boundary. Private evidence controls release. Route-source records explain
+              sequencing risk but never replace counsel, banks, title work, valuation, or family authority.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {[
+            ["Evidence rows", String(totalEvidenceRows), "Legal, tax, banking, family, property, adviser, and route evidence rows."],
+            ["Legal / tax rows", String(legalTaxRows), "Official and adviser-facing rows supporting SDLT, residence, IHT, ATED, and reporting boundaries."],
+            ["Private evidence classes", String(privateEvidence.length), "Banking, family authority, adviser, and release evidence classes carried into the packet."],
+          ].map(([label, value, body]) => (
+            <div key={label} className="rounded-md border border-border bg-background/60 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+              <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section eyebrow="Release Authority Stack" title="What each evidence layer can and cannot prove">
+        <div className="grid gap-4 lg:grid-cols-3">
+          {authorityStack.map((row) => (
+            <article key={row.layer} className="rounded-md border border-border bg-card/70 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{row.layer}</p>
+              <p className="mt-3 text-sm font-semibold leading-6 text-foreground">{row.evidence}</p>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">{row.use}</p>
+              <p className="mt-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">
+                <span className="font-semibold text-foreground">Boundary:</span> {row.limit}
+              </p>
+            </article>
+          ))}
+        </div>
+      </Section>
+
+      <Section eyebrow="Source-To-Claim Map" title="How a principal traces each major claim">
+        <div className="overflow-hidden rounded-md border border-border bg-card/70">
+          <div className="hidden grid-cols-[1fr_1fr_1.25fr] border-b border-border bg-muted/40 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground md:grid">
+            <span>Claim family</span>
+            <span>Proof class</span>
+            <span>Principal control action</span>
+          </div>
+          {sourceClaimMap.map(([claim, proof, action]) => (
+            <div key={claim} className="grid gap-3 border-b border-border px-4 py-4 text-sm last:border-b-0 md:grid-cols-[1fr_1fr_1.25fr]">
+              <p className="font-semibold leading-6 text-foreground">{claim}</p>
+              <p className="leading-6 text-muted-foreground">{proof}</p>
+              <p className="leading-6 text-muted-foreground">{action}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section eyebrow="Proof Boundary" title="The page separates authority from intelligence">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {proofBoundary.map(([label, source, proves]) => (
+            <div key={label} className="rounded-md border border-border bg-card/70 p-4">
+              <h3 className="font-semibold text-foreground">{label}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{source}</p>
+              <p className="mt-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">{proves}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section eyebrow="Methodology Boundary" title="How sources become release gates">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            ["Route sequencing", "Source records identify known failure modes, sequencing gaps, and when a route usually needs to hold or advance under signed gates."],
+            ["Market discipline", "Market references sharpen bid discipline, seller timing, carrying cost, and walk-away logic."],
+            ["Family governance", "Generational and authority records shape the questions the family file must answer before exchange."],
+            ["Release proof", "Release authority comes from signed private evidence, not from source similarity or public market support."],
+          ].map(([title, body]) => (
+            <div key={title} className="rounded-md border border-border bg-card/70 p-4">
+              <h3 className="font-semibold text-foreground">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {sections.map((section) => (
+        <Section key={section.id} eyebrow={section.eyebrow} title={section.title}>
+          <p className="mb-5 max-w-4xl text-sm leading-6 text-muted-foreground">{cleanDisplayText(section.description)}</p>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {section.records.map((record, index) => (
+              <article key={`${section.id}_${record.id}_${index}`} className="rounded-md border border-border bg-card/70 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      {cleanDisplayText(record.category)}
+                    </p>
+                    <h3 className="mt-2 text-base font-semibold leading-6 text-foreground">{cleanDisplayText(record.title)}</h3>
+                  </div>
+                  {record.url ? (
+                    <a
+                      href={record.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+                    >
+                      Open source
+                    </a>
+                  ) : null}
+                </div>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{cleanDisplayText(record.claim)}</p>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  {record.institution ? <span className="rounded bg-muted/60 px-2 py-1">{cleanDisplayText(record.institution)}</span> : null}
+                  {record.owner ? <span className="rounded bg-muted/60 px-2 py-1">{cleanDisplayText(record.owner)}</span> : null}
+                  {record.status ? <span className="rounded bg-muted/60 px-2 py-1">{cleanDisplayText(record.status)}</span> : null}
+                  {record.date ? <span className="rounded bg-muted/60 px-2 py-1">{cleanDisplayText(record.date)}</span> : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </Section>
+      ))}
+    </>
+  );
+}
+
 export default function PrincipalReleaseReadinessSharePage({
   reference,
   payload,
@@ -1306,7 +1463,7 @@ export default function PrincipalReleaseReadinessSharePage({
           </button>
         </header>
 
-        {activeView === "evidence" || activeView === "methodology" ? (
+        {activeView === "evidence" ? (
           <div className="mt-6 rounded-md border border-primary/30 bg-primary/5 p-4">
             <p className="text-sm leading-6 text-foreground">
               <span className="font-semibold">Evidence boundary:</span> Public claims are source-backed in the Evidence Vault.
@@ -1341,17 +1498,14 @@ export default function PrincipalReleaseReadinessSharePage({
         </nav>
 
         {activeView === "principal" ? <PrincipalRouteView payload={payload} /> : null}
-        {activeView === "route" ? (
-          <>
-            <HnwiDriverRail drivers={payload.methodDrivers} />
-            <FullReportSections sections={payload.reportSections} />
-          </>
-        ) : null}
+        {activeView === "route" ? <FullReportSections sections={payload.reportSections} /> : null}
         {activeView === "evidence" ? (
-          <EvidenceVaultView publicSources={payload.publicSources} privateEvidence={payload.privateEvidence} />
-        ) : null}
-        {activeView === "methodology" ? (
-          <MethodologyView drivers={payload.methodDrivers} />
+          <EvidenceMethodologyShareView
+            publicSources={payload.publicSources}
+            privateEvidence={payload.privateEvidence}
+            methodDrivers={payload.methodDrivers}
+            evidenceSections={payload.evidenceSections}
+          />
         ) : null}
       </div>
 
