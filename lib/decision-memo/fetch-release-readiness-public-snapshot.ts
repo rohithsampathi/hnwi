@@ -86,8 +86,14 @@ export async function fetchReleaseReadinessPublicSnapshot(
 ): Promise<ReleaseReadinessPublicSnapshotPayload> {
   const publicIntakeId = resolvePublicDecisionMemoId(intakeId);
   const publicPathId = encodeDecisionMemoIdForPath(publicIntakeId);
+  const backendUrl = new URL(
+    `/api/decision-memo/release-readiness/public/${publicPathId}`,
+    KINGDOM_CORE_PUBLIC_READ_URL,
+  );
+  backendUrl.searchParams.set('contract', RELEASE_READINESS_PUBLIC_SNAPSHOT_CONTRACT);
+
   const response = await fetch(
-    `${KINGDOM_CORE_PUBLIC_READ_URL}/api/decision-memo/release-readiness/public/${publicPathId}`,
+    backendUrl.toString(),
     {
       method: 'GET',
       headers: {
