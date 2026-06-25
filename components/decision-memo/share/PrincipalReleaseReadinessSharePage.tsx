@@ -773,6 +773,129 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
   );
 }
 
+function RouteControlPrelude({ payload }: { payload: ReleaseReadinessSharePayload }) {
+  const metrics = payload.selectedRoute.metrics;
+  const principal = payload.principalView ?? fallbackPrincipalView(payload);
+  const adviserConversionRows = [
+    ["UK tax counsel", "Signed SDLT route, relief exclusions, surcharge posture, and residence boundary"],
+    ["UK property counsel", "Title, seller authority, deposit mechanics, searches, survey, restrictions, and exchange conditions"],
+    ["Banks", "SoW / SoF acceptance, signer authority, FX controls, primary rail, and alternate rail"],
+    ["Buying agent", "Bid discipline, comparables, seller motivation, first-offer range, and walk-away price"],
+    ["Family office and principals", "Authority, use boundary, fairness, stop rights, carry owner, and decision record"],
+  ];
+  const trustLedgerRows = [
+    ["Public source rows", String(payload.publicSources.length), "Public legal, tax, property, market, FX, and authority claims."],
+    ["Private evidence classes", String(payload.privateEvidence.length), "Family-side records that control release through signed gates."],
+    ["Method drivers", String(payload.methodDrivers.length), "Why a route gate matters; not legal, tax, bank, title, valuation, or family-authority proof."],
+    ["Citation handles", String(payload.citations.length), "Reader navigation to supported source material where available."],
+  ];
+
+  return (
+    <>
+      <section className="grid gap-6 border-t border-border py-10 lg:grid-cols-[1.2fr_0.8fr]">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Principal release decision</p>
+          <h1 className="mt-4 max-w-5xl text-4xl font-semibold tracking-normal text-foreground md:text-6xl">
+            Proposed Move Release Readiness Memo
+          </h1>
+          <p className="mt-5 max-w-4xl text-lg leading-8 text-muted-foreground">{cleanDisplayText(payload.move)}</p>
+          <p className="mt-5 max-w-4xl text-base leading-8 text-foreground">
+            This route view gives the family the decision answer first, then the full reviewer memo: what may advance
+            today, what capital remains blocked, what the purchase really commits, and which signed gates must clear
+            before the route can release.
+          </p>
+        </div>
+        <div className="rounded-md border border-border bg-card/90 p-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Reference</p>
+          <p className="mt-2 font-mono text-lg font-semibold text-foreground">{payload.reference}</p>
+          <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Corridor</p>
+          <p className="mt-2 text-lg font-semibold leading-7 text-foreground">{cleanDisplayText(payload.corridor)}</p>
+          <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Release stance</p>
+          <p className="mt-2 text-lg font-semibold text-primary">{cleanDisplayText(payload.decision)}</p>
+          <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Selected route</p>
+          <p className="mt-2 text-base font-semibold leading-7 text-foreground">
+            {cleanDisplayText(payload.selectedRoute.routeName)}
+          </p>
+        </div>
+      </section>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="All-in exposure"
+          value={money(metrics.totalAcquisitionCostUsd)}
+          note="Modeled before operating costs; final release remains counsel, bank, title, and family-authority gated."
+        />
+        <MetricCard
+          label="Duty drag"
+          value={money(metrics.totalDutiesUsd)}
+          note={`${metrics.dutyDragPct ? `about ${metrics.dutyDragPct.toFixed(1)}%` : "Gate-controlled"} of property value in the selected control case.`}
+        />
+        <MetricCard
+          label="Capital rule"
+          value="No release"
+          note="No exchange, deposit, or seller commitment before signed route gates."
+        />
+        <MetricCard
+          label="Next release window"
+          value="72h / 7d"
+          note="72-hour bank/title/source retrieval check; 7-day counsel/bank/family-authority close path if seller timing starts."
+        />
+      </div>
+
+      <Section eyebrow="Principal readout" title="Approved to negotiate under signed gates; no capital release">
+        <PrincipalTable columns={principal.decisionMinute.columns} rows={principal.decisionMinute.rows} />
+      </Section>
+
+      <Section eyebrow="What we caught" title="Six failure modes the room should not discover after exchange">
+        <PrincipalTable columns={principal.whatCaught.columns} rows={principal.whatCaught.rows} />
+      </Section>
+
+      {principal.familyActionTests.length ? (
+        <Section eyebrow="Family action tests" title="The family-provided action is tested against release consequences">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {principal.familyActionTests.map((driver) => (
+              <PrincipalInfoCard
+                key={driver.label}
+                label={driver.label}
+                title={driver.familyAction}
+                body={[
+                  `Test: ${cleanDisplayText(driver.testApplied)}`,
+                  `Result: ${cleanDisplayText(driver.testResult)}`,
+                  `Principal instruction: ${cleanDisplayText(driver.principalInstruction)}`,
+                  `Capital consequence: ${cleanDisplayText(driver.capitalConsequence)}`,
+                ].join(" ")}
+              />
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      <Section eyebrow="Why this is not a memo" title="Adviser inputs are converted into one release rule">
+        <p className="mb-5 max-w-4xl text-sm leading-6 text-muted-foreground">
+          This review does not replace advisers. It converts adviser inputs into one capital-release rule.
+        </p>
+        <PrincipalTable columns={["Adviser lane", "Converted into"]} rows={adviserConversionRows} />
+        <p className="mt-4 text-sm font-semibold text-foreground">
+          Output: proceed under signed gates, hold, or stop.
+        </p>
+      </Section>
+
+      <Section eyebrow="Trust ledger" title="The evidence boundary is explicit">
+        <PrincipalTable columns={["Evidence class", "Count", "Route use"]} rows={trustLedgerRows} />
+        <p className="mt-4 text-sm leading-6 text-muted-foreground">
+          Public claims are source-backed. Private claims remain gate-controlled until signed or indexed. Method drivers
+          explain why a gate matters; they do not prove legal status, bank acceptance, title, tax treatment, valuation,
+          or family authority.
+        </p>
+      </Section>
+
+      <Section eyebrow="Next seven days" title="The controlled order of movement">
+        <PrincipalTable columns={principal.sevenDayInstruction.columns} rows={principal.sevenDayInstruction.rows} />
+      </Section>
+    </>
+  );
+}
+
 function ReleaseGateTable({ gateRows }: { gateRows: ReleaseReadinessShareGateRow[] }) {
   return (
     <Section eyebrow="Release gates" title="A gate is closed only when signed, verified, or formally waived">
@@ -1498,7 +1621,12 @@ export default function PrincipalReleaseReadinessSharePage({
         </nav>
 
         {activeView === "principal" ? <PrincipalRouteView payload={payload} /> : null}
-        {activeView === "route" ? <FullReportSections sections={payload.reportSections} /> : null}
+        {activeView === "route" ? (
+          <>
+            <RouteControlPrelude payload={payload} />
+            <FullReportSections sections={payload.reportSections} />
+          </>
+        ) : null}
         {activeView === "evidence" ? (
           <EvidenceMethodologyShareView
             publicSources={payload.publicSources}
