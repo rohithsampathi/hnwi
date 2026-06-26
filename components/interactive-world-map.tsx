@@ -846,7 +846,7 @@ export function InteractiveWorldMap({
               setHoveredCorridorKey(corridorKey)
             },
             mouseout: () => {
-              setHoveredCorridorKey(null)
+              setHoveredCorridorKey(current => current === corridorKey ? null : current)
             }
           }
 
