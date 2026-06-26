@@ -2863,238 +2863,242 @@ export default function RouteIntelligenceV2Report({
             </RouteFullMemoErrorBoundary>
           </section>
         ) : null}
-        <ReviewerLayerNotice />
+        {!showFullMemoAnchor ? (
+          <>
+            <ReviewerLayerNotice />
 
-        <ZeroTrustRouteSummary data={zeroTrustMoveIntake} />
+            <ZeroTrustRouteSummary data={zeroTrustMoveIntake} />
 
-        <RouteShareSectionPanel
-          section={inputFrameSection}
-          citationIds={marketCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
+            <RouteShareSectionPanel
+              section={inputFrameSection}
+              citationIds={marketCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
 
-      <NativeRouteDriversPanel
-        intelligence={intelligence}
-        methodDrivers={sharePayload?.methodDrivers}
-        onCitationClick={onCitationClick}
-        citationMap={citationMap}
-      />
+            <NativeRouteDriversPanel
+              intelligence={intelligence}
+              methodDrivers={sharePayload?.methodDrivers}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
 
-        <RouteSourceRegisterPanel
-          methodDrivers={sharePayload?.methodDrivers}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
+            <RouteSourceRegisterPanel
+              methodDrivers={sharePayload?.methodDrivers}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
 
-        <section>
-          <SectionHeader
-            label="Decision Routes"
-            title="Five route decisions compared by release rule, capital exposure, duty drag, and route consequence."
-          />
-          <RouteDecisionGraph routes={routes} selectedRouteId={selectedRoute.id} />
-        </section>
+            <section>
+              <SectionHeader
+                label="Decision Routes"
+                title="Five route decisions compared by release rule, capital exposure, duty drag, and route consequence."
+              />
+              <RouteDecisionGraph routes={routes} selectedRouteId={selectedRoute.id} />
+            </section>
 
-        <section>
-          <SectionHeader label={intelligence.selectedRouteLabel ?? 'Variant Under Review'} title={selectedRoute.routeName} />
-          <MetricStrip route={selectedRoute} />
-          <div className="mt-4">
-            <RouteRead route={selectedRoute} />
-          </div>
-        </section>
+            <section>
+              <SectionHeader label={intelligence.selectedRouteLabel ?? 'Variant Under Review'} title={selectedRoute.routeName} />
+              <MetricStrip route={selectedRoute} />
+              <div className="mt-4">
+                <RouteRead route={selectedRoute} />
+              </div>
+            </section>
 
-        <section>
-          <SectionHeader label="Route Graphs" title="Base, stress, opportunity, duty, and carry for the selected route." />
-          <ScenarioGraph route={selectedRoute} shareSection={wealthSection} />
-        </section>
+            <section>
+              <SectionHeader label="Route Graphs" title="Base, stress, opportunity, duty, and carry for the selected route." />
+              <ScenarioGraph route={selectedRoute} shareSection={wealthSection} />
+            </section>
 
-        <DecisionMemoTreePanel
-          section={scenarioTreeSection}
-          citationIds={marketCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
+            <DecisionMemoTreePanel
+              section={scenarioTreeSection}
+              citationIds={marketCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
 
-        <RouteShareSectionPanel
-          section={antiFragilitySection}
-          citationIds={crisisCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-          cardLimit={8}
-        />
+            <RouteShareSectionPanel
+              section={antiFragilitySection}
+              citationIds={crisisCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              cardLimit={8}
+            />
 
-        <RouteMemoSpinePanel intelligence={intelligence} />
+            <RouteMemoSpinePanel intelligence={intelligence} />
 
-        {recommendedRoute && recommendedRoute.id !== selectedRoute.id ? (
-          <DecisionOutcomeTrack
-            route={selectedRoute}
-            recommendedRoute={recommendedRoute}
-            onSelectRecommended={() => setSelectedRouteId(recommendedRoute?.id || intelligence.recommendedRouteId || routes[0]?.id || selectedRoute.id)}
-          />
+            {recommendedRoute && recommendedRoute.id !== selectedRoute.id ? (
+              <DecisionOutcomeTrack
+                route={selectedRoute}
+                recommendedRoute={recommendedRoute}
+                onSelectRecommended={() => setSelectedRouteId(recommendedRoute?.id || intelligence.recommendedRouteId || routes[0]?.id || selectedRoute.id)}
+              />
+            ) : null}
+
+            {intelligence.buyerProfileMatrix ? (
+              <section>
+                <SectionHeader label="Buyer Profile Test" title={intelligence.buyerProfileMatrix.title} />
+                <BuyerProfileMatrix matrix={intelligence.buyerProfileMatrix} />
+              </section>
+            ) : null}
+
+            {hasPrincipalValueGate(intelligence.principalValueGate) ? (
+              <section>
+                <SectionHeader label="Principal Value Gate" title="What this memo does that a checklist or adviser note cannot." />
+                <PrincipalValueGatePanel gate={intelligence.principalValueGate} />
+              </section>
+            ) : null}
+
+            <section>
+              <SectionHeader label="Stress Signals" title="What changes when this route is selected." />
+              <StressSignals route={selectedRoute} />
+            </section>
+
+            <TaxDutyPanel
+              route={selectedRoute}
+              taxSection={taxSection}
+              citationIds={taxCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteShareSectionPanel
+              section={capitalExposureSection}
+              citationIds={taxCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <section>
+              <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
+              <JurisdictionGrid route={selectedRoute} />
+            </section>
+
+            <RouteShareSectionPanel
+              section={marketSection}
+              citationIds={marketCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteShareSectionPanel
+              section={bankingSection}
+              citationIds={bankingCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteShareSectionPanel
+              section={continuitySection}
+              citationIds={continuityCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteContinuityDeepDive
+              route={selectedRoute}
+              section={continuitySection}
+              citationIds={continuityCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteShareSectionPanel
+              section={authoritySection}
+              citationIds={continuityCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteShareSectionPanel
+              section={specialistSection}
+              citationIds={continuityCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              cardLimit={4}
+            />
+
+            <RouteShareSectionPanel
+              section={crisisSection}
+              citationIds={crisisCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              cardLimit={10}
+            />
+
+            <RouteShareSectionPanel
+              section={wealthSection}
+              citationIds={marketCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <section>
+              <SectionHeader label="Release Evidence" title="Evidence pack recorded; signed approval gates control movement." />
+              <EvidencePack route={selectedRoute} />
+            </section>
+
+            <RouteShareSectionPanel
+              section={responsibilitySection}
+              citationIds={continuityCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <RouteShareSectionPanel
+              section={recordMismatchSection}
+              citationIds={bankingCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <section>
+              <SectionHeader label="Responsibility Transfer Matrix" title="Responsibility transfer and record mismatch release-readiness review." />
+              <ResponsibilityAndRecords route={selectedRoute} />
+            </section>
+
+            {counselSection ? (
+              <RouteShareSectionPanel
+                section={counselSection}
+                citationIds={continuityCitationIds}
+                onCitationClick={onCitationClick}
+                citationMap={citationMap}
+              />
+            ) : (
+              <section>
+                <SectionHeader label="Counsel And Operator Question Pack" title="Questions that make existing advisers useful instead of bypassed." />
+                <CounselQuestions route={selectedRoute} />
+              </section>
+            )}
+
+            <RouteShareSectionPanel
+              section={decisionMemorySection}
+              citationIds={marketCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              cardLimit={2}
+            />
+
+            <RouteShareSectionPanel
+              section={roadmapSection}
+              citationIds={bankingCitationIds}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+            />
+
+            <section className="rounded-lg border border-border/25 bg-card/40 p-5">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-500" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Release boundary</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {intelligence.sourceRead} The full memo remains attached to every selected route so the family office can see the route-state consequences, owner gates, tax posture, continuity read, crisis resilience, and release evidence without leaving Route View.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </>
         ) : null}
-
-        {intelligence.buyerProfileMatrix ? (
-          <section>
-            <SectionHeader label="Buyer Profile Test" title={intelligence.buyerProfileMatrix.title} />
-            <BuyerProfileMatrix matrix={intelligence.buyerProfileMatrix} />
-          </section>
-        ) : null}
-
-        {hasPrincipalValueGate(intelligence.principalValueGate) ? (
-          <section>
-            <SectionHeader label="Principal Value Gate" title="What this memo does that a checklist or adviser note cannot." />
-            <PrincipalValueGatePanel gate={intelligence.principalValueGate} />
-          </section>
-        ) : null}
-
-        <section>
-          <SectionHeader label="Stress Signals" title="What changes when this route is selected." />
-          <StressSignals route={selectedRoute} />
-        </section>
-
-        <TaxDutyPanel
-          route={selectedRoute}
-          taxSection={taxSection}
-          citationIds={taxCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <RouteShareSectionPanel
-          section={capitalExposureSection}
-          citationIds={taxCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <section>
-          <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
-          <JurisdictionGrid route={selectedRoute} />
-        </section>
-
-        <RouteShareSectionPanel
-          section={marketSection}
-          citationIds={marketCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <RouteShareSectionPanel
-          section={bankingSection}
-          citationIds={bankingCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <RouteShareSectionPanel
-          section={continuitySection}
-          citationIds={continuityCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <RouteContinuityDeepDive
-          route={selectedRoute}
-          section={continuitySection}
-          citationIds={continuityCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <RouteShareSectionPanel
-          section={authoritySection}
-          citationIds={continuityCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <RouteShareSectionPanel
-          section={specialistSection}
-          citationIds={continuityCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-          cardLimit={4}
-        />
-
-        <RouteShareSectionPanel
-          section={crisisSection}
-          citationIds={crisisCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-          cardLimit={10}
-        />
-
-        <RouteShareSectionPanel
-          section={wealthSection}
-          citationIds={marketCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <section>
-          <SectionHeader label="Release Evidence" title="Evidence pack recorded; signed approval gates control movement." />
-          <EvidencePack route={selectedRoute} />
-        </section>
-
-        <RouteShareSectionPanel
-          section={responsibilitySection}
-          citationIds={continuityCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <RouteShareSectionPanel
-          section={recordMismatchSection}
-          citationIds={bankingCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <section>
-          <SectionHeader label="Responsibility Transfer Matrix" title="Responsibility transfer and record mismatch release-readiness review." />
-          <ResponsibilityAndRecords route={selectedRoute} />
-        </section>
-
-        {counselSection ? (
-          <RouteShareSectionPanel
-            section={counselSection}
-            citationIds={continuityCitationIds}
-            onCitationClick={onCitationClick}
-            citationMap={citationMap}
-          />
-        ) : (
-          <section>
-            <SectionHeader label="Counsel And Operator Question Pack" title="Questions that make existing advisers useful instead of bypassed." />
-            <CounselQuestions route={selectedRoute} />
-          </section>
-        )}
-
-        <RouteShareSectionPanel
-          section={decisionMemorySection}
-          citationIds={marketCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-          cardLimit={2}
-        />
-
-        <RouteShareSectionPanel
-          section={roadmapSection}
-          citationIds={bankingCitationIds}
-          onCitationClick={onCitationClick}
-          citationMap={citationMap}
-        />
-
-        <section className="rounded-lg border border-border/25 bg-card/40 p-5">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-500" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Release boundary</p>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {intelligence.sourceRead} The full memo remains attached to every selected route so the family office can see the route-state consequences, owner gates, tax posture, continuity read, crisis resilience, and release evidence without leaving Route View.
-              </p>
-            </div>
-          </div>
-        </section>
       </div>
     </div>
   );
