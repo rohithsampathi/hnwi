@@ -62,6 +62,7 @@ import {
 } from '@/lib/decision-memo/memo-id-aliases';
 import {
   buildRouteIntelligenceV2,
+  buildRouteScopedDecisionMemoSurface,
 } from '@/lib/decision-memo/route-intelligence-v2';
 import {
   buildReleaseReadinessSharePayload,
@@ -2344,6 +2345,33 @@ export default function DecisionMemoAuditClientPage({
                 citationMap={computedCitationMap}
                 sharePayload={principalSharePayload}
                 zeroTrustMoveIntake={(memoData.preview_data as Record<string, unknown>).zero_trust_move_intake as Record<string, unknown> | undefined}
+                fullMemo={(selectedRoute) => {
+                  const routeScopedSurface = buildRouteScopedDecisionMemoSurface({
+                    memoData: memoData as any,
+                    backendData: resolvedBackendData as any,
+                    fullArtifact: resolvedFullArtifact as any,
+                    route: selectedRoute,
+                    routes: routeIntelligence.pressureVariants?.length
+                      ? routeIntelligence.pressureVariants
+                      : routeIntelligence.routeOptions,
+                  });
+
+                  return (
+                    <HouseDecisionMemoLinearReport
+                      memoData={routeScopedSurface.memoData as any}
+                      intakeId={intakeId}
+                      backendData={routeScopedSurface.backendData}
+                      hnwiWorldCount={developmentsCount ?? undefined}
+                      fullArtifact={routeScopedSurface.fullArtifact as any}
+                      onCitationClick={handleCitationClick}
+                      citationMap={computedCitationMap}
+                      onShare={handleShare}
+                      linkCopied={linkCopied}
+                      releaseReadinessSharePayload={principalSharePayload}
+                      hideEvidenceAppendix
+                    />
+                  );
+                }}
               />
             ) : (
               <div className="rounded-lg border border-red-500/25 bg-red-500/[0.04] p-6 text-foreground">

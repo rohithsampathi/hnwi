@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -44,10 +44,13 @@ import {
   type RouteIntelligenceV2,
 } from '@/lib/decision-memo/route-intelligence-v2';
 
+type FullMemoRenderer = ReactNode | ((route: RouteIntelligenceOptionV2) => ReactNode);
+
 interface RouteIntelligenceV2ReportProps {
   intelligence: RouteIntelligenceV2;
   publicMemoId: string;
   v1Href: string;
+  fullMemo?: FullMemoRenderer;
   zeroTrustMoveIntake?: Record<string, unknown> | null;
   embedded?: boolean;
   onCitationClick?: (citationId: string) => void;
@@ -339,6 +342,42 @@ function hydrateRouteWithShareMetrics(
   };
 }
 
+class RouteFullMemoErrorBoundary extends React.Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-5 text-sm leading-relaxed text-muted-foreground">
+          The route read is available. The linear route memo is still warming; switch back to Principal View for the canonical decision surface.
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function RouteFullMemoAnchor({
+  route,
+  fullMemo,
+}: {
+  route: RouteIntelligenceOptionV2;
+  fullMemo: FullMemoRenderer;
+}) {
+  return <>{typeof fullMemo === 'function' ? fullMemo(route) : fullMemo}</>;
+}
+
 function safeArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -537,7 +576,7 @@ function citationNumberFor(sourceId: string, citationMap?: Map<string, number>):
 
 function sourceChipLabel(sourceId: string, citationMap?: Map<string, number>): string | null {
   const citationNumber = citationNumberFor(sourceId, citationMap);
-  return citationNumber ? `[${citationNumber}]` : '[source]';
+  return citationNumber ? `[${citationNumber}]` : null;
 }
 
 function reportSectionById(
@@ -2709,6 +2748,7 @@ export default function RouteIntelligenceV2Report({
   intelligence,
   publicMemoId,
   v1Href,
+  fullMemo,
   zeroTrustMoveIntake,
   embedded = false,
   onCitationClick,
@@ -2736,6 +2776,8 @@ export default function RouteIntelligenceV2Report({
     () => routes.find((route) => route.id === intelligence.recommendedRouteId),
     [intelligence.recommendedRouteId, routes],
   );
+  const isOutcomeOnlyTrack = selectedRoute ? isOutcomeOnlyRoute(selectedRoute) : false;
+  const showFullMemoAnchor = Boolean(fullMemo && selectedRoute && !isOutcomeOnlyTrack);
   const [sourceJurisdiction, destinationJurisdiction] = useMemo(() => {
     const parts = String(intelligence.corridor || '').split(/\s*(?:->|→)\s*/);
     return [parts[0] || 'Source', parts[1] || 'Destination'];
@@ -2810,6 +2852,18 @@ export default function RouteIntelligenceV2Report({
           copy={routeDisplayText(intelligence.selectorCopy ?? 'Review release-readiness routes against the proposed move. The downstream tax audit, jurisdiction readiness, carrying-cost stance, release gates, scenario data, and owner matrix show what changes if the proposed route is modified, held, or stopped.')}
         />
 
+        {showFullMemoAnchor && selectedRoute && fullMemo ? (
+          <section id="full-decision-memo" className="border-t border-border/40 pt-8">
+            <SectionHeader
+              label={`Full Linear Route Memo · Route ${selectedRoute.rank}`}
+              title={`${selectedRoute.routeName} full route view.`}
+            />
+            <RouteFullMemoErrorBoundary key={selectedRoute.id}>
+              <RouteFullMemoAnchor route={selectedRoute} fullMemo={fullMemo} />
+            </RouteFullMemoErrorBoundary>
+          </section>
+        ) : (
+          <>
         <ReviewerLayerNotice />
 
         <ZeroTrustRouteSummary data={zeroTrustMoveIntake} />
@@ -3042,6 +3096,8 @@ export default function RouteIntelligenceV2Report({
             </div>
           </div>
         </section>
+          </>
+        )}
       </div>
     </div>
   );

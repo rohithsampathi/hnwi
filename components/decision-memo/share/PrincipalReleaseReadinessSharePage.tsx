@@ -6,7 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, ClipboardCheck, Crown, Route as RouteIcon, ScrollText } from "lucide-react";
 import { EliteCitationPanel } from "@/components/elite/elite-citation-panel";
 import { useCitationManager } from "@/hooks/use-citation-manager";
+import HouseDecisionMemoLinearReport from "@/components/decision-memo/memo/DecisionMemoLinearReport";
 import RouteIntelligenceV2Report from "@/components/decision-memo/v2/RouteIntelligenceV2Report";
+import { buildPublicRouteScopedMemoSurface } from "@/lib/decision-memo/build-release-readiness-public-linear-memo";
 import { formatUsdCompact, type RouteIntelligenceV2 } from "@/lib/decision-memo/route-intelligence-v2";
 import type { Citation } from "@/lib/parse-dev-citations";
 import type { CitationSourceDevelopment } from "@/lib/development-citation";
@@ -259,22 +261,97 @@ function citationNumber(citationMap: Map<string, number>, id: string): number | 
   return citationMap.get(id) ?? citationMap.get(id.toLowerCase()) ?? null;
 }
 
+function uniqueCitationRows(citations: Citation[]): Citation[] {
+  const seen = new Set<string>();
+  const rows: Citation[] = [];
+
+  citations.forEach((citation) => {
+    const id = String(citation.id || "").trim();
+    const normalized = id.toLowerCase();
+    if (!normalized || seen.has(normalized)) return;
+
+    seen.add(normalized);
+    rows.push({
+      ...citation,
+      id,
+      number: rows.length + 1,
+      originalText: citation.originalText || `[${rows.length + 1}]`,
+    });
+  });
+
+  return rows;
+}
+
 function releaseReadinessSourceCitations(payload: ReleaseReadinessSharePayload | null): Citation[] {
-  return (payload?.publicSources ?? []).map((source, index) => ({
-    id: source.id,
-    number: index + 1,
-    originalText: `[${index + 1}]`,
-  }));
+  if (!payload) return [];
+
+  const seeded = [
+    ...(payload.citations ?? []).map((citation) => ({
+      id: citation.id,
+      number: citation.number,
+      originalText: citation.originalText || `[${citation.number}]`,
+    })),
+    ...(payload.methodDrivers ?? []).flatMap((driver) =>
+      (driver.sources ?? []).map((source) => ({
+        id: source.id,
+        number: 0,
+        originalText: `[${source.id}]`,
+      })),
+    ),
+    ...(payload.publicSources ?? []).map((source) => ({
+      id: source.id,
+      number: 0,
+      originalText: `[${source.id}]`,
+    })),
+  ];
+
+  return uniqueCitationRows(seeded);
 }
 
 function releaseReadinessPreloadedSources(
   payload: ReleaseReadinessSharePayload | null,
 ): Map<string, CitationSourceDevelopment> {
   const sources = new Map<string, CitationSourceDevelopment>();
+  const put = (id: string, source: CitationSourceDevelopment) => {
+    const cleaned = String(id || "").trim();
+    if (!cleaned) return;
+    sources.set(cleaned, source);
+    sources.set(cleaned.toLowerCase(), source);
+  };
+
+  (payload?.methodDrivers ?? []).forEach((driver) => {
+    (driver.sources ?? []).forEach((source) => {
+      const id = String(source.id || "").trim();
+      if (!id) return;
+      const summary = [
+        source.castleBrief || source.summary,
+        source.decisionPosture ? `Decision posture: ${source.decisionPosture}` : "",
+        driver.releaseRead ? `Route read: ${driver.releaseRead}` : "",
+      ].filter(Boolean).join("\n\n");
+
+      put(id, {
+        id,
+        title: source.title || "Route source record",
+        description:
+          source.summary ||
+          driver.releaseRead ||
+          "Route-source record used to identify route sequencing and release-gate relevance.",
+        industry: source.industry || "Route source review",
+        product: driver.title || undefined,
+        date: source.date || undefined,
+        summary:
+          summary ||
+          "Source record supports route sequencing and release-gate relevance. It does not prove legal, tax, bank, title, valuation, or family authority.",
+        summaryLabel: "Source Record",
+        url: source.url || undefined,
+      });
+    });
+  });
+
   (payload?.publicSources ?? []).forEach((source) => {
     const claim = source.claim || "Supports a public claim used in this release-readiness review.";
     const boundary = source.boundary || "Public source anchor; private file clearance remains separate.";
-    sources.set(source.id, {
+    put(source.id, {
       id: source.id,
       title: source.title || source.institution || "Public source evidence",
       description: claim,
@@ -1652,6 +1729,21 @@ export default function PrincipalReleaseReadinessSharePage({
             citationMap={citationMap}
             sharePayload={payload}
             zeroTrustMoveIntake={payload.user_inputs}
+            fullMemo={(selectedRoute) => {
+              const routeScopedSurface = buildPublicRouteScopedMemoSurface(payload, selectedRoute);
+              return (
+                <HouseDecisionMemoLinearReport
+                  memoData={routeScopedSurface.memoData as any}
+                  intakeId={payload.reference}
+                  backendData={routeScopedSurface.backendData}
+                  fullArtifact={routeScopedSurface.fullArtifact as any}
+                  onCitationClick={openCitation}
+                  citationMap={citationMap}
+                  releaseReadinessSharePayload={payload}
+                  hideEvidenceAppendix
+                />
+              );
+            }}
           />
         ) : null}
         {activeView === "evidence" ? (
