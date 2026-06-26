@@ -364,6 +364,12 @@ export function InteractiveWorldMap({
   const timeoutRefs = React.useRef<number[]>([])
   const cityFocusActive = selectedCity !== null || flyToCity !== null || openClusterId !== null
 
+  React.useEffect(() => {
+    setHoveredCorridorKey(null)
+    setSelectedCorridorKey(null)
+    setHoveredDestination(null)
+  }, [focusCorridorKey])
+
   const scheduleTimeout = useCallback((callback: () => void, delayMs: number) => {
     const timeoutId = window.setTimeout(() => {
       timeoutRefs.current = timeoutRefs.current.filter(id => id !== timeoutId)
@@ -784,7 +790,7 @@ export function InteractiveWorldMap({
             (!rawHasAccess && (hoveredCorridorKey !== null || selectedCorridorKey !== null || hoveredDestination !== null) && !isHovered)
 
           const accessOpacityMultiplier = !isFocusedCorridor ? 0.42 : (rawHasAccess ? 1 : 0.4)
-          const canHoverFlow = !cityFocusActive
+          const canHoverFlow = !cityFocusActive && isFocusedCorridor
           const canInteractWithFlow = !cityFocusActive && isFocusedCorridor
           const shouldShowPermanentRouteLabel = isFocusMode ? isFocusedCorridor : hasAccess
           const shouldShowHoverRouteLabel = !shouldShowPermanentRouteLabel && !cityFocusActive && isHovered

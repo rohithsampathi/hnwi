@@ -501,6 +501,18 @@ function firstText(...values: unknown[]): string {
   return '';
 }
 
+function readFocusedMemoIdFromLocation(): string {
+  if (typeof window === 'undefined') return '';
+
+  const params = new URLSearchParams(window.location.search);
+  return firstText(
+    params.get('memo'),
+    params.get('current'),
+    params.get('focus'),
+    params.get('intakeId'),
+  );
+}
+
 function usdMillions(value: unknown): string {
   const numeric = typeof value === 'number' ? value : Number(String(value || '').replace(/[^0-9.-]/g, ''));
   if (!Number.isFinite(numeric) || numeric <= 0) return '';
@@ -607,7 +619,7 @@ const InteractiveWorldMap = dynamic(
 export default function WarRoomPage() {
   const router = useRouter();
   usePageTitle('War Room', 'Strategic intelligence command centre — audit corridors visualised on a global map.');
-  const [focusedMemoId, setFocusedMemoId] = useState('');
+  const [focusedMemoId, setFocusedMemoId] = useState(readFocusedMemoIdFromLocation);
 
   // Auth
   const [user, setUser] = useState<any>(null);
@@ -668,13 +680,7 @@ export default function WarRoomPage() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setFocusedMemoId(firstText(
-      params.get('memo'),
-      params.get('current'),
-      params.get('focus'),
-      params.get('intakeId'),
-    ));
+    setFocusedMemoId(readFocusedMemoIdFromLocation());
   }, []);
 
   // Check assessment status
@@ -751,27 +757,40 @@ export default function WarRoomPage() {
 
   const warRoomAudits = useMemo(() => {
     const normalizedFocus = normalizeMemoId(focusedMemoId);
+    const focused = focusedMemoAudit ? sanitizeWarRoomAudit(focusedMemoAudit) : null;
+    const focusedId = normalizeMemoId(focused?.intake_id);
+
     const merged = audits.map(audit => (
       normalizedFocus && normalizeMemoId(audit.intake_id) === normalizedFocus
         ? { ...audit, has_access: true, status: audit.status || 'completed' }
         : audit
-    ));
+    )).filter(audit => !focusedId || normalizeMemoId(audit.intake_id) !== focusedId);
 
-    if (
-      focusedMemoAudit &&
-      !merged.some(audit => normalizeMemoId(audit.intake_id) === normalizeMemoId(focusedMemoAudit.intake_id))
-    ) {
-      return [sanitizeWarRoomAudit(focusedMemoAudit), ...merged];
-    }
+    if (focused) return [focused, ...merged];
 
     return merged;
   }, [audits, focusedMemoAudit, focusedMemoId]);
+
+  const normalizedFocusedMemoId = useMemo(() => normalizeMemoId(focusedMemoId), [focusedMemoId]);
+
+  const focusedAudit = useMemo(() => {
+    if (!normalizedFocusedMemoId) return null;
+    return warRoomAudits.find(audit => normalizeMemoId(audit.intake_id) === normalizedFocusedMemoId) || null;
+  }, [warRoomAudits, normalizedFocusedMemoId]);
+
+  const isFocusedMemoMode = Boolean(normalizedFocusedMemoId);
+  const focusedCorridorKey = focusedAudit ? buildCorridorGroupKey(focusedAudit) : null;
+
+  const visibleWarRoomAudits = useMemo(() => {
+    if (!isFocusedMemoMode) return warRoomAudits;
+    return focusedAudit ? [focusedAudit] : [];
+  }, [warRoomAudits, focusedAudit, isFocusedMemoMode]);
 
   // Group audits by corridor (source-destination pair) for navigation
   const corridorGroups = useMemo(() => {
     const groups: Record<string, typeof audits> = {};
     const SKIP_VALUES = ['', 'not specified', 'n/a', 'unknown', 'none'];
-    warRoomAudits.forEach(audit => {
+    visibleWarRoomAudits.forEach(audit => {
       // Skip audits with empty / unspecified jurisdictions (both src AND dst must be usable)
       const srcRaw = (audit.source_jurisdiction || audit.source_country || '').trim();
       const dstRaw = (audit.destination_jurisdiction || audit.destination_country || '').trim();
@@ -788,18 +807,15 @@ export default function WarRoomPage() {
       groups[corridorKey].push(audit);
     });
     return groups;
-  }, [warRoomAudits]);
-
-  const focusedAudit = useMemo(() => {
-    const normalizedFocus = normalizeMemoId(focusedMemoId);
-    if (!normalizedFocus) return null;
-    return warRoomAudits.find(audit => normalizeMemoId(audit.intake_id) === normalizedFocus) || null;
-  }, [warRoomAudits, focusedMemoId]);
-
-  const focusedCorridorKey = focusedAudit ? buildCorridorGroupKey(focusedAudit) : null;
+  }, [visibleWarRoomAudits]);
 
   // Navigation state: track current audit index for each corridor
   const [corridorIndices, setCorridorIndices] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!normalizedFocusedMemoId) return;
+    setCorridorIndices({});
+  }, [normalizedFocusedMemoId]);
 
   // Convert audits to MigrationFlow[] for curved air-route arcs (grouped by corridor)
   const auditFlows: MigrationFlow[] = useMemo(() => {
@@ -1209,15 +1225,17 @@ export default function WarRoomPage() {
                 <h1 className="text-base md:text-xl lg:text-2xl font-bold text-foreground">
                   War Room
                 </h1>
-                {warRoomAudits.length > 0 && (
+                {visibleWarRoomAudits.length > 0 && (
                   <span className="text-xs text-muted-foreground ml-1">
-                    {warRoomAudits.length} wealth movement{warRoomAudits.length !== 1 ? 's' : ''} reviewed
+                    {visibleWarRoomAudits.length} wealth movement{visibleWarRoomAudits.length !== 1 ? 's' : ''} reviewed
                   </span>
                 )}
               </div>
               <p className="text-muted-foreground text-xs md:text-sm ml-6 md:ml-7 mb-2 md:mb-3">
                 {focusedAudit
                   ? `Current memo corridor active: ${normalizeName(focusedAudit.source_jurisdiction || focusedAudit.source_country)} → ${normalizeName(focusedAudit.destination_jurisdiction || focusedAudit.destination_country)}`
+                  : isFocusedMemoMode
+                    ? 'Loading current memo corridor'
                   : 'Audit corridors visualised on your Command Centre'}
               </p>
             </>
