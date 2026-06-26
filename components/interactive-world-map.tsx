@@ -840,6 +840,15 @@ export function InteractiveWorldMap({
               transform:translate(-50%, -50%);
             "><span style="width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></span>${routeTag}${countBadge}</div>`
           })
+          const routeHoverHandlers = {
+            mouseover: () => {
+              if (!canHoverFlow) return
+              setHoveredCorridorKey(corridorKey)
+            },
+            mouseout: () => {
+              setHoveredCorridorKey(null)
+            }
+          }
 
           return (
             <React.Fragment key={corridorKey}>
@@ -855,13 +864,7 @@ export function InteractiveWorldMap({
                 }}
                 interactive={canHoverFlow}
                 eventHandlers={{
-                  mouseover: () => {
-                    if (!canHoverFlow) return
-                    setHoveredCorridorKey(corridorKey)
-                  },
-                  mouseout: () => {
-                    setHoveredCorridorKey(null)
-                  },
+                  ...routeHoverHandlers,
                   popupopen: () => {
                     if (!canInteractWithFlow) return
                     setSelectedCorridorKey(corridorKey)
@@ -1022,7 +1025,8 @@ export function InteractiveWorldMap({
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
-                interactive={false}
+                interactive={canHoverFlow}
+                eventHandlers={routeHoverHandlers}
               />
               {/* Base solid line — subtle track */}
               <Polyline
@@ -1036,7 +1040,8 @@ export function InteractiveWorldMap({
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
-                interactive={false}
+                interactive={canHoverFlow}
+                eventHandlers={routeHoverHandlers}
               />
               {/* Animated flowing dash layer — shows movement direction (visual only, no interaction) */}
               <Polyline
@@ -1051,7 +1056,8 @@ export function InteractiveWorldMap({
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
-                interactive={false}
+                interactive={canHoverFlow}
+                eventHandlers={routeHoverHandlers}
               />
               {/* Destination marker — audit summary dot at destination city */}
               {flow.midpoint && destinationIcon && (
