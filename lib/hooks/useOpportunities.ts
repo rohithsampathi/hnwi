@@ -88,6 +88,10 @@ interface Opportunity {
   source_url?: string;
   url?: string;
   source?: string;
+  source_surface?: string;
+  public_preview?: boolean;
+  follow_through_blocked?: boolean;
+  public_access_note?: string;
   dev_id?: string;
   devid?: string;
   mongo_article_id?: string;
@@ -322,6 +326,7 @@ const transformOpportunityToCity = (
       : (sourceLower.includes('privé') || sourceLower.includes('prive'))
         ? 'prive'
         : 'hnwi';
+  const followThroughBlocked = Boolean(displayOpp.follow_through_blocked || displayOpp.public_preview);
 
   // Extract citations from both analysis fields
   const devIdsFromAnalysis = extractDevIds(opportunityAnalysis || '');
@@ -465,9 +470,13 @@ const transformOpportunityToCity = (
     kgv3_relation: displayOpp.kgv3_relation,
     brief_title: displayOpp.brief_title,
     source_title: displayOpp.source_title,
-    source_url: displayOpp.source_url,
-    url: displayOpp.url,
+    source_url: followThroughBlocked ? undefined : displayOpp.source_url,
+    url: followThroughBlocked ? undefined : displayOpp.url,
     source: displayOpp.source,
+    source_surface: displayOpp.source_surface,
+    public_preview: displayOpp.public_preview,
+    follow_through_blocked: followThroughBlocked,
+    public_access_note: displayOpp.public_access_note,
     source_development_id: displayOpp.source_development_id,
     dev_id: displayOpp.dev_id,
     devid: displayOpp.devid,
@@ -494,7 +503,7 @@ const transformOpportunityToCity = (
     is_new: displayOpp.is_new,
     devIds: devIds,
     hasCitations: devIds.length > 0,
-    executors: opp.executors,
+    executors: followThroughBlocked ? [] : opp.executors,
     cost_per_unit: opp.cost_per_unit,
     unit_count: opp.unit_count,
     current_price: opp.current_price,

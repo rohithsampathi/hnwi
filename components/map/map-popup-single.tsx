@@ -62,6 +62,10 @@ export function MapPopupSingle({
   )
   const analysisText = cleanAnalysisText(city.analysis)
   const analysisPreview = getFirstParagraph(analysisText)
+  const isPublicPreview = Boolean(city.public_preview || city.follow_through_blocked)
+  const publicAccessNote =
+    city.public_access_note ||
+    "Public preview only. Executor directory and introductions require member access."
 
   // OverlayScrollbars handles scroll isolation natively via CSS containment
   // No need for manual event listeners - advanced-scroll-area handles this
@@ -310,7 +314,18 @@ export function MapPopupSingle({
             )}
 
             {/* Executors */}
-            {city.executors && city.executors.length > 0 && (
+            {isPublicPreview && (
+              <div className="rounded-md border border-dashed border-border bg-muted/25 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Public Access
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-foreground/75">
+                  {publicAccessNote}
+                </p>
+              </div>
+            )}
+
+            {city.executors && city.executors.length > 0 && !isPublicPreview && (
               <div>
                 <p className="text-xs text-muted-foreground mb-2 font-semibold">
                   Executor{city.executors.length > 1 ? 's' : ''}:
@@ -369,7 +384,7 @@ export function MapPopupSingle({
             )}
 
             {/* Action Button */}
-            {onNavigate && (
+            {onNavigate && !isPublicPreview && (
               <div className="pt-3 mt-3 border-t border-border">
                 <button
                   onClick={(e) => {

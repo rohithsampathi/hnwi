@@ -109,6 +109,10 @@ export interface City {
   generated_at?: string
   created_at?: string
   source?: string
+  source_surface?: string
+  public_preview?: boolean
+  follow_through_blocked?: boolean
+  public_access_note?: string
   source_development_id?: string
   dev_id?: string
   devid?: string

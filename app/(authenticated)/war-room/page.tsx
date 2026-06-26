@@ -995,18 +995,21 @@ export default function WarRoomPage() {
   }, [corridorGroups, focusedMemoId]);
 
   // Fetch opportunities using centralized hook (dashboard mode with personal mode support)
+  const usePublicCommandCentrePreview = !userId;
+  const publicCommandCentreEndpoint = `/api/command-centre/opportunities/public?memo=${encodeURIComponent(focusedMemoId || 'HC9L7M2A4Q8P6')}&limit=5`;
   const {
     cities,
     loading,
     availableCategories,
     refetch: refetchOpportunities,
   } = useOpportunities({
-    isPublic: false,
+    isPublic: usePublicCommandCentrePreview,
+    publicEndpoint: publicCommandCentreEndpoint,
     timeframe,
     isPersonalMode,
     hasCompletedAssessment: Boolean(userId) && hasCompletedAssessment !== false,
     userId,
-    includeCrownVault: true,
+    includeCrownVault: !usePublicCommandCentrePreview,
     cleanCategories: true
   });
 
