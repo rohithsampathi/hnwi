@@ -67,6 +67,10 @@ export interface ReleaseReadinessMethodSource {
   title: string;
   date: string;
   url: string;
+  summary?: string;
+  castleBrief?: string;
+  decisionPosture?: string;
+  industry?: string;
 }
 
 export interface ReleaseReadinessMethodDriver {
@@ -211,6 +215,8 @@ export interface ReleaseReadinessSharePayload {
   reportSections: ReleaseReadinessShareReportSection[];
   evidenceSections?: ReleaseReadinessEvidenceMethodologySection[];
   principalView?: ReleaseReadinessPrincipalView;
+  routeIntelligenceV2: RouteIntelligenceV2;
+  route_intelligence_v2?: RouteIntelligenceV2;
 }
 
 function isRecord(value: unknown): value is RecordLike {
@@ -597,6 +603,95 @@ function methodSourceDate(value: unknown): string {
   return "";
 }
 
+function methodSourceBrief(source: RouteDriverSourceRecord | RecordLike): string {
+  const record = asRecord(source);
+  const candidates = [
+    record.full_castle_brief,
+    record.castle_brief_enriched,
+    record.castle_brief,
+    record.full_text,
+    record.summary,
+    record.reference,
+    record.claim_supported,
+    record.description,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return sanitizeShareText(candidate);
+    }
+    if (isRecord(candidate)) {
+      const structured = [
+        text(candidate.title),
+        text(candidate.summary),
+        text(candidate.brief),
+        text(candidate.body),
+        text(candidate.analysis),
+        text(candidate.decision_read),
+      ].filter(Boolean).join(" ");
+      if (structured.trim()) return sanitizeShareText(structured);
+    }
+  }
+
+  return "";
+}
+
+function sourceLookupKey(value: unknown): string {
+  return text(value)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sourceLookupKeys(source: RouteDriverSourceRecord | RecordLike): string[] {
+  const record = asRecord(source);
+  return [
+    sourceCitationId(record),
+    record.id,
+    record.source_development_id,
+    record.dev_id,
+    record.devid,
+    record.brief_id,
+    record.source_brief_id,
+    record.title,
+    record.source_title,
+    record.name,
+  ]
+    .map(sourceLookupKey)
+    .filter(Boolean);
+}
+
+function buildCastleBriefSourceLookup(resolved: ResolvedDecisionMemoSurfaceData): Map<string, RecordLike> {
+  const preview = evidencePreviewRecord(resolved);
+  const rows = [
+    ...asArray(preview.pattern_evidence_records),
+    ...asArray(preview.route_pattern_evidence_records),
+    ...asArray(preview.route_source_records),
+    ...asArray(preview.source_register),
+    ...asArray(preview.governing_source_register),
+  ];
+  const lookup = new Map<string, RecordLike>();
+  rows.forEach((row) => {
+    sourceLookupKeys(row).forEach((key) => {
+      if (!lookup.has(key)) lookup.set(key, row);
+    });
+  });
+  return lookup;
+}
+
+function hydrateMethodSource(
+  source: RouteDriverSourceRecord | RecordLike,
+  sourceLookup: Map<string, RecordLike>,
+): RecordLike {
+  const matched = sourceLookupKeys(source)
+    .map((key) => sourceLookup.get(key))
+    .find((record): record is RecordLike => Boolean(record));
+  return {
+    ...(matched ?? {}),
+    ...asRecord(source),
+  };
+}
+
 function sanitizeRouteOption(option: RouteIntelligenceOptionV2): RouteIntelligenceOptionV2 {
   return sanitizeObject({
     id: text(option.id),
@@ -687,6 +782,7 @@ function buildSafeRouteIntelligence(route: RouteIntelligenceV2, reference: strin
     routeOptions,
     buyerProfileMatrix: sanitizeObject(route.buyerProfileMatrix),
     principalValueGate: route.principalValueGate ? sanitizeObject(route.principalValueGate) : undefined,
+    routeMemoSpine: route.routeMemoSpine ? sanitizeObject(route.routeMemoSpine) : undefined,
     sourceRead:
       "This release-readiness surface shows the decision packet, evidence boundary, route gates, and source citations without exposing private records.",
   };
@@ -2645,7 +2741,11 @@ function buildEvidenceSectionsForPayload(
   ].filter((section) => section.records.length > 0);
 }
 
-function buildMethodDriversForPayload(route: RouteIntelligenceV2): ReleaseReadinessMethodDriver[] {
+function buildMethodDriversForPayload(
+  route: RouteIntelligenceV2,
+  resolved: ResolvedDecisionMemoSurfaceData,
+): ReleaseReadinessMethodDriver[] {
+  const sourceLookup = buildCastleBriefSourceLookup(resolved);
   return (route.routeDriverRegister?.items ?? []).map((driver, driverIndex) => {
     const driverId = text(driver.id, `method_driver_${driverIndex + 1}`);
     return {
@@ -2660,12 +2760,19 @@ function buildMethodDriversForPayload(route: RouteIntelligenceV2): ReleaseReadin
     capitalConsequence: sanitizeShareText(driver.capitalConsequence),
     sources: (driver.sources ?? [])
       .slice(0, 4)
-      .map((source, sourceIndex) => ({
-        id: sourceCitationId(source) || `${driverId}_source_${sourceIndex + 1}`,
-        title: sanitizeShareText(source.title ?? source.summary ?? `Method source ${sourceIndex + 1}`),
-        date: sanitizeShareText(methodSourceDate(source.date ?? source.source_date)),
-        url: sanitizeShareText(source.url ?? source.source_url),
-      }))
+      .map((source, sourceIndex) => {
+        const hydratedSource = hydrateMethodSource(source, sourceLookup);
+        return {
+          id: sourceCitationId(hydratedSource) || `${driverId}_source_${sourceIndex + 1}`,
+          title: sanitizeShareText(hydratedSource.title ?? hydratedSource.summary ?? `Method source ${sourceIndex + 1}`),
+          date: sanitizeShareText(methodSourceDate(hydratedSource.date ?? hydratedSource.source_date)),
+          url: sanitizeShareText(hydratedSource.url ?? hydratedSource.source_url),
+          summary: sanitizeShareText(hydratedSource.summary),
+          castleBrief: methodSourceBrief(hydratedSource),
+          decisionPosture: sanitizeShareText(hydratedSource.decision_posture),
+          industry: sanitizeShareText(hydratedSource.industry ?? hydratedSource.category),
+        };
+      })
       .filter((source) => source.id || source.title || source.url),
     };
   });
@@ -2710,9 +2817,10 @@ export function buildReleaseReadinessSharePayload(
   const releasePacket = buildSafeReleasePacket(resolved);
   const risk = buildSafeRisk(resolved, route);
   const publicSources = buildSafePublicSources(resolved);
-  const methodDrivers = buildMethodDriversForPayload(route);
+  const methodDrivers = buildMethodDriversForPayload(route, resolved);
   const citations = collectPayloadCitations(methodDrivers, publicSources);
   const evidenceSections = buildEvidenceSectionsForPayload(resolved, methodDrivers);
+  const routeIntelligenceV2 = buildSafeRouteIntelligence(route, reference) as RouteIntelligenceV2;
   const decision = "Approved to negotiate under signed gates; no capital release";
   const releaseRule =
     "Capital remains blocked until title, SDLT, source, bank, authority, family-use, fairness, and decision-memory gates are signed";
@@ -2789,6 +2897,7 @@ export function buildReleaseReadinessSharePayload(
     reportSections,
     evidenceSections,
     principalView,
+    routeIntelligenceV2,
   };
 }
 

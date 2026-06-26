@@ -172,6 +172,7 @@ export interface RouteIntelligenceV2 {
   routeOptions: RouteIntelligenceOptionV2[];
   buyerProfileMatrix: BuyerProfileRemissionMatrix;
   principalValueGate?: PrincipalValueGate;
+  routeMemoSpine?: RecordLike;
   sourceRead: string;
 }
 
@@ -187,6 +188,10 @@ function asArray(value: unknown): RecordLike[] {
   return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean) : [];
+}
+
 function hasKeys(value: unknown): value is RecordLike {
   return isRecord(value) && Object.keys(value).length > 0;
 }
@@ -197,6 +202,68 @@ function isBlankPreviewValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length === 0;
   if (isRecord(value)) return Object.keys(value).length === 0;
   return false;
+}
+
+function buildRouteMemoSpine(preview: RecordLike): RecordLike {
+  const operational = asRecord(preview.operational_chain_readiness);
+  const gating = asRecord(preview.gating_conditions);
+  const mechanical = asRecord(preview.mechanical_control_test);
+  const recordMismatch = asRecord(preview.record_mismatch_map);
+  const authority = asRecord(preview.authority_and_veto_matrix);
+  const decisionMemory = asRecord(preview.decision_memory_packet);
+  const assumptionLedger = asRecord(preview.assumption_ledger);
+  const taxReporting = asRecord(preview.tax_residency_reporting);
+  const transparency = asRecord(preview.transparency_data);
+
+  const spine = {
+    operationalChain: {
+      readiness: operational,
+      informationFlow: asArray(
+        preview.information_flow_dashboard ??
+          operational.information_flow_dashboard,
+      ),
+      responsibilityTransfer: asArray(
+        preview.responsibility_transfer_matrix ??
+          operational.responsibility_transfer,
+      ),
+      recordMismatch: asArray(recordMismatch.matrix ?? recordMismatch.documents),
+      decisionMemory,
+    },
+    trustBoundary: {
+      transparency,
+      sourceRegister: asArray(preview.governing_source_register ?? preview.source_register).slice(0, 12),
+      taxReporting,
+    },
+    gateStandards: {
+      gating,
+      criticalGates: asStringArray(gating.critical_gates),
+      abortTriggers: asStringArray(gating.abort_triggers),
+      executionSequence: asArray(preview.execution_sequence).slice(0, 12),
+      executionTimeline: asArray(preview.execution_timeline).slice(0, 18),
+    },
+    capitalFlow: asRecord(preview.capital_flow_data),
+    mechanicalControl: mechanical,
+    dueDiligenceChecklist: asArray(preview.programmatic_dd_checklist).slice(0, 32),
+    familyReadiness: {
+      authorityAndVeto: authority,
+      consequences: asStringArray(preview.family_consequence_register).slice(0, 12),
+      sourceContinuity: asArray(preview.source_jurisdiction_continuity_control),
+    },
+    assumptionsAndFailures: {
+      assumptionLedger,
+      failureModes: asArray(preview.failure_modes).slice(0, 12),
+    },
+    crisisAndContinuity: {
+      crisisResilienceStressTest: asArray(preview.crisis_resilience_stress_test).slice(0, 12),
+      antifragileResilienceTest: asArray(preview.antifragile_resilience_test).slice(0, 12),
+      generationalView: preview.generational_view,
+      heirManagementData: preview.heir_management_data,
+    },
+  };
+
+  return Object.fromEntries(
+    Object.entries(spine).filter(([, value]) => !isBlankPreviewValue(value)),
+  );
 }
 
 const ROUTE_REVIEW_PREVIEW_KEYS = [
@@ -2396,6 +2463,7 @@ export function buildRouteIntelligenceV2(
       principalValueGate: coercePrincipalValueGate(
         nativeRouteIntelligence.principalValueGate ?? nativeRouteIntelligence.principal_value_gate,
       ) ?? principalValueGateFromResolved(resolvedSurfaceData),
+      routeMemoSpine: buildRouteMemoSpine(preview),
       sourceRead: text(
         nativeRouteIntelligence.sourceRead ?? nativeRouteIntelligence.source_read,
         'This review applies the stored release-readiness evidence to the selected route and shows what must clear before capital, title, or seller commitments harden.',
@@ -2447,6 +2515,7 @@ export function buildRouteIntelligenceV2(
     routeOptions: routes,
     buyerProfileMatrix: defaultBuyerProfileMatrix(jurisdictionContext),
     principalValueGate: principalValueGateFromResolved(resolvedSurfaceData),
+    routeMemoSpine: buildRouteMemoSpine(preview),
     sourceRead: 'The route intelligence surface reads the stored decision memo and re-slices tax, jurisdiction, projection, owner, and evidence sections by selected route.',
   };
 }

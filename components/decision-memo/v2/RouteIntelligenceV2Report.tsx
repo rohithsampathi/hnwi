@@ -1,26 +1,34 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useMemo, useState, type ReactNode } from 'react';
+import React, { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   AlertTriangle,
   ArrowLeft,
   Banknote,
+  BarChart3,
+  BookOpen,
+  Building2,
   Calculator,
   CheckCircle2,
   FileCheck2,
   GitCompare,
+  GitBranch,
+  Home,
   Landmark,
+  OctagonX,
+  PauseCircle,
   Route,
   ShieldCheck,
   TimerReset,
   Users,
 } from 'lucide-react';
 import { DecisionMemoRenderProvider } from '@/components/decision-memo/memo/decision-memo-render-context';
-import { ReleaseReadinessInquiryForm } from '@/components/decision-memo/memo/ReleaseReadinessInquiryForm';
 import {
   type ReleaseReadinessShareCard,
   type ReleaseReadinessMethodDriver,
+  type ReleaseReadinessMethodSource,
   type ReleaseReadinessSharePayload,
   type ReleaseReadinessShareReportSection,
 } from '@/lib/decision-memo/build-release-readiness-share-surface';
@@ -36,13 +44,10 @@ import {
   type RouteIntelligenceV2,
 } from '@/lib/decision-memo/route-intelligence-v2';
 
-type FullMemoRenderer = ReactNode | ((route: RouteIntelligenceOptionV2) => ReactNode);
-
 interface RouteIntelligenceV2ReportProps {
   intelligence: RouteIntelligenceV2;
   publicMemoId: string;
   v1Href: string;
-  fullMemo?: FullMemoRenderer;
   zeroTrustMoveIntake?: Record<string, unknown> | null;
   embedded?: boolean;
   onCitationClick?: (citationId: string) => void;
@@ -334,44 +339,31 @@ function hydrateRouteWithShareMetrics(
   };
 }
 
-class RouteFullMemoErrorBoundary extends React.Component<
-  { children: ReactNode },
-  { hasError: boolean }
-> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-5 text-sm leading-relaxed text-muted-foreground">
-          The route read is available. The embedded full memo anchor is still warming; switch back to Principal View for the canonical full memo.
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-function RouteFullMemoAnchor({
-  route,
-  fullMemo,
-}: {
-  route: RouteIntelligenceOptionV2;
-  fullMemo: FullMemoRenderer;
-}) {
-  return <>{typeof fullMemo === 'function' ? fullMemo(route) : fullMemo}</>;
-}
-
 function safeArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function safeRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function recordEntries(value: unknown): Array<[string, unknown]> {
+  return Object.entries(safeRecord(value)).filter(([, entryValue]) => {
+    if (entryValue === null || entryValue === undefined) return false;
+    if (typeof entryValue === 'string') return entryValue.trim().length > 0;
+    if (Array.isArray(entryValue)) return entryValue.length > 0;
+    if (typeof entryValue === 'object') return Object.keys(entryValue as Record<string, unknown>).length > 0;
+    return true;
+  });
+}
+
+function labelFromKey(value: string): string {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function metricLabel(route: RouteIntelligenceOptionV2): string {
@@ -398,6 +390,15 @@ function routeDutyDragValue(route: RouteIntelligenceOptionV2): string {
   if (isOutcomeOnlyRoute(route)) return 'No purchase';
   if (route.metrics.dutyDragPct > 0) return pct(route.metrics.dutyDragPct);
   return 'Counsel computation recorded';
+}
+
+function routeSelectorIcon(route: RouteIntelligenceOptionV2) {
+  const key = `${route.id} ${route.routeName} ${route.routeType}`.toLowerCase();
+  if (key.includes('stop')) return OctagonX;
+  if (key.includes('hold') || key.includes('rent')) return PauseCircle;
+  if (key.includes('structure') || key.includes('trust') || key.includes('entity') || key.includes('ownership')) return Building2;
+  if (key.includes('residence') || key.includes('replacement')) return Home;
+  return Route;
 }
 
 function routeBaseDutyValue(route: RouteIntelligenceOptionV2, fallbackValue: unknown): string {
@@ -475,11 +476,22 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
   const openGateNames = [...missing, ...contradicted].length ? [...missing, ...contradicted] : openRecordNames;
   const openGateCount = openGateNames.length;
   const adviserConfirmationCount = adviserInputs.length || 6;
-  const releaseDomainRead = recordNames.join(' / ') || 'Evidence domains are assigned in the release file';
+  const canonicalReleaseDomains = [
+    'Title',
+    'SDLT',
+    'Source',
+    'Bank',
+    'Authority',
+    'Family-use',
+    'Fairness',
+    'Decision memory',
+  ];
+  const releaseDomains = recordNames.length ? recordNames : canonicalReleaseDomains;
+  const releaseDomainRead = releaseDomains.slice(0, 8).join(' / ');
   const openGateRead = openGateNames.slice(0, 2).join(' / ') || 'Owner assignment complete; release remains open until signed evidence is received.';
 
   const metrics = [
-    { label: 'Release Domains', value: String(records.length), read: releaseDomainRead },
+    { label: 'Release Domains', value: String(releaseDomains.length), read: releaseDomainRead },
     { label: 'Release Gate Status', value: openGateCount ? `${openGateCount} Open` : 'Evidence mapped', read: openGateRead },
     { label: 'Adviser Confirmations', value: String(adviserConfirmationCount), read: 'Property, tax, bank, succession, insurance, and operator desks' },
   ];
@@ -525,7 +537,7 @@ function citationNumberFor(sourceId: string, citationMap?: Map<string, number>):
 
 function sourceChipLabel(sourceId: string, citationMap?: Map<string, number>): string | null {
   const citationNumber = citationNumberFor(sourceId, citationMap);
-  return citationNumber ? `[${citationNumber}]` : null;
+  return citationNumber ? `[${citationNumber}]` : '[source]';
 }
 
 function reportSectionById(
@@ -633,9 +645,13 @@ function ReviewerLayerNotice() {
 function NativeRouteDriversPanel({
   intelligence,
   methodDrivers,
+  onCitationClick,
+  citationMap,
 }: {
   intelligence: RouteIntelligenceV2;
   methodDrivers?: ReleaseReadinessMethodDriver[];
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
 }) {
   const registerItems = intelligence.routeDriverRegister?.items || [];
   const fallbackItems: RouteDriverRegisterItem[] = (Array.isArray(intelligence.nativeRouteDrivers)
@@ -658,54 +674,174 @@ function NativeRouteDriversPanel({
     testResult: routeDisplayText(driver.testResult),
     principalInstruction: routeDisplayText(driver.principalInstruction),
     capitalConsequence: routeDisplayText(driver.capitalConsequence),
-    sourceIds: [],
-    sources: [],
+    sourceIds: safeArray<ReleaseReadinessMethodSource>(driver.sources).map((source) => source.id).filter(Boolean),
+    sources: safeArray<ReleaseReadinessMethodSource>(driver.sources).map((source) => ({
+      id: source.id,
+      title: source.title,
+      date: source.date,
+      url: source.url,
+      source_url: source.url,
+      summary: source.summary,
+      decision_posture: source.decisionPosture,
+      industry: source.industry,
+    })),
   }));
-  const visibleDrivers = (registerItems.length ? registerItems : fallbackItems.length ? fallbackItems : shareDriverItems).slice(0, 8);
-  const title = /native\s+route\s+drivers|source\s+review|hnwi\s+drivers/i.test(intelligence.nativeRouteDriverTitle || '')
-    ? 'Family Action Tests'
-    : (intelligence.nativeRouteDriverTitle || 'Family Action Tests');
+  const driverBase = (registerItems.length ? registerItems : fallbackItems.length ? fallbackItems : shareDriverItems).slice(0, 8);
+  const visibleDrivers = driverBase.map((driver, index) => {
+    const shareDriver = shareDriverItems[index];
+    return {
+      ...driver,
+      sourceIds: driver.sourceIds?.length ? driver.sourceIds : shareDriver?.sourceIds || [],
+      sources: driver.sources?.length ? driver.sources : shareDriver?.sources || [],
+    };
+  });
+  const title = 'HNWI Drivers';
 
   if (!visibleDrivers.length) return null;
 
   return (
-    <section className="rounded-lg border border-border/30 bg-card/40 p-4 sm:p-6">
-      <div className="grid gap-5 xl:grid-cols-[0.75fr_1.25fr]">
-        <div className="max-w-2xl">
+    <section className="border-y border-[#d8d1c4] bg-[#fbfaf6] px-4 py-7 text-[#0c1117] sm:px-6">
+      <div className="grid gap-6">
+        <div className="max-w-5xl">
           <div className="flex items-center gap-2">
-            <Route className="h-4 w-4 text-gold/80" />
-            <p className="text-xs uppercase tracking-[0.22em] text-gold/80">
+            <Route className="h-4 w-4 text-[#a56f19]" />
+            <p className="text-xs uppercase tracking-[0.28em] text-[#a56f19]">
               {title}
             </p>
           </div>
-          <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
-            {routeDisplayText(intelligence.nativeRouteDriverSubtitle || 'What the route intelligence changes in this move.')}
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[#0c1117]">
+            {routeDisplayText(intelligence.nativeRouteDriverSubtitle || 'What the HNWI route intelligence changes in this move.')}
           </h2>
           {intelligence.nativeRouteDriverNote ? (
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-3 text-sm leading-relaxed text-[#506070]">
               {routeDisplayText(intelligence.nativeRouteDriverNote)}
             </p>
           ) : null}
         </div>
 
-        <div className="grid min-w-0 gap-3 md:grid-cols-2">
+        <div className="relative">
+          <div className="absolute left-[17px] top-4 hidden h-[calc(100%-2rem)] w-px bg-[#c8b68c] md:block" />
           {visibleDrivers.map((driver, index) => (
-            <div key={driver.id || `${index}-${driver.driver}`} className="rounded-md border border-border/25 bg-background/40 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
-                Family action test {index + 1}
-              </p>
-              <h3 className="mt-2 text-sm font-semibold leading-snug text-foreground">
-                {routeDisplayText(driver.familyAction || driver.title)}
-              </h3>
-              <div className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
-                <p><span className="font-semibold text-foreground/80">Test:</span> {routeDisplayText(driver.testApplied || driver.driver)}</p>
-                <p><span className="font-semibold text-foreground/80">Result:</span> {routeDisplayText(driver.testResult || driver.releaseRead)}</p>
-                <p><span className="font-semibold text-foreground/80">Principal instruction:</span> {routeDisplayText(driver.principalInstruction || driver.releaseRead)}</p>
-                <p><span className="font-semibold text-foreground/80">Capital consequence:</span> {routeDisplayText(driver.capitalConsequence || driver.evidenceBasis)}</p>
+            <motion.div
+              key={driver.id || `${index}-${driver.driver}`}
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.35, delay: Math.min(index * 0.045, 0.28) }}
+              className="relative grid gap-4 border-t border-[#e4ded3] py-5 first:border-t-0 md:grid-cols-[48px_1fr_1fr]"
+            >
+              <div className="relative z-10">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0c1117] text-xs font-semibold text-white shadow-[0_0_0_6px_#fbfaf6]">
+                  {index + 1}
+                </span>
               </div>
-            </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[#8a6b2d]">Route driver</p>
+                <h3 className="mt-1 text-sm font-semibold leading-snug text-[#0c1117]">
+                  {routeDisplayText(driver.familyAction || driver.title)}
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-[#506070]">
+                  {routeDisplayText(driver.testApplied || driver.driver)}
+                </p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[#8a6b2d]">Memo effect</p>
+                <p className="mt-1 text-sm leading-relaxed text-[#506070]">{routeDisplayText(driver.testResult || driver.releaseRead)}</p>
+                <p className="mt-2 text-xs font-semibold leading-relaxed text-[#0c1117]">{routeDisplayText(driver.principalInstruction || driver.capitalConsequence)}</p>
+                {driver.sourceIds?.length ? (
+                  <div className="mt-3">
+                    <InlineCitationButtons ids={driver.sourceIds.slice(0, 4)} onCitationClick={onCitationClick} citationMap={citationMap} />
+                  </div>
+                ) : null}
+              </div>
+            </motion.div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function RouteSourceRegisterPanel({
+  methodDrivers,
+  onCitationClick,
+  citationMap,
+}: {
+  methodDrivers?: ReleaseReadinessMethodDriver[];
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
+}) {
+  const rows = safeArray<ReleaseReadinessMethodDriver>(methodDrivers)
+    .flatMap((driver) => safeArray<ReleaseReadinessMethodSource>(driver.sources).map((source) => ({ driver, source })))
+    .filter(({ source }) => Boolean(source.id || source.title))
+    .slice(0, 12);
+
+  if (!rows.length) return null;
+
+  return (
+    <section className="rounded-lg border border-[#d8d1c4] bg-[#fbfaf6] p-5 text-[#0c1117]">
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-[#a56f19]" />
+            <p className="text-xs uppercase tracking-[0.28em] text-[#a56f19]">Source Register</p>
+          </div>
+          <h3 className="mt-2 text-xl font-semibold tracking-tight text-[#0c1117]">
+            Route-source records stay attached to the HNWI driver they changed.
+          </h3>
+        </div>
+        <p className="max-w-2xl text-xs leading-relaxed text-[#506070]">
+          The third column carries the central citation handle only. Open the citation for source detail; Route View keeps only the driver link, source identity, and decision boundary.
+        </p>
+      </div>
+      <div className="overflow-hidden rounded-md border border-[#d8d1c4] bg-white">
+        <div className="grid gap-4 bg-[#0c1117] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white xl:grid-cols-[0.9fr_1fr_1.35fr]">
+          <span>Driver</span>
+          <span>Source record</span>
+          <span>Central citation</span>
+        </div>
+        {rows.map(({ driver, source }, index) => {
+          return (
+            <motion.article
+              key={`${driver.id}-${source.id || index}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: Math.min(index * 0.035, 0.18) }}
+              className="grid gap-4 border-t border-[#e4ded3] px-4 py-4 xl:grid-cols-[0.9fr_1fr_1.35fr]"
+            >
+              <div className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#0c1117] text-white">
+                  <BookOpen className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[#8a6b2d]">Driver</p>
+                  <p className="mt-1 text-sm font-semibold leading-snug text-[#0c1117]">
+                    {routeDisplayText(driver.title || driver.familyAction || driver.driver)}
+                  </p>
+                </div>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-[#8a6b2d]">Source record</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#506070]">{routeDisplayText(source.title || 'Source record')}</p>
+                {source.date ? <p className="mt-2 text-xs font-semibold text-[#0c1117]">{routeDisplayText(source.date)}</p> : null}
+                {source.industry ? (
+                  <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-[#8a6b2d]">{routeDisplayText(source.industry)}</p>
+                ) : null}
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[#8a6b2d]">Central citation</p>
+                  <InlineCitationButtons ids={source.id ? [source.id] : []} onCitationClick={onCitationClick} citationMap={citationMap} />
+                </div>
+                {source.decisionPosture ? (
+                  <p className="mt-2 text-xs font-semibold text-[#0c1117]">{routeDisplayText(source.decisionPosture)}</p>
+                ) : null}
+                <p className="mt-2 text-xs leading-relaxed text-[#506070]">
+                  Citation opens the central source record.
+                </p>
+              </div>
+            </motion.article>
+          );
+        })}
       </div>
     </section>
   );
@@ -724,27 +860,83 @@ function RouteSelector({
   label: string;
   copy: string;
 }) {
+  const activeIndex = Math.max(0, routes.findIndex((route) => route.id === selectedRouteId));
+
   return (
-    <div className="rounded-lg border border-border/30 bg-card/40 p-4 sm:p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground/70">{label}</p>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+    <div className="border-y border-[#d8d1c4] bg-[#fbfaf6] px-4 py-7 text-[#0c1117] sm:px-6">
+      <div className="grid gap-6">
+        <div className="grid gap-4 xl:grid-cols-[0.78fr_1.22fr] xl:items-end">
+          <div className="min-w-0">
+          <p className="text-xs uppercase tracking-[0.28em] text-[#a56f19]">Decision Route Selector</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-[#0c1117]">{label}</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[#506070]">
             {copy}
           </p>
         </div>
-        <select
-          value={selectedRouteId}
-          onChange={(event) => onSelect(event.target.value)}
-          className="min-h-11 w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-gold/70 lg:w-[360px]"
-          aria-label="Route being reviewed"
-        >
-          {routes.map((route) => (
-            <option key={route.id} value={route.id}>
-              {route.rank}. {routeDisplayText(route.routeName)}
-            </option>
-          ))}
-        </select>
+          <div className="rounded-md border border-[#d8d1c4] bg-white p-3 text-xs leading-relaxed text-[#506070]">
+            Select a route to change the full report below: metrics, scenario economics, tax/legal read, banking rail, G1/G2/G3 consequence, crisis response, anti-fragility, responsibility transfer, and counsel questions.
+          </div>
+        </div>
+        <div className="relative min-h-[230px] overflow-hidden py-4" role="tablist" aria-label="Decision routes">
+          <svg className="pointer-events-none absolute inset-x-4 top-[24px] hidden h-16 w-[calc(100%-2rem)] md:block" viewBox="0 0 1000 80" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M20 42 C 220 10, 360 72, 520 42 S 790 10, 980 42" fill="none" stroke="#c8b68c" strokeWidth="2" strokeDasharray="7 9" />
+            <motion.path
+              d="M20 42 C 220 10, 360 72, 520 42 S 790 10, 980 42"
+              fill="none"
+              stroke="#0c1117"
+              strokeWidth="3"
+              strokeLinecap="round"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: routes.length > 1 ? (activeIndex + 1) / routes.length : 1 }}
+              transition={{ duration: 0.55 }}
+            />
+          </svg>
+          <div className="grid gap-3 md:grid-cols-5 md:items-start">
+          {routes.map((route) => {
+            const active = route.id === selectedRouteId;
+            const Icon = routeSelectorIcon(route);
+            return (
+              <button
+                key={route.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onSelect(route.id)}
+                className={`group relative grid min-h-[176px] content-start gap-3 rounded-none border-x-0 border-y px-1 py-2 text-left transition md:border-y-0 md:px-2 ${
+                  active
+                    ? 'border-[#0c1117] text-[#0c1117]'
+                    : 'border-[#e4ded3] text-[#506070] hover:text-[#0c1117]'
+                }`}
+              >
+                <div className="flex items-center gap-3 md:block">
+                  <span className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border ${
+                    active ? 'border-[#0c1117] bg-[#0c1117] text-white shadow-[0_0_0_8px_#fbfaf6]' : 'border-[#d8d1c4] bg-[#f5f1e9] text-[#506070]'
+                  }`}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8a6b2d]">
+                    R{route.rank}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8a6b2d]">{releaseRuleDisplay(route.releaseRule)}</p>
+                  <p className="mt-1 text-sm font-semibold leading-snug text-[#0c1117]">{routeDisplayText(route.routeName)}</p>
+                </div>
+                <div className="mt-auto grid grid-cols-2 gap-2 border-t border-[#e4ded3] pt-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-[#8a6b2d]">Duty</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0c1117]">{routeDutyDragValue(route)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-[#8a6b2d]">Capital</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0c1117]">{metricValue(route)}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -771,7 +963,14 @@ function RouteComparison({ routes, selectedRouteId, onSelect }: {
             }`}
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Route {route.rank}</p>
+              <div className="flex items-center gap-2">
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
+                  active ? 'border-gold/60 bg-gold/10 text-gold' : 'border-border/35 bg-background/30 text-muted-foreground'
+                }`}>
+                  <Route className="h-4 w-4" />
+                </span>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Route {route.rank}</p>
+              </div>
               <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.18em] ${releaseTone(route)}`}>
                 {releaseRuleDisplay(route.releaseRule)}
               </span>
@@ -791,6 +990,142 @@ function RouteComparison({ routes, selectedRouteId, onSelect }: {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function RouteDecisionGraph({
+  routes,
+  selectedRouteId,
+}: {
+  routes: RouteIntelligenceOptionV2[];
+  selectedRouteId: string;
+}) {
+  const rows = routes.map((route) => {
+    const allIn = isOutcomeOnlyRoute(route) ? 0 : route.metrics.totalAcquisitionCostUsd;
+    const duties = isOutcomeOnlyRoute(route) ? 0 : route.metrics.totalDutiesUsd;
+    const carry = isOutcomeOnlyRoute(route) ? 0 : route.metrics.annualCarryingCostUsd;
+    return { route, allIn, duties, carry };
+  });
+  const maxValue = Math.max(1, ...rows.flatMap((row) => [row.allIn, row.duties, row.carry]));
+  const colors = {
+    allIn: '#b88724',
+    duties: '#8f1d32',
+    carry: '#334155',
+  };
+  const metrics = [
+    { key: 'allIn', label: 'All-in', color: colors.allIn },
+    { key: 'duties', label: 'Duties', color: colors.duties },
+    { key: 'carry', label: 'Annual carry', color: colors.carry },
+  ] as const;
+  const chartWidth = 980;
+  const chartHeight = 360;
+  const margin = { top: 30, right: 42, bottom: 88, left: 86 };
+  const plotWidth = chartWidth - margin.left - margin.right;
+  const plotHeight = chartHeight - margin.top - margin.bottom;
+  const slot = plotWidth / Math.max(rows.length, 1);
+  const barWidth = Math.min(28, Math.max(14, slot * 0.18));
+  const yFor = (value: number) => margin.top + plotHeight - (Math.max(0, value) / maxValue) * plotHeight;
+  const xFor = (index: number) => margin.left + slot * index + slot / 2;
+
+  if (!rows.length) return null;
+
+  return (
+    <div className="border-y border-[#d8d1c4] bg-[#fbfaf6] px-4 py-7 text-[#0c1117] sm:px-6">
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.28em] text-[#a56f19]">Decision Routes Graph</p>
+          <h3 className="mt-2 text-xl font-semibold tracking-tight text-[#0c1117]">
+            Route economics change before the memo text changes.
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs text-[#506070]">
+          <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colors.allIn }} /> All-in</span>
+          <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colors.duties }} /> Duties</span>
+          <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colors.carry }} /> Annual carry</span>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <motion.svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          className="min-h-[340px] min-w-[840px] overflow-visible"
+          role="img"
+          aria-label="Route economics grouped bar graph"
+        >
+          <rect x="0" y="0" width={chartWidth} height={chartHeight} rx="0" fill="#fbfaf6" />
+          {[0, 0.5, 1].map((ratio) => {
+            const value = maxValue * ratio;
+            const y = yFor(value);
+            return (
+              <g key={`grid-${ratio}`}>
+                <line x1={margin.left} x2={chartWidth - margin.right} y1={y} y2={y} stroke="#d8d1c4" strokeDasharray={ratio === 0 ? '0' : '6 9'} opacity={0.74} />
+                <text x={margin.left - 12} y={y + 4} textAnchor="end" fontSize="13" fill="#506070">
+                  {ratio === 0 ? '0' : formatUsdCompact(value)}
+                </text>
+              </g>
+            );
+          })}
+          <line x1={margin.left} x2={chartWidth - margin.right} y1={margin.top + plotHeight} y2={margin.top + plotHeight} stroke="#0c1117" strokeWidth="1.4" />
+          {rows.map((row, index) => {
+            const centerX = xFor(index);
+            const active = row.route.id === selectedRouteId;
+            return (
+              <g key={row.route.id}>
+                {active ? (
+                  <motion.line
+                    x1={centerX}
+                    x2={centerX}
+                    y1={margin.top - 8}
+                    y2={margin.top + plotHeight + 28}
+                    stroke="#b88724"
+                    strokeWidth="2"
+                    strokeDasharray="7 8"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.9 }}
+                    transition={{ duration: 0.45 }}
+                  />
+                ) : null}
+                {metrics.map((metric, metricIndex) => {
+                  const value = row[metric.key];
+                  const y = yFor(value);
+                  const height = margin.top + plotHeight - y;
+                  const x = centerX + (metricIndex - 1) * (barWidth + 5) - barWidth / 2;
+                  return (
+                    <g key={`${row.route.id}-${metric.key}`}>
+                      <motion.rect
+                        x={x}
+                        y={y}
+                        width={barWidth}
+                        height={Math.max(2, height)}
+                        rx="4"
+                        fill={metric.color}
+                        initial={{ opacity: 0, scaleY: 0.05 }}
+                        animate={{ opacity: value > 0 ? 1 : 0.35, scaleY: 1 }}
+                        transition={{ duration: 0.65, delay: 0.06 + index * 0.05 + metricIndex * 0.04 }}
+                        style={{ transformBox: 'fill-box', transformOrigin: 'center bottom' }}
+                      />
+                      {value > 0 && metric.key === 'allIn' ? (
+                        <text x={x + barWidth / 2} y={y - 8} textAnchor="middle" fontSize="12" fontWeight="700" fill="#0c1117">
+                          {formatUsdCompact(value)}
+                        </text>
+                      ) : null}
+                    </g>
+                  );
+                })}
+                <text x={centerX} y={chartHeight - 50} textAnchor="middle" fontSize="17" fontWeight="700" fill={active ? '#b88724' : '#0c1117'}>
+                  R{row.route.rank}
+                </text>
+                <text x={centerX} y={chartHeight - 29} textAnchor="middle" fontSize="12" fill="#506070">
+                  {isOutcomeOnlyRoute(row.route) ? 'No purchase' : routeDutyDragValue(row.route)}
+                </text>
+                <text x={centerX} y={chartHeight - 12} textAnchor="middle" fontSize="10" fill="#8a6b2d" letterSpacing="1.4">
+                  {releaseRuleDisplay(row.route.releaseRule).toUpperCase()}
+                </text>
+              </g>
+            );
+          })}
+        </motion.svg>
+      </div>
     </div>
   );
 }
@@ -831,13 +1166,13 @@ function MetricStrip({ route }: { route: RouteIntelligenceOptionV2 }) {
       {metrics.map((item) => {
         const Icon = item.icon;
         return (
-          <div key={item.label} className="rounded-lg border border-border/25 bg-card/40 p-4">
+          <div key={item.label} className="rounded-lg border border-[#d8d1c4] bg-[#fbfaf6] p-4 text-[#0c1117]">
             <div className="flex items-center gap-2">
-              <Icon className="h-4 w-4 text-gold/70" />
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{item.label}</p>
+              <Icon className="h-4 w-4 text-[#a56f19]" />
+              <p className="text-xs uppercase tracking-[0.2em] text-[#a56f19]">{item.label}</p>
             </div>
-            <p className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{routeDisplayText(item.value)}</p>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{routeDisplayText(item.read)}</p>
+            <p className="mt-3 text-2xl font-semibold tracking-tight text-[#0c1117]">{routeDisplayText(item.value)}</p>
+            <p className="mt-2 text-xs leading-relaxed text-[#506070]">{routeDisplayText(item.read)}</p>
           </div>
         );
       })}
@@ -847,23 +1182,30 @@ function MetricStrip({ route }: { route: RouteIntelligenceOptionV2 }) {
 
 function RouteShareCard({ card }: { card: ReleaseReadinessShareCard }) {
   return (
-    <article className="min-w-0 rounded-lg border border-border/25 bg-card/40 p-4">
-      <p className="break-words text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
+    <article className="min-w-0 rounded-lg border border-[#d8d1c4] bg-[#fbfaf6] p-4 text-[#0c1117]">
+      <p className="break-words text-xs uppercase tracking-[0.22em] text-[#a56f19]">
         {routeDisplayText(card.label)}
       </p>
-      {card.value ? <p className="mt-3 text-xl font-semibold text-foreground">{routeDisplayText(card.value)}</p> : null}
-      {card.title ? <h3 className="mt-3 text-base font-semibold leading-snug text-foreground">{routeDisplayText(card.title)}</h3> : null}
-      {card.body ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{routeDisplayText(card.body)}</p> : null}
-      {card.status ? <p className="mt-3 text-sm font-semibold text-gold">{routeDisplayText(card.status)}</p> : null}
-      {card.owner ? <p className="mt-3 text-sm font-semibold text-foreground">{routeDisplayText(card.owner)}</p> : null}
+      {card.value ? <p className="mt-3 text-xl font-semibold text-[#0c1117]">{routeDisplayText(card.value)}</p> : null}
+      {card.title ? <h3 className="mt-3 text-base font-semibold leading-snug text-[#0c1117]">{routeDisplayText(card.title)}</h3> : null}
+      {card.body ? <p className="mt-3 text-sm leading-relaxed text-[#506070]">{routeDisplayText(card.body)}</p> : null}
+      {card.status ? <p className="mt-3 text-sm font-semibold text-[#a56f19]">{routeDisplayText(card.status)}</p> : null}
+      {card.owner ? <p className="mt-3 text-sm font-semibold text-[#0c1117]">{routeDisplayText(card.owner)}</p> : null}
       {card.releaseCondition ? (
-        <p className="mt-3 border-t border-border/20 pt-3 text-xs leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">Release condition:</span> {routeDisplayText(card.releaseCondition)}
+        <p className="mt-3 border-t border-[#e4ded3] pt-3 text-xs leading-relaxed text-[#506070]">
+          <span className="font-semibold text-[#0c1117]">Release condition:</span> {routeDisplayText(card.releaseCondition)}
         </p>
       ) : null}
     </article>
   );
 }
+
+const infographicPalette = [
+  { border: 'border-[#d89f18]/35', bg: 'bg-[#d89f18]/[0.055]', text: 'text-[#d89f18]', dot: '#d89f18' },
+  { border: 'border-[#047857]/35', bg: 'bg-[#047857]/[0.055]', text: 'text-[#047857]', dot: '#047857' },
+  { border: 'border-[#1d4ed8]/35', bg: 'bg-[#1d4ed8]/[0.055]', text: 'text-[#1d4ed8]', dot: '#1d4ed8' },
+  { border: 'border-[#be123c]/35', bg: 'bg-[#be123c]/[0.055]', text: 'text-[#be123c]', dot: '#be123c' },
+] as const;
 
 function RouteShareTable({ table }: { table: NonNullable<ReleaseReadinessShareReportSection['table']> }) {
   const columns = safeArray<string>(table.columns);
@@ -871,34 +1213,53 @@ function RouteShareTable({ table }: { table: NonNullable<ReleaseReadinessShareRe
   if (!rows.length) return null;
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border/25 bg-card/35">
-      <table className="min-w-full border-collapse text-left text-sm">
-        <thead className="bg-muted/35 text-xs uppercase tracking-[0.16em] text-muted-foreground/70">
-          <tr>
-            {columns.map((column) => (
-              <th key={column} className="border-b border-border/20 px-4 py-3 font-medium">
-                {routeDisplayText(column)}
-              </th>
+    <div className="overflow-hidden rounded-lg border border-[#d8d1c4] bg-white text-[#0c1117]">
+      <div
+        className="grid gap-4 bg-[#0c1117] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white"
+        style={{ gridTemplateColumns: `minmax(150px, 0.85fr) repeat(${Math.min(Math.max(columns.length - 1, 1), 3)}, minmax(150px, 1fr))` }}
+      >
+        {(columns.length ? columns : ['Item', 'Read', 'Owner', 'Gate']).slice(0, 4).map((column) => (
+          <span key={column}>{routeDisplayText(column)}</span>
+        ))}
+      </div>
+      {rows.map((row, rowIndex) => {
+        const title = routeDisplayText(row[0] || `Item ${rowIndex + 1}`);
+        const detailCells = row.slice(1).map((cell, index) => ({
+          label: routeDisplayText(columns[index + 1] || `Point ${index + 1}`),
+          value: routeDisplayText(cell),
+        })).filter((cell) => cell.value);
+
+        return (
+          <motion.div
+            key={`${row.join('|')}-${rowIndex}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: Math.min(rowIndex * 0.035, 0.18) }}
+            className="grid gap-4 border-t border-[#e4ded3] px-4 py-4"
+            style={{ gridTemplateColumns: `minmax(150px, 0.85fr) repeat(${Math.min(Math.max(detailCells.length, 1), 3)}, minmax(150px, 1fr))` }}
+          >
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#b88724] text-xs font-semibold text-white">
+                {rowIndex + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-[#8a6b2d]">
+                  {routeDisplayText(columns[0] || 'Decision item')}
+                </p>
+                <h4 className="mt-1 text-sm font-semibold leading-snug text-[#0c1117]">{title}</h4>
+              </div>
+            </div>
+            {detailCells.slice(0, 3).map((cell, cellIndex) => (
+              <div key={`${cell.label}-${cellIndex}`} className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8a6b2d]">
+                  {cell.label}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-[#506070]">{cell.value}</p>
+              </div>
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, rowIndex) => (
-            <tr key={`${row.join('|')}-${rowIndex}`} className="border-b border-border/10 last:border-b-0">
-              {row.map((cell, cellIndex) => (
-                <td
-                  key={`${cell}-${cellIndex}`}
-                  className={`min-w-48 px-4 py-4 align-top leading-relaxed ${
-                    cellIndex === 0 ? 'font-medium text-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  {routeDisplayText(cell)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }
@@ -948,6 +1309,344 @@ function RouteShareSectionPanel({
             ))}
           </div>
         ) : null}
+      </div>
+    </section>
+  );
+}
+
+function DecisionMemoTreePanel({
+  section,
+  citationIds,
+  onCitationClick,
+  citationMap,
+}: {
+  section?: ReleaseReadinessShareReportSection;
+  citationIds: string[];
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
+}) {
+  const rows = safeArray<string[]>(section?.table?.rows);
+  if (!section || !rows.length) return null;
+
+  const branchIcon = (branch: string) => {
+    const value = routeDisplayText(branch).toLowerCase();
+    if (/stop/.test(value)) return OctagonX;
+    if (/hold/.test(value)) return PauseCircle;
+    return CheckCircle2;
+  };
+  const visibleRows = rows.slice(0, 6);
+  const diagramWidth = 960;
+  const diagramHeight = 260;
+  const root = { x: 112, y: 128 };
+  const nodePosition = (index: number) => {
+    const count = Math.max(visibleRows.length, 1);
+    const x = 310 + index * ((diagramWidth - 380) / Math.max(count - 1, 1));
+    const wave = index % 2 === 0 ? -44 : 44;
+    return { x, y: root.y + wave };
+  };
+
+  return (
+    <section className="border-y border-[#d8d1c4] bg-[#fbfaf6] px-4 py-7 text-[#0c1117] sm:px-6">
+      <div className="mb-5 grid gap-4 lg:grid-cols-[0.78fr_1.22fr] lg:items-end">
+        <div>
+          <div className="flex items-center gap-2">
+            <GitBranch className="h-4 w-4 text-[#a56f19]" />
+            <p className="text-xs uppercase tracking-[0.28em] text-[#a56f19]">Decision Memo Tree</p>
+          </div>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[#0c1117]">
+            {routeDisplayText(section.title)}
+          </h2>
+        </div>
+        {section.intro ? (
+          <p className="text-sm leading-relaxed text-[#506070]">
+            {routeDisplayText(section.intro)}
+            <InlineCitationButtons ids={citationIds} onCitationClick={onCitationClick} citationMap={citationMap} />
+          </p>
+        ) : null}
+      </div>
+      <div className="overflow-x-auto">
+        <motion.svg
+          viewBox={`0 0 ${diagramWidth} ${diagramHeight}`}
+          className="min-h-[250px] min-w-[820px] overflow-visible"
+          role="img"
+          aria-label="Decision memo route tree"
+        >
+          <rect width={diagramWidth} height={diagramHeight} fill="#fbfaf6" />
+          <circle cx={root.x} cy={root.y} r="38" fill="#0c1117" />
+          <text x={root.x} y={root.y - 5} textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff" letterSpacing="1.6">
+            FAMILY
+          </text>
+          <text x={root.x} y={root.y + 13} textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff" letterSpacing="1.6">
+            ACTION
+          </text>
+          {visibleRows.map((row, index) => {
+            const position = nodePosition(index);
+            const Icon = branchIcon(row[0] || '');
+            const branch = routeDisplayText(row[0]);
+            return (
+              <g key={`${row.join('|')}-${index}`}>
+                <motion.path
+                  d={`M${root.x + 40} ${root.y} C ${position.x - 150} ${root.y}, ${position.x - 130} ${position.y}, ${position.x - 48} ${position.y}`}
+                  fill="none"
+                  stroke="#c8b68c"
+                  strokeWidth="2"
+                  strokeDasharray="7 8"
+                  initial={{ pathLength: 0, opacity: 0.2 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ duration: 0.55, delay: index * 0.06 }}
+                />
+                <motion.circle
+                  cx={position.x}
+                  cy={position.y}
+                  r="28"
+                  fill={/stop/i.test(branch) ? '#8f1d32' : /hold/i.test(branch) ? '#b88724' : '#047857'}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.35, delay: 0.12 + index * 0.05 }}
+                />
+                <foreignObject x={position.x - 12} y={position.y - 12} width="24" height="24">
+                  <div className="flex h-6 w-6 items-center justify-center text-white">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </foreignObject>
+              </g>
+            );
+          })}
+        </motion.svg>
+      </div>
+      <div className="mt-5 grid gap-0 border-t border-[#d8d1c4]">
+        {visibleRows.map((row, index) => {
+          const Icon = branchIcon(row[0] || '');
+          return (
+            <motion.article
+              key={`${row.join('|')}-${index}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+              className="grid gap-3 border-b border-[#e4ded3] py-4 md:grid-cols-[56px_0.8fr_1fr_1fr]"
+            >
+              <div>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0c1117] text-white">
+                  <Icon className="h-5 w-5" />
+                </span>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-[#8a6b2d]">Branch</p>
+                <h3 className="mt-1 text-base font-semibold leading-snug text-[#0c1117]">{routeDisplayText(row[0])}</h3>
+              </div>
+              <p className="text-sm leading-relaxed text-[#506070]"><span className="font-semibold text-[#0c1117]">Condition:</span> {routeDisplayText(row[1])}</p>
+              <div className="text-sm leading-relaxed text-[#506070]">
+                <p><span className="font-semibold text-[#0c1117]">Consequence:</span> {routeDisplayText(row[2])}</p>
+                <p className="mt-2"><span className="font-semibold text-[#0c1117]">Verdict:</span> {routeDisplayText(row[3])}</p>
+              </div>
+            </motion.article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function SpineObjectCards({
+  title,
+  record,
+  limit = 6,
+}: {
+  title: string;
+  record: unknown;
+  limit?: number;
+}) {
+  const entries = recordEntries(record)
+    .filter(([, value]) => !Array.isArray(value) && typeof value !== 'object')
+    .slice(0, limit);
+  if (!entries.length) return null;
+
+  return (
+    <div>
+      <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">{routeDisplayText(title)}</p>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {entries.map(([key, value]) => (
+          <article key={key} className="rounded-md border border-border/25 bg-background/35 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{labelFromKey(key)}</p>
+            <p className="mt-3 text-sm leading-relaxed text-foreground">{routeDisplayText(String(value))}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SpineRowTable({
+  title,
+  rows,
+  preferredColumns,
+  limit = 8,
+}: {
+  title: string;
+  rows: unknown;
+  preferredColumns?: string[];
+  limit?: number;
+}) {
+  const records = safeArray<Record<string, unknown>>(rows).filter((row) => row && typeof row === 'object').slice(0, limit);
+  if (!records.length) return null;
+  const columns = (preferredColumns?.length ? preferredColumns : Object.keys(records[0] || {}))
+    .filter((column) => records.some((row) => row[column] !== undefined && row[column] !== null && String(row[column]).trim() !== ''))
+    .slice(0, 5);
+  if (!columns.length) return null;
+
+  return (
+    <div>
+      <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">{routeDisplayText(title)}</p>
+      <RouteShareTable
+        table={{
+          columns: columns.map(labelFromKey),
+          rows: records.map((row) => columns.map((column) => routeDisplayText(String(row[column] ?? '')))),
+        }}
+      />
+    </div>
+  );
+}
+
+function SpineBulletGrid({
+  title,
+  items,
+  limit = 8,
+}: {
+  title: string;
+  items: unknown;
+  limit?: number;
+}) {
+  const bullets = safeArray<unknown>(items)
+    .map((item) => routeDisplayText(typeof item === 'string' ? item : JSON.stringify(item)))
+    .filter(Boolean)
+    .slice(0, limit);
+  if (!bullets.length) return null;
+
+  return (
+    <div>
+      <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">{routeDisplayText(title)}</p>
+      <div className="grid gap-3 md:grid-cols-2">
+        {bullets.map((item, index) => (
+          <p key={`${title}-${index}`} className="rounded-md border border-border/25 bg-background/35 p-4 text-sm leading-relaxed text-muted-foreground">
+            {item}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OperationalChainSummary({ operational }: { operational: Record<string, unknown> }) {
+  const informationFlowCount = safeArray<unknown>(operational.informationFlow).length;
+  const responsibilityCount = safeArray<unknown>(operational.responsibilityTransfer).length;
+  const mismatchCount = safeArray<unknown>(operational.recordMismatch).length;
+  const decisionMemory = safeRecord(operational.decisionMemory);
+  const cards = [
+    {
+      label: 'Information flow',
+      value: `${informationFlowCount} lanes`,
+      read: 'Reports, recipients, cadence, owners, and failure signals are mapped before release.',
+    },
+    {
+      label: 'Responsibility transfer',
+      value: `${responsibilityCount} lanes`,
+      read: 'See, stop, sign, move, retrieve, and explain rights stay owner-assigned.',
+    },
+    {
+      label: 'Record mismatch',
+      value: `${mismatchCount} lanes`,
+      read: 'Cash, title, tax, bank, reporting, and authority records must reconcile.',
+    },
+    {
+      label: 'Decision memory',
+      value: routeDisplayText(String(decisionMemory.owner || 'Owner mapped')),
+      read: routeDisplayText(String(decisionMemory.why_recorded || decisionMemory.whyRecorded || 'The route must remain retrievable after the original decision room changes.')),
+    },
+  ];
+
+  if (!informationFlowCount && !responsibilityCount && !mismatchCount && !Object.keys(decisionMemory).length) return null;
+
+  return (
+    <div>
+      <p className="mb-3 text-xs uppercase tracking-[0.2em] text-gold/70">Operational Chain Readiness</p>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <article key={card.label} className="rounded-md border border-border/25 bg-background/35 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{card.label}</p>
+            <p className="mt-3 text-lg font-semibold tracking-tight text-foreground">{card.value}</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{card.read}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RouteMemoSpinePanel({ intelligence }: { intelligence: RouteIntelligenceV2 }) {
+  const spine = safeRecord(intelligence.routeMemoSpine);
+  if (!Object.keys(spine).length) return null;
+
+  const operational = safeRecord(spine.operationalChain);
+  const trust = safeRecord(spine.trustBoundary);
+  const gates = safeRecord(spine.gateStandards);
+  const family = safeRecord(spine.familyReadiness);
+  const assumptions = safeRecord(spine.assumptionsAndFailures);
+  const crisis = safeRecord(spine.crisisAndContinuity);
+
+  return (
+    <section className="rounded-lg border border-gold/25 bg-card/40 p-4 sm:p-6">
+      <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
+        <div>
+          <p className="text-xs uppercase tracking-[0.22em] text-gold/80">Full Linear Route Spine</p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+            Operational, evidence, control, family, and execution rails restored inside Route View.
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            This is the memo spine behind the selected route: movement proof, gate evidence, information flow, source boundary, capital flow, failure modes, family consequences, and implementation order.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <SpineObjectCards title="Capital flow readiness" record={spine.capitalFlow} limit={4} />
+          <SpineObjectCards title="Mechanical control classifier" record={spine.mechanicalControl} limit={4} />
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-7">
+        <OperationalChainSummary operational={operational} />
+        <SpineObjectCards title="Operational chain readiness" record={operational.readiness} />
+        <SpineRowTable
+          title="Information flow and report circulation"
+          rows={operational.informationFlow}
+          preferredColumns={['report', 'recipients', 'source', 'cadence', 'failure_signal', 'release_relevance', 'owner']}
+          limit={8}
+        />
+        <SpineObjectCards title="Trust boundary and source authority" record={trust.transparency} />
+        <SpineRowTable
+          title="Gate evidence standards and implementation order"
+          rows={gates.executionSequence}
+          preferredColumns={['step', 'title', 'action', 'owner', 'timeline', 'release_gate', 'whyThisOrder']}
+          limit={9}
+        />
+        <SpineBulletGrid title="Abort triggers" items={gates.abortTriggers} />
+        <SpineRowTable
+          title="Due diligence control checklist"
+          rows={spine.dueDiligenceChecklist}
+          preferredColumns={['evidence', 'owner', 'release_status', 'why_it_matters', 'priority', 'timeline']}
+          limit={10}
+        />
+        <SpineRowTable
+          title="Failure mode register"
+          rows={assumptions.failureModes}
+          preferredColumns={['mode', 'severity', 'consequence', 'mitigation']}
+          limit={8}
+        />
+        <SpineBulletGrid title="Live family consequences" items={family.consequences} />
+        <SpineRowTable
+          title="Crisis resilience stress test"
+          rows={crisis.crisisResilienceStressTest}
+          preferredColumns={['stress_event', 'control', 'release_test', 'owner', 'decision_window_days']}
+          limit={8}
+        />
       </div>
     </section>
   );
@@ -1365,33 +2064,79 @@ function BuyerProfileMatrix({ matrix }: { matrix: BuyerProfileRemissionMatrix })
         </div>
       </div>
 
-      <div className="mt-5 overflow-x-auto">
-        <div className="min-w-[860px]">
-          <div className="grid grid-cols-12 border-b border-border/25 px-3 py-3 text-xs uppercase tracking-[0.16em] text-muted-foreground/70">
-            <div className="col-span-2">Buyer Profile</div>
-            <div className="col-span-1">1st</div>
-            <div className="col-span-1">2nd</div>
-            <div className="col-span-1">3rd+</div>
-            <div className="col-span-4">Release Read</div>
-            <div className="col-span-3">Evidence Recorded</div>
-          </div>
-          {rows.map((row) => (
-            <div key={row.profile} className="grid grid-cols-12 gap-3 border-b border-border/10 px-3 py-4 text-sm last:border-b-0">
-              <div className="col-span-2 font-medium text-foreground">{routeDisplayText(row.profile)}</div>
-              <div className="col-span-1 text-foreground">{row.firstResidential}</div>
-              <div className="col-span-1 text-foreground">{row.secondResidential}</div>
-              <div className="col-span-1 text-foreground">{thirdResidentialDisplay(row)}</div>
-              <div className="col-span-4 leading-relaxed text-muted-foreground">{routeDisplayText(row.releaseRead)}</div>
-              <div className="col-span-3 leading-relaxed text-muted-foreground">{routeDisplayText(row.evidenceRequired)}</div>
-            </div>
-          ))}
-        </div>
+      <div className="mt-5 grid gap-3 lg:grid-cols-2">
+        {rows.map((row, index) => {
+          const accent = infographicPalette[index % infographicPalette.length];
+          const dutyBands = [
+            { label: '1st', value: row.firstResidential },
+            { label: '2nd', value: row.secondResidential },
+            { label: '3rd+', value: thirdResidentialDisplay(row) },
+          ];
+          return (
+            <motion.article
+              key={row.profile}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: index * 0.04 }}
+              className={`rounded-lg border ${accent.border} ${accent.bg} p-4`}
+            >
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-current/25 bg-background/35" style={{ color: accent.dot }}>
+                  <Home className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/65">Buyer profile</p>
+                  <h4 className="mt-1 text-base font-semibold leading-snug text-foreground">{routeDisplayText(row.profile)}</h4>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {dutyBands.map((band) => (
+                  <div key={band.label} className="rounded-md border border-border/15 bg-background/35 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/60">{band.label}</p>
+                    <p className="mt-1 text-sm font-semibold leading-snug text-foreground">{routeDisplayText(String(band.value))}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-md border border-border/15 bg-background/35 p-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: accent.dot }} />
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/65">Release read</p>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{routeDisplayText(row.releaseRead)}</p>
+                </div>
+                <div className="rounded-md border border-border/15 bg-background/35 p-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <FileCheck2 className={`h-3.5 w-3.5 ${accent.text}`} />
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/65">Evidence recorded</p>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{routeDisplayText(row.evidenceRequired)}</p>
+                </div>
+              </div>
+            </motion.article>
+          );
+        })}
       </div>
     </div>
   );
 }
 
+function hasPrincipalValueGate(gate: RouteIntelligenceV2['principalValueGate']): gate is PrincipalValueGate {
+  if (!gate) return false;
+  return Boolean(
+    routeDisplayText(gate.test) ||
+    routeDisplayText(gate.answer) ||
+    safeArray(gate.nonRedundantEdges).length ||
+    safeArray(gate.advisorNonRedundancyTest).length ||
+    safeArray(gate.replaceabilityRejectionRegister).length,
+  );
+}
+
 function PrincipalValueGatePanel({ gate }: { gate: PrincipalValueGate }) {
+  const nonRedundantEdges = safeArray<string>(gate.nonRedundantEdges);
+  const adviserRows = safeArray<PrincipalValueGate['advisorNonRedundancyTest'][number]>(gate.advisorNonRedundancyTest);
+  const rejectionRows = safeArray<PrincipalValueGate['replaceabilityRejectionRegister'][number]>(gate.replaceabilityRejectionRegister);
+
   return (
     <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.035] p-5">
       <div className="grid gap-5 lg:grid-cols-[1.05fr_1fr]">
@@ -1408,7 +2153,7 @@ function PrincipalValueGatePanel({ gate }: { gate: PrincipalValueGate }) {
           </p>
         </div>
         <div className="space-y-3">
-          {gate.nonRedundantEdges.slice(0, 4).map((edge) => (
+          {nonRedundantEdges.slice(0, 4).map((edge) => (
             <div key={edge} className="rounded-md border border-border/20 bg-background/35 p-3">
               <p className="text-sm leading-relaxed text-foreground">{routeDisplayText(edge)}</p>
             </div>
@@ -1420,7 +2165,7 @@ function PrincipalValueGatePanel({ gate }: { gate: PrincipalValueGate }) {
         <div className="rounded-md border border-border/20 bg-background/35 p-4">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">Not Replacing Advisers</p>
           <div className="mt-4 space-y-3">
-            {gate.advisorNonRedundancyTest.slice(0, 4).map((row) => (
+            {adviserRows.slice(0, 4).map((row) => (
               <div key={row.adviserLane} className="border-b border-border/10 pb-3 last:border-b-0 last:pb-0">
                 <p className="text-sm font-medium text-foreground">{routeDisplayText(row.adviserLane)}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{routeDisplayText(row.dm64Difference)}</p>
@@ -1431,7 +2176,7 @@ function PrincipalValueGatePanel({ gate }: { gate: PrincipalValueGate }) {
         <div className="rounded-md border border-border/20 bg-background/35 p-4">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">Rejected As Insufficient</p>
           <div className="mt-4 space-y-3">
-            {gate.replaceabilityRejectionRegister.slice(0, 4).map((row) => (
+            {rejectionRows.slice(0, 4).map((row) => (
               <div key={row.replaceableOutput} className="border-b border-border/10 pb-3 last:border-b-0 last:pb-0">
                 <p className="text-sm font-medium text-foreground">{routeDisplayText(row.replaceableOutput)}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{routeDisplayText(row.whyRejected)}</p>
@@ -1476,22 +2221,42 @@ function StressSignals({ route }: { route: RouteIntelligenceOptionV2 }) {
   };
 
   return (
-    <div className="grid gap-3 md:grid-cols-3">
-      {signals.map((signal) => (
-        <div key={signal.label} className="rounded-lg border border-border/25 bg-card/40 p-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{routeDisplayText(signal.label)}</p>
-          <p className="mt-2 text-xl font-semibold text-foreground">{signalValue(signal)}</p>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{routeDisplayText(signal.read)}</p>
+    <div className="space-y-4 border-y border-[#d8d1c4] py-5 text-[#0c1117]">
+      {signals.map((signal, index) => {
+        const value = signalValue(signal);
+        const label = routeDisplayText(signal.label);
+        const numericHint = label.toLowerCase().includes('carry')
+          ? Math.min(1, Math.max(0.08, route.metrics.annualCarryingCostUsd / Math.max(route.metrics.totalDutiesUsd, route.metrics.annualCarryingCostUsd, 1)))
+          : label.toLowerCase().includes('duty')
+            ? Math.min(1, Math.max(0.08, route.metrics.totalDutiesUsd / Math.max(route.metrics.totalAcquisitionCostUsd, route.metrics.totalDutiesUsd, 1)))
+            : 0.62;
+        return (
+        <div key={signal.label} className="grid gap-3 md:grid-cols-[190px_1fr_170px] md:items-center">
+          <p className="text-xs uppercase tracking-[0.2em] text-[#8a6b2d]">{routeDisplayText(signal.label)}</p>
+          <div>
+            <div className="h-2 overflow-hidden rounded-full bg-[#e4ded3]">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ backgroundColor: index === 0 ? '#b88724' : index === 1 ? '#8f1d32' : '#047857' }}
+                initial={{ width: 0 }}
+                animate={{ width: `${numericHint * 100}%` }}
+                transition={{ duration: 0.55, delay: index * 0.08 }}
+              />
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-[#506070]">{routeDisplayText(signal.read)}</p>
+          </div>
+          <p className="text-right text-xl font-semibold text-[#0c1117] md:text-2xl">{value}</p>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 function scenarioStroke(scenario: RouteScenarioPoint['scenario']): string {
-  if (scenario === 'Stress case') return '#ef4444';
-  if (scenario === 'Opportunity case') return '#10b981';
-  return '#d4a843';
+  if (scenario === 'Stress case') return '#8f1d32';
+  if (scenario === 'Opportunity case') return '#047857';
+  return '#b88724';
 }
 
 function parseCompactUsdValue(value: unknown): number | null {
@@ -1599,9 +2364,9 @@ function ScenarioGraph({
   const padding = Math.max((rawMax - rawMin) * 0.12, route.metrics.propertyValueUsd * 0.015, 1);
   const minValue = rawMin - padding;
   const maxValue = rawMax + padding;
-  const width = 720;
-  const height = 280;
-  const margin = { top: 18, right: 18, bottom: 38, left: 74 };
+  const width = 760;
+  const height = 240;
+  const margin = { top: 20, right: 24, bottom: 34, left: 78 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
   const xFor = (year: number) => margin.left + (Math.max(0, Math.min(10, year)) / 10) * plotWidth;
@@ -1610,12 +2375,28 @@ function ScenarioGraph({
 
   return (
     <div className="rounded-lg border border-border/25 bg-card/40 p-5">
-      <div className="mb-5 flex items-center gap-2">
-        <Route className="h-4 w-4 text-gold/70" />
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Base / Stress / Opportunity Trajectory After Annual Carry</p>
+      <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-gold/70" />
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Base / Stress / Opportunity After Annual Carry</p>
+          </div>
+          <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+            The selected route is judged on carry-adjusted outcome, not headline price.
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {scenarios.map((scenario) => (
+            <div key={`legend-${scenario.scenario}`} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: scenarioStroke(scenario.scenario) }} />
+              <span>{scenario.scenario}</span>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="h-[280px] w-full">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full overflow-visible" preserveAspectRatio="none" role="img" aria-label="Base stress opportunity annual trajectory">
+      <div className="rounded-lg border border-border/15 bg-background/25 p-3">
+        <div className="h-[240px] w-full">
+        <motion.svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full overflow-visible" preserveAspectRatio="none" role="img" aria-label="Base stress opportunity annual trajectory">
           {[0, 5, 10].map((year) => (
             <g key={`x-${year}`}>
               <line x1={xFor(year)} x2={xFor(year)} y1={margin.top} y2={height - margin.bottom} stroke="hsl(var(--border))" strokeDasharray="4 6" opacity={0.42} />
@@ -1644,28 +2425,46 @@ function ScenarioGraph({
             const pointString = points.map((point) => `${xFor(point.year)},${yFor(point.netOutcomeUsd)}`).join(' ');
             return (
               <g key={scenario.scenario}>
-                <polyline points={pointString} fill="none" stroke={stroke} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+                <motion.polyline
+                  points={pointString}
+                  fill="none"
+                  stroke={stroke}
+                  strokeWidth="3.5"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  initial={{ pathLength: 0, opacity: 0.2 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ duration: 0.7 }}
+                />
                 {points.map((point) => (
-                  <circle key={`${scenario.scenario}-${point.year}`} cx={xFor(point.year)} cy={yFor(point.netOutcomeUsd)} r={point.year === 0 || point.year === 10 ? 4 : 2.6} fill={stroke} opacity={point.year === 0 || point.year === 10 ? 1 : 0.74} />
+                  <motion.circle
+                    key={`${scenario.scenario}-${point.year}`}
+                    cx={xFor(point.year)}
+                    cy={yFor(point.netOutcomeUsd)}
+                    r={point.year === 0 || point.year === 10 ? 4 : 2.6}
+                    fill={stroke}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: point.year === 0 || point.year === 10 ? 1 : 0.74 }}
+                    transition={{ duration: 0.35, delay: 0.2 }}
+                  />
                 ))}
               </g>
             );
           })}
-        </svg>
+        </motion.svg>
+        </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-        {scenarios.map((scenario) => (
-          <div key={`legend-${scenario.scenario}`} className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: scenarioStroke(scenario.scenario) }} />
-            <span>{scenario.scenario}</span>
-          </div>
-        ))}
-      </div>
-      <div className="space-y-4">
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
         {scenarios.map((scenario) => {
           const positive = scenario.netOutcomeUsd >= 0;
           return (
-            <div key={scenario.scenario} className="mt-5 border-t border-border/15 pt-4">
+            <motion.div
+              key={scenario.scenario}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="rounded-lg border border-border/20 bg-background/25 p-4"
+            >
               <div className="mb-2 flex items-center justify-between gap-3 text-sm">
                 <span className="font-medium text-foreground">{scenario.scenario}</span>
                 <span className={positive ? 'text-emerald-500' : 'text-red-500'}>{formatUsdCompact(scenario.netOutcomeUsd)}</span>
@@ -1673,7 +2472,7 @@ function ScenarioGraph({
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 Year 10 value: {formatUsdCompact(scenario.year10ValueUsd)}. {routeDisplayText(scenario.read)}
               </p>
-            </div>
+            </motion.div>
           );
         })}
       </div>
@@ -1712,23 +2511,51 @@ function EvidencePack({ route }: { route: RouteIntelligenceOptionV2 }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border/25 bg-card/40">
-      <div className="hidden grid-cols-12 border-b border-border/25 px-4 py-3 text-xs uppercase tracking-[0.18em] text-muted-foreground/70 md:grid">
-        <div className="col-span-3">Gate</div>
-        <div className="col-span-2">Owner</div>
-        <div className="col-span-3">Evidence</div>
-        <div className="col-span-2">Status</div>
-        <div className="col-span-2">Consequence</div>
-      </div>
-      {gates.map((gate) => (
-        <div key={`${gate.gate}-${gate.owner}`} className="grid grid-cols-12 gap-3 border-b border-border/10 px-4 py-4 text-sm last:border-b-0">
-          <div className="col-span-12 font-medium text-foreground md:col-span-3">{routeDisplayText(gate.gate)}</div>
-          <div className="col-span-12 text-muted-foreground md:col-span-2">{routeDisplayText(gate.owner)}</div>
-          <div className="col-span-12 text-muted-foreground md:col-span-3">{routeDisplayText(gate.evidenceRequired)}</div>
-          <div className="col-span-12 text-amber-500 md:col-span-2">{routeDisplayText(gate.releaseStatus)}</div>
-          <div className="col-span-12 text-muted-foreground md:col-span-2">{routeDisplayText(gate.consequenceIfMissing)}</div>
-        </div>
-      ))}
+    <div className="grid gap-3 lg:grid-cols-2">
+      {gates.map((gate, index) => {
+        const accent = infographicPalette[index % infographicPalette.length];
+        return (
+          <motion.article
+            key={`${gate.gate}-${gate.owner}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: Math.min(index * 0.04, 0.2) }}
+            className={`rounded-lg border ${accent.border} ${accent.bg} p-4`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-current/25 bg-background/35" style={{ color: accent.dot }}>
+                  <FileCheck2 className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/65">Release gate</p>
+                  <h4 className="mt-1 text-base font-semibold leading-snug text-foreground">{routeDisplayText(gate.gate)}</h4>
+                </div>
+              </div>
+              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] ${accent.border} ${accent.text}`}>
+                {routeDisplayText(gate.releaseStatus)}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-md border border-border/15 bg-background/35 p-3">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/60">Owner</p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground">{routeDisplayText(gate.owner)}</p>
+              </div>
+              <div className="rounded-md border border-border/15 bg-background/35 p-3">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/60">Evidence</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{routeDisplayText(gate.evidenceRequired)}</p>
+              </div>
+            </div>
+            <div className="mt-3 rounded-md border border-border/15 bg-background/35 p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <AlertTriangle className={`h-3.5 w-3.5 ${accent.text}`} />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/65">If unresolved</p>
+              </div>
+              <p className="text-sm leading-relaxed text-muted-foreground">{routeDisplayText(gate.consequenceIfMissing)}</p>
+            </div>
+          </motion.article>
+        );
+      })}
     </div>
   );
 }
@@ -1821,8 +2648,8 @@ function DecisionOutcomeTrack({
 }) {
   const isStop = releaseRuleDisplay(route.releaseRule) === 'Stop';
   const outcomeCopy = isStop
-    ? 'This option records why the proposed purchase should not be released. It is not an execution memo because no acquisition route should harden under this track.'
-    : 'This option records why the room should wait. It is not a full execution memo until the reopen evidence is complete and an executable route is selected.';
+    ? 'This route records why the proposed purchase should stop unless the family rebuilds the buyer, banking, title, authority, and tax release file.'
+    : 'This route records why capital should hold while the family preserves optionality, keeps seller pressure from hardening, and clears the signed gates that would reopen a purchase route.';
   return (
     <div className="space-y-8">
       <section className="rounded-lg border border-amber-500/25 bg-amber-500/[0.035] p-5">
@@ -1830,7 +2657,7 @@ function DecisionOutcomeTrack({
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-amber-500/80">Decision Outcome</p>
             <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
-              {releaseRuleDisplay(route.releaseRule)}: option track, not full execution report.
+              {releaseRuleDisplay(route.releaseRule)}: selected-route consequence.
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{outcomeCopy}</p>
             <p className="mt-4 rounded-md border border-border/20 bg-background/35 p-3 text-sm leading-relaxed text-foreground">
@@ -1839,10 +2666,10 @@ function DecisionOutcomeTrack({
           </div>
           <div className="rounded-md border border-border/20 bg-background/35 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
-              Full Memo Anchor
+              Route control
             </p>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              The full release-readiness memo stays attached to the executable route. Hold and Stop remain comparison outcomes inside the route selector.
+              The full route spine remains below for this selected route. Use the recommended route button only to compare against the current preferred release path.
             </p>
             {recommendedRoute && recommendedRoute.id !== route.id ? (
               <button
@@ -1882,7 +2709,6 @@ export default function RouteIntelligenceV2Report({
   intelligence,
   publicMemoId,
   v1Href,
-  fullMemo,
   zeroTrustMoveIntake,
   embedded = false,
   onCitationClick,
@@ -1910,8 +2736,6 @@ export default function RouteIntelligenceV2Report({
     () => routes.find((route) => route.id === intelligence.recommendedRouteId),
     [intelligence.recommendedRouteId, routes],
   );
-  const isOutcomeOnlyTrack = selectedRoute ? isOutcomeOnlyRoute(selectedRoute) : false;
-  const showFullMemoAnchor = Boolean(fullMemo && selectedRoute && !isOutcomeOnlyTrack);
   const [sourceJurisdiction, destinationJurisdiction] = useMemo(() => {
     const parts = String(intelligence.corridor || '').split(/\s*(?:->|→)\s*/);
     return [parts[0] || 'Source', parts[1] || 'Destination'];
@@ -2000,18 +2824,22 @@ export default function RouteIntelligenceV2Report({
       <NativeRouteDriversPanel
         intelligence={intelligence}
         methodDrivers={sharePayload?.methodDrivers}
+        onCitationClick={onCitationClick}
+        citationMap={citationMap}
       />
+
+        <RouteSourceRegisterPanel
+          methodDrivers={sharePayload?.methodDrivers}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
         <section>
           <SectionHeader
-            label={intelligence.comparisonLabel ?? 'Release Readiness Routes'}
-            title={intelligence.comparisonTitle ?? 'Routes reviewed against the proposed route, not new advisory options.'}
+            label="Decision Routes"
+            title="Five route decisions compared by release rule, capital exposure, duty drag, and route consequence."
           />
-          <RouteComparison
-            routes={routes}
-            selectedRouteId={selectedRoute.id}
-            onSelect={setSelectedRouteId}
-          />
+          <RouteDecisionGraph routes={routes} selectedRouteId={selectedRoute.id} />
         </section>
 
         <section>
@@ -2022,188 +2850,186 @@ export default function RouteIntelligenceV2Report({
           </div>
         </section>
 
-        {isOutcomeOnlyTrack ? (
+        <section>
+          <SectionHeader label="Route Graphs" title="Base, stress, opportunity, duty, and carry for the selected route." />
+          <ScenarioGraph route={selectedRoute} shareSection={wealthSection} />
+        </section>
+
+        <DecisionMemoTreePanel
+          section={scenarioTreeSection}
+          citationIds={marketCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
+
+        <RouteShareSectionPanel
+          section={antiFragilitySection}
+          citationIds={crisisCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+          cardLimit={8}
+        />
+
+        <RouteMemoSpinePanel intelligence={intelligence} />
+
+        {recommendedRoute && recommendedRoute.id !== selectedRoute.id ? (
           <DecisionOutcomeTrack
             route={selectedRoute}
             recommendedRoute={recommendedRoute}
             onSelectRecommended={() => setSelectedRouteId(recommendedRoute?.id || intelligence.recommendedRouteId || routes[0]?.id || selectedRoute.id)}
           />
-        ) : (
-          <>
-            <section>
-              <SectionHeader label="Buyer Profile Test" title={intelligence.buyerProfileMatrix.title} />
-              <BuyerProfileMatrix matrix={intelligence.buyerProfileMatrix} />
-            </section>
+        ) : null}
 
-            {intelligence.principalValueGate ? (
-              <section>
-                <SectionHeader label="Principal Value Gate" title="What this memo does that a checklist or adviser note cannot." />
-                <PrincipalValueGatePanel gate={intelligence.principalValueGate} />
-              </section>
-            ) : null}
-          </>
-        )}
+        {intelligence.buyerProfileMatrix ? (
+          <section>
+            <SectionHeader label="Buyer Profile Test" title={intelligence.buyerProfileMatrix.title} />
+            <BuyerProfileMatrix matrix={intelligence.buyerProfileMatrix} />
+          </section>
+        ) : null}
+
+        {hasPrincipalValueGate(intelligence.principalValueGate) ? (
+          <section>
+            <SectionHeader label="Principal Value Gate" title="What this memo does that a checklist or adviser note cannot." />
+            <PrincipalValueGatePanel gate={intelligence.principalValueGate} />
+          </section>
+        ) : null}
 
         <section>
           <SectionHeader label="Stress Signals" title="What changes when this route is selected." />
           <StressSignals route={selectedRoute} />
         </section>
 
-        {!isOutcomeOnlyTrack ? (
-          <>
-            <TaxDutyPanel
-              route={selectedRoute}
-              taxSection={taxSection}
-              citationIds={taxCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        <TaxDutyPanel
+          route={selectedRoute}
+          taxSection={taxSection}
+          citationIds={taxCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
-            <RouteShareSectionPanel
-              section={capitalExposureSection}
-              citationIds={taxCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        <RouteShareSectionPanel
+          section={capitalExposureSection}
+          citationIds={taxCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
-            <section>
-              <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
-              <JurisdictionGrid route={selectedRoute} />
-            </section>
+        <section>
+          <SectionHeader label="Jurisdiction Intelligence" title={`Route-specific readiness across ${sourceJurisdiction}, ${destinationJurisdiction}, and the family system.`} />
+          <JurisdictionGrid route={selectedRoute} />
+        </section>
 
-            <RouteShareSectionPanel
-              section={marketSection}
-              citationIds={marketCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        <RouteShareSectionPanel
+          section={marketSection}
+          citationIds={marketCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
-            <RouteShareSectionPanel
-              section={bankingSection}
-              citationIds={bankingCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        <RouteShareSectionPanel
+          section={bankingSection}
+          citationIds={bankingCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
-            <RouteShareSectionPanel
-              section={continuitySection}
-              citationIds={continuityCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        <RouteShareSectionPanel
+          section={continuitySection}
+          citationIds={continuityCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
-            <RouteContinuityDeepDive
-              route={selectedRoute}
-              section={continuitySection}
-              citationIds={continuityCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        <RouteContinuityDeepDive
+          route={selectedRoute}
+          section={continuitySection}
+          citationIds={continuityCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
-            <RouteShareSectionPanel
-              section={authoritySection}
-              citationIds={continuityCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        <RouteShareSectionPanel
+          section={authoritySection}
+          citationIds={continuityCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
-            <RouteShareSectionPanel
-              section={specialistSection}
-              citationIds={continuityCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-              cardLimit={4}
-            />
+        <RouteShareSectionPanel
+          section={specialistSection}
+          citationIds={continuityCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+          cardLimit={4}
+        />
 
-            <RouteShareSectionPanel
-              section={crisisSection}
-              citationIds={crisisCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-              cardLimit={10}
-            />
+        <RouteShareSectionPanel
+          section={crisisSection}
+          citationIds={crisisCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+          cardLimit={10}
+        />
 
-            <RouteShareSectionPanel
-              section={antiFragilitySection}
-              citationIds={crisisCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-              cardLimit={8}
-            />
+        <RouteShareSectionPanel
+          section={wealthSection}
+          citationIds={marketCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
-            <section>
-              <SectionHeader label="Projection" title="Base, stress, and opportunity outcomes for the selected route." />
-              <ScenarioGraph route={selectedRoute} shareSection={wealthSection} />
-            </section>
+        <section>
+          <SectionHeader label="Release Evidence" title="Evidence pack recorded; signed approval gates control movement." />
+          <EvidencePack route={selectedRoute} />
+        </section>
 
-            <RouteShareSectionPanel
-              section={wealthSection}
-              citationIds={marketCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        <RouteShareSectionPanel
+          section={responsibilitySection}
+          citationIds={continuityCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
-            <RouteShareSectionPanel
-              section={scenarioTreeSection}
-              citationIds={marketCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        <RouteShareSectionPanel
+          section={recordMismatchSection}
+          citationIds={bankingCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
-            <section>
-              <SectionHeader label="Release Evidence" title="Evidence pack recorded; signed approval gates control movement." />
-              <EvidencePack route={selectedRoute} />
-            </section>
+        <section>
+          <SectionHeader label="Responsibility Transfer Matrix" title="Responsibility transfer and record mismatch release-readiness review." />
+          <ResponsibilityAndRecords route={selectedRoute} />
+        </section>
 
-            <RouteShareSectionPanel
-              section={responsibilitySection}
-              citationIds={continuityCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        {counselSection ? (
+          <RouteShareSectionPanel
+            section={counselSection}
+            citationIds={continuityCitationIds}
+            onCitationClick={onCitationClick}
+            citationMap={citationMap}
+          />
+        ) : (
+          <section>
+            <SectionHeader label="Counsel And Operator Question Pack" title="Questions that make existing advisers useful instead of bypassed." />
+            <CounselQuestions route={selectedRoute} />
+          </section>
+        )}
 
-            <RouteShareSectionPanel
-              section={recordMismatchSection}
-              citationIds={bankingCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
+        <RouteShareSectionPanel
+          section={decisionMemorySection}
+          citationIds={marketCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+          cardLimit={2}
+        />
 
-            <section>
-              <SectionHeader label="Responsibility Transfer Matrix" title="Responsibility transfer and record mismatch release-readiness review." />
-              <ResponsibilityAndRecords route={selectedRoute} />
-            </section>
-
-            {counselSection ? (
-              <RouteShareSectionPanel
-                section={counselSection}
-                citationIds={continuityCitationIds}
-                onCitationClick={onCitationClick}
-                citationMap={citationMap}
-              />
-            ) : (
-              <section>
-                <SectionHeader label="Counsel And Operator Question Pack" title="Questions that make existing advisers useful instead of bypassed." />
-                <CounselQuestions route={selectedRoute} />
-              </section>
-            )}
-
-            <RouteShareSectionPanel
-              section={decisionMemorySection}
-              citationIds={marketCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-              cardLimit={2}
-            />
-
-            <RouteShareSectionPanel
-              section={roadmapSection}
-              citationIds={bankingCitationIds}
-              onCitationClick={onCitationClick}
-              citationMap={citationMap}
-            />
-          </>
-        ) : null}
+        <RouteShareSectionPanel
+          section={roadmapSection}
+          citationIds={bankingCitationIds}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+        />
 
         <section className="rounded-lg border border-border/25 bg-card/40 p-5">
           <div className="flex items-start gap-3">
@@ -2211,48 +3037,11 @@ export default function RouteIntelligenceV2Report({
             <div>
               <p className="text-sm font-medium text-foreground">Release boundary</p>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {intelligence.sourceRead} {!isOutcomeOnlyTrack
-                  ? 'The full memo remains available in this release-readiness review while this view isolates route-state consequences for the family office room.'
-                  : 'This selected outcome stays inside the route selector; the full release-readiness memo stays anchored to the executable route.'}
+                {intelligence.sourceRead} The full memo remains attached to every selected route so the family office can see the route-state consequences, owner gates, tax posture, continuity read, crisis resilience, and release evidence without leaving Route View.
               </p>
             </div>
           </div>
         </section>
-
-        {showFullMemoAnchor && selectedRoute && fullMemo ? (
-          <section id="full-decision-memo" className="border-t border-border/40 pt-10">
-            <SectionHeader
-              label={`Full Linear Route Memo · Route ${selectedRoute.rank}`}
-              title={`${selectedRoute.routeName} full route view.`}
-            />
-            <div className="rounded-lg border border-border/25 bg-background/40 px-0 py-6 sm:px-2">
-              <RouteFullMemoErrorBoundary key={selectedRoute.id}>
-                <RouteFullMemoAnchor route={selectedRoute} fullMemo={fullMemo} />
-              </RouteFullMemoErrorBoundary>
-            </div>
-          </section>
-        ) : null}
-
-        {showFullMemoAnchor ? null : (
-          <section className="relative overflow-hidden rounded-lg border border-primary/25 bg-card/50 p-6 sm:p-8">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
-            <div className="relative z-10 max-w-4xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                Release Readiness Request
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-                Have a live wealth move that should not harden yet?
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Share your name, email, phone, and a brief description of the live move. We return with the evidence scope, release gates, and adviser question pack needed before capital, title, authority, or custody moves.
-              </p>
-              <ReleaseReadinessInquiryForm
-                intakeId={publicMemoId}
-                reference={publicMemoId}
-              />
-            </div>
-          </section>
-        )}
       </div>
     </div>
   );

@@ -2,8 +2,8 @@
 // RELEASE READINESS PUBLIC SHARE SURFACE
 // Route: /release-readiness/review/[intakeId]
 //
-// This first-paint route must consume the compact backend public read model.
-// Keep full audit/memo objects behind internal audit and print surfaces.
+// This first-paint route consumes the completed backend public read model.
+// The backend owns memo assembly; this page only GETs and renders the published contract.
 // =============================================================================
 
 import PrincipalReleaseReadinessSharePage from '@/components/decision-memo/share/PrincipalReleaseReadinessSharePage';

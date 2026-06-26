@@ -79,6 +79,15 @@ function assertPublicSnapshotPayload(
   if (!payload.reference || !payload.selectedRoute || !Array.isArray(payload.routeOptions)) {
     throw new ReleaseReadinessPublicSnapshotError('Release readiness public snapshot is missing required fields.');
   }
+
+  const routeIntelligence = payload.routeIntelligenceV2;
+  if (
+    !routeIntelligence ||
+    !Array.isArray(routeIntelligence.routeOptions) ||
+    routeIntelligence.routeOptions.length === 0
+  ) {
+    throw new ReleaseReadinessPublicSnapshotError('Release readiness public snapshot is missing route intelligence.');
+  }
 }
 
 export async function fetchReleaseReadinessPublicSnapshot(

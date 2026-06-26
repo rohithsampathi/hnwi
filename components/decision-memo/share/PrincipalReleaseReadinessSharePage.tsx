@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { ArrowUpRight, ClipboardCheck } from "lucide-react";
+import { ArrowUpRight, ClipboardCheck, Crown, Route as RouteIcon, ScrollText } from "lucide-react";
 import { EliteCitationPanel } from "@/components/elite/elite-citation-panel";
 import { useCitationManager } from "@/hooks/use-citation-manager";
-import { formatUsdCompact } from "@/lib/decision-memo/route-intelligence-v2";
+import RouteIntelligenceV2Report from "@/components/decision-memo/v2/RouteIntelligenceV2Report";
+import { formatUsdCompact, type RouteIntelligenceV2 } from "@/lib/decision-memo/route-intelligence-v2";
 import type { Citation } from "@/lib/parse-dev-citations";
 import type { CitationSourceDevelopment } from "@/lib/development-citation";
 import type {
@@ -37,11 +38,20 @@ const VIEW_LABELS: Array<{ id: ViewMode; label: string; description: string }> =
   { id: "evidence", label: "Evidence & Methodology", description: "Source register, evidence boundary, and method receipt." },
 ];
 
+function ViewModeIcon({ view }: { view: ViewMode }) {
+  const Icon = view === "route" ? RouteIcon : view === "evidence" ? ScrollText : Crown;
+  return <Icon className="h-5 w-5" />;
+}
+
 function normalizeViewMode(value: string | null): ViewMode {
   if (value === "route") return "route";
   if (value === "evidence") return "evidence";
   if (value === "methodology") return "evidence";
   return "principal";
+}
+
+function completedRouteIntelligence(payload: ReleaseReadinessSharePayload): RouteIntelligenceV2 {
+  return payload.routeIntelligenceV2;
 }
 
 function numberValue(value: unknown): number {
@@ -1607,14 +1617,25 @@ export default function PrincipalReleaseReadinessSharePage({
                 key={view.id}
                 type="button"
                 onClick={() => changeView(view.id)}
-                className={`min-w-fit rounded-md border px-4 py-3 text-left transition ${
+                className={`grid min-w-[260px] grid-cols-[42px_1fr] gap-3 rounded-lg border px-4 py-4 text-left transition ${
                   activeView === view.id
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border bg-card text-muted-foreground hover:bg-muted"
+                    ? "border-primary bg-primary/10 text-foreground shadow-[0_14px_35px_rgba(0,0,0,0.06)]"
+                    : "border-border bg-card text-muted-foreground hover:border-border/80 hover:bg-muted"
                 }`}
               >
-                <span className="block text-sm font-semibold">{view.label}</span>
-                <span className="mt-1 block max-w-64 text-xs leading-5">{view.description}</span>
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-md border ${
+                    activeView === view.id
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border/60 bg-background text-muted-foreground"
+                  }`}
+                >
+                  <ViewModeIcon view={view.id} />
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold">{view.label}</span>
+                  <span className="mt-1 block max-w-64 text-xs leading-5">{view.description}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -1622,10 +1643,16 @@ export default function PrincipalReleaseReadinessSharePage({
 
         {activeView === "principal" ? <PrincipalRouteView payload={payload} /> : null}
         {activeView === "route" ? (
-          <>
-            <RouteControlPrelude payload={payload} />
-            <FullReportSections sections={payload.reportSections} />
-          </>
+          <RouteIntelligenceV2Report
+            intelligence={completedRouteIntelligence(payload)}
+            publicMemoId={payload.reference}
+            v1Href={`/release-readiness/review/${encodeURIComponent(payload.reference)}`}
+            embedded
+            onCitationClick={openCitation}
+            citationMap={citationMap}
+            sharePayload={payload}
+            zeroTrustMoveIntake={payload.user_inputs}
+          />
         ) : null}
         {activeView === "evidence" ? (
           <EvidenceMethodologyShareView
