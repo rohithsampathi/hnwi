@@ -156,6 +156,25 @@ interface Opportunity {
   };
 }
 
+function commandCentreOpportunityRows(payload: any): Opportunity[] {
+  if (Array.isArray(payload)) return payload;
+
+  const rows = [
+    ...(Array.isArray(payload?.opportunities) ? payload.opportunities : []),
+    ...(Array.isArray(payload?.hnwi_opportunities) ? payload.hnwi_opportunities : []),
+    ...(Array.isArray(payload?.prive_opportunities) ? payload.prive_opportunities : []),
+    ...(Array.isArray(payload?.crown_vault_opportunities) ? payload.crown_vault_opportunities : []),
+  ];
+  const seen = new Set<string>();
+
+  return rows.filter((row: any, index) => {
+    const id = String(row?.id || row?._id || row?.opportunity_id || row?.source_development_id || row?.dev_id || index);
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 interface UseOpportunitiesConfig {
   // Mode configuration
   isPublic?: boolean; // true for assessment (public), false for dashboard (authenticated)
@@ -574,8 +593,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         const data = await res.json();
 
         // Handle both wrapped and direct array responses
-        opportunities = data?.opportunities ||
-                       (Array.isArray(data) ? data : data?.data || []);
+        opportunities = commandCentreOpportunityRows(data?.data || data);
 
         responseTotal = data?.total_count || opportunities.length
       } else {
@@ -595,15 +613,13 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         response = await secureApi.get(apiUrl, true, bustCache);
 
         // Handle wrapped response from backend
-        opportunities = response?.opportunities ||
-                       (Array.isArray(response) ? response : []);
+        opportunities = commandCentreOpportunityRows(response);
 
         // Fallback: if personalized returned empty, retry with view=all
         if (opportunities.length === 0 && viewParam === 'personalized') {
           const fallbackUrl = `/api/command-centre/opportunities?view=all&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}&limit=${limitParam}${userScopeParam}`;
           const fallbackResponse = await secureApi.get(fallbackUrl, true, bustCache);
-          opportunities = fallbackResponse?.opportunities ||
-                         (Array.isArray(fallbackResponse) ? fallbackResponse : []);
+          opportunities = commandCentreOpportunityRows(fallbackResponse);
         }
 
         responseTotal = opportunities.length

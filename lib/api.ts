@@ -395,12 +395,26 @@ export interface Opportunity {
 }
 
 function normalizeOpportunityList(data: any): Opportunity[] {
-  const opportunities = Array.isArray(data) ? data : (data?.opportunities || [])
+  const opportunities = Array.isArray(data)
+    ? data
+    : [
+        ...(Array.isArray(data?.opportunities) ? data.opportunities : []),
+        ...(Array.isArray(data?.hnwi_opportunities) ? data.hnwi_opportunities : []),
+        ...(Array.isArray(data?.prive_opportunities) ? data.prive_opportunities : []),
+        ...(Array.isArray(data?.crown_vault_opportunities) ? data.crown_vault_opportunities : []),
+      ]
+  const seen = new Set<string>()
 
-  return opportunities.map((opp: any) => ({
-    ...opp,
-    id: opp.id || opp._id || opp.opportunity_id || String(Math.random())
-  })) as Opportunity[]
+  return opportunities
+    .map((opp: any, index: number) => ({
+      ...opp,
+      id: opp.id || opp._id || opp.opportunity_id || opp.source_development_id || opp.dev_id || String(index)
+    }))
+    .filter((opp: any) => {
+      if (seen.has(opp.id)) return false
+      seen.add(opp.id)
+      return true
+    }) as Opportunity[]
 }
 
 export async function getOpportunities(bustCache: boolean = false): Promise<Opportunity[]> {

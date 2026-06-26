@@ -793,7 +793,7 @@ export function InteractiveWorldMap({
           const contextGlowOpacity = theme === 'dark' ? 0.16 : 0.22
           const contextBaseOpacity = theme === 'dark' ? 0.28 : 0.38
           const contextDashOpacity = theme === 'dark' ? 0.38 : 0.52
-          const canHoverFlow = !cityFocusActive && isFocusedCorridor
+          const canHoverFlow = !cityFocusActive
           const canInteractWithFlow = !cityFocusActive && isFocusedCorridor
           const shouldShowPermanentRouteLabel = isFocusMode ? isFocusedCorridor : hasAccess
           const shouldShowHoverRouteLabel = !shouldShowPermanentRouteLabel && !cityFocusActive && isHovered
@@ -1212,7 +1212,7 @@ export function InteractiveWorldMap({
                   zIndexOffset={30000}
                   eventHandlers={{
                     mouseover: () => {
-                      if (!canInteractWithFlow) return
+                      if (!canHoverFlow) return
                       setHoveredCorridorKey(corridorKey)
                     },
                     mouseout: () => {
