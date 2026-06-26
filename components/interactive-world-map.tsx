@@ -362,6 +362,7 @@ export function InteractiveWorldMap({
   const [tooltipVersion, setTooltipVersion] = useState(0)
   const markerRefs = React.useRef<Map<string, any>>(new Map())
   const timeoutRefs = React.useRef<number[]>([])
+  const routeHoverClearRef = React.useRef<number | null>(null)
   const cityFocusActive = selectedCity !== null || flyToCity !== null || openClusterId !== null
 
   React.useEffect(() => {
@@ -399,6 +400,7 @@ export function InteractiveWorldMap({
     return () => {
       timeoutRefs.current.forEach(timeoutId => window.clearTimeout(timeoutId))
       timeoutRefs.current = []
+      routeHoverClearRef.current = null
       markerRegistry.clear()
     }
   }, [])
@@ -795,8 +797,7 @@ export function InteractiveWorldMap({
           const contextDashOpacity = theme === 'dark' ? 0.38 : 0.52
           const canHoverFlow = !cityFocusActive
           const canInteractWithFlow = !cityFocusActive && isFocusedCorridor
-          const shouldShowContextRouteLabel = isFocusMode && !isFocusedCorridor && !cityFocusActive
-          const shouldShowPermanentRouteLabel = isFocusMode ? (isFocusedCorridor || shouldShowContextRouteLabel) : hasAccess
+          const shouldShowPermanentRouteLabel = isFocusMode ? isFocusedCorridor : hasAccess
           const shouldShowHoverRouteLabel = !shouldShowPermanentRouteLabel && !cityFocusActive && isHovered
 
           // Destination marker — black dot with neon arc-color border/glow
@@ -844,10 +845,28 @@ export function InteractiveWorldMap({
           const routeHoverHandlers = {
             mouseover: () => {
               if (!canHoverFlow) return
+              if (routeHoverClearRef.current !== null) {
+                window.clearTimeout(routeHoverClearRef.current)
+                routeHoverClearRef.current = null
+              }
+              setHoveredCorridorKey(corridorKey)
+            },
+            mousemove: () => {
+              if (!canHoverFlow) return
+              if (routeHoverClearRef.current !== null) {
+                window.clearTimeout(routeHoverClearRef.current)
+                routeHoverClearRef.current = null
+              }
               setHoveredCorridorKey(corridorKey)
             },
             mouseout: () => {
-              setHoveredCorridorKey(current => current === corridorKey ? null : current)
+              if (routeHoverClearRef.current !== null) {
+                window.clearTimeout(routeHoverClearRef.current)
+              }
+              routeHoverClearRef.current = scheduleTimeout(() => {
+                routeHoverClearRef.current = null
+                setHoveredCorridorKey(current => current === corridorKey ? null : current)
+              }, 120)
             }
           }
 

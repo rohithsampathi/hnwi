@@ -42,6 +42,41 @@ function extractUserId(cookieStore: Awaited<ReturnType<typeof cookies>>): string
   return null;
 }
 
+const COMMAND_CENTRE_ARRAY_KEYS = [
+  'opportunities',
+  'hnwi_opportunities',
+  'prive_opportunities',
+  'crown_vault_opportunities',
+] as const;
+
+function commandCentreRowId(row: any, index: number, sourceKey: string): string {
+  return String(
+    row?.id ||
+    row?._id ||
+    row?.opportunity_id ||
+    row?.source_development_id ||
+    row?.dev_id ||
+    `${sourceKey}:${index}`,
+  );
+}
+
+function isCrownVaultRow(row: any): boolean {
+  const source = String(row?.source || '').toLowerCase();
+  return source.includes('crown vault') || source === 'crown vault' || row?.isCrownVault === true;
+}
+
+function canExposeCommandCentreRow(row: any, userId: string | null): boolean {
+  if (!isCrownVaultRow(row)) {
+    return true;
+  }
+
+  const rowUserId = resolveCanonicalUserId({
+    user_id: row?.user_id || row?.owner_id || row?.ownerId || '',
+  });
+
+  return !!userId && rowUserId === userId;
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get query parameters from frontend request
@@ -50,6 +85,7 @@ export async function GET(request: NextRequest) {
     const timeframe = searchParams.get('timeframe') || 'LIVE';
     const requestedIncludeCrownVault = searchParams.get('include_crown_vault') === 'true';
     const includeStaleMap = searchParams.get('include_stale_map') === 'true';
+    const limit = searchParams.get('limit') || '500';
 
     // Get authentication cookies - SOTA: Use proper cookie names
     const cookieStore = await cookies();
@@ -65,10 +101,17 @@ export async function GET(request: NextRequest) {
     const includeCrownVault = requestedIncludeCrownVault && !!userId;
 
     // Build backend URL with query parameters
-    let backendUrl = `${API_BASE_URL}/api/command-centre/opportunities?view=${view}&timeframe=${timeframe}&include_crown_vault=${includeCrownVault}&include_stale_map=${includeStaleMap}`;
+    const backendParams = new URLSearchParams({
+      view,
+      timeframe,
+      include_crown_vault: includeCrownVault ? 'true' : 'false',
+      include_stale_map: includeStaleMap ? 'true' : 'false',
+      limit,
+    });
     if (userId) {
-      backendUrl += `&user_id=${userId}`;
+      backendParams.set('user_id', userId);
     }
+    const backendUrl = `${API_BASE_URL}/api/command-centre/opportunities?${backendParams.toString()}`;
 
     // Log backend request for debugging
     logger.info('Command Centre API request', { view, timeframe, hasUserId: !!userId, includeCrownVault, includeStaleMap });
@@ -111,29 +154,43 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    const opportunities = Array.isArray(data.opportunities)
-      ? data.opportunities.map((opportunity: any) => sanitizeCommandCentreOpportunityDisplaySource(opportunity))
-      : [];
-    const filteredOpportunities = opportunities.filter((opportunity: any) => {
-      if (opportunity?.source !== 'User Crown Vault' && !opportunity?.isCrownVault) {
-        return true;
+    const seen = new Set<string>();
+    const mergedOpportunities: any[] = [];
+
+    COMMAND_CENTRE_ARRAY_KEYS.forEach((key) => {
+      if (!Array.isArray(data?.[key])) {
+        return;
       }
-      return !!userId && opportunity?.user_id === userId;
+
+      const sanitizedRows = data[key]
+        .map((opportunity: any) => sanitizeCommandCentreOpportunityDisplaySource(opportunity))
+        .filter((opportunity: any) => canExposeCommandCentreRow(opportunity, userId));
+
+      data[key] = sanitizedRows;
+
+      sanitizedRows.forEach((opportunity: any, index: number) => {
+        const rowId = commandCentreRowId(opportunity, index, key);
+        if (seen.has(rowId)) {
+          return;
+        }
+        seen.add(rowId);
+        mergedOpportunities.push(opportunity);
+      });
     });
 
-    if (filteredOpportunities.length !== opportunities.length) {
-      data.opportunities = filteredOpportunities;
-      data.count = filteredOpportunities.length;
-      data.total_count = filteredOpportunities.length;
-      data.metadata = {
-        ...(data.metadata || {}),
-        include_crown_vault: includeCrownVault,
-        crown_vault_count: filteredOpportunities.filter((opportunity: any) => opportunity?.source === 'User Crown Vault' || opportunity?.isCrownVault).length,
-      };
-    }
+    data.opportunities = mergedOpportunities;
+    data.count = mergedOpportunities.length;
+    data.total_count = mergedOpportunities.length;
+    data.metadata = {
+      ...(data.metadata || {}),
+      include_crown_vault: includeCrownVault,
+      crown_vault_count: mergedOpportunities.filter((opportunity: any) => isCrownVaultRow(opportunity)).length,
+      hnwi_count: Array.isArray(data.hnwi_opportunities) ? data.hnwi_opportunities.length : 0,
+      prive_count: Array.isArray(data.prive_opportunities) ? data.prive_opportunities.length : 0,
+    };
 
     // Log successful response
-    logger.info('Command Centre API success', { count: data.opportunities?.length || 0, view, includeCrownVault });
+    logger.info('Command Centre API success', { count: mergedOpportunities.length, view, includeCrownVault });
 
     // Return backend data
     return NextResponse.json(data);
