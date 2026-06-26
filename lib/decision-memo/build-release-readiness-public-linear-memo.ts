@@ -119,16 +119,36 @@ function routeOptionsForMemo(route: RouteIntelligenceV2): RouteIntelligenceOptio
   return route.pressureVariants?.length ? route.pressureVariants : route.routeOptions;
 }
 
-function selectedRouteMetrics(payload: ReleaseReadinessSharePayload): RecordLike {
-  return ((payload.selectedRoute as any)?.metrics ?? {}) as RecordLike;
+function selectedRouteMetrics(
+  payload: ReleaseReadinessSharePayload,
+  selectedRoute?: RouteIntelligenceOptionV2,
+): RecordLike {
+  return ((selectedRoute as any)?.metrics ?? (payload.selectedRoute as any)?.metrics ?? {}) as RecordLike;
 }
 
-function buildPublicLinearMemoSeed(payload: ReleaseReadinessSharePayload): PublicLinearMemoSeed {
+function buildPublicLinearMemoSeed(
+  payload: ReleaseReadinessSharePayload,
+  selectedRouteOverride?: RouteIntelligenceOptionV2,
+): PublicLinearMemoSeed {
   const [sourceJurisdiction, destinationJurisdiction] = corridorParts(payload);
-  const metrics = selectedRouteMetrics(payload);
   const route = payload.routeIntelligenceV2;
-  const selectedRouteName = cleanText(payload.selectedRoute.routeName);
-  const selectedRouteType = cleanText(payload.selectedRoute.routeType);
+  const selectedRoute = (selectedRouteOverride ?? payload.selectedRoute) as unknown as RouteIntelligenceOptionV2;
+  const metrics = selectedRouteMetrics(payload, selectedRoute);
+  const selectedRouteName = cleanText(selectedRoute?.routeName || payload.selectedRoute.routeName);
+  const selectedRouteType = cleanText(selectedRoute?.routeType || payload.selectedRoute.routeType);
+  const selectedRouteDecision = cleanText(selectedRoute?.verdict || payload.decision);
+  const selectedRouteReleaseRule = cleanText(
+    selectedRoute?.releaseRule ||
+      selectedRoute?.releaseEffect ||
+      payload.releaseRule,
+  );
+  const selectedRouteRationale = cleanText(
+    selectedRoute?.releaseEffect ||
+      selectedRoute?.failureMode ||
+      payload.rationale ||
+      selectedRouteReleaseRule,
+  );
+  const selectedRoutePurpose = cleanText(selectedRoute?.bestUse || payload.purpose);
   const inputFrame = reportSection(payload, 'input-frame');
   const taxSection = reportSection(payload, 'tax-legal-route-readiness');
   const capitalSection = reportSection(payload, 'capital-exposure-proof');
@@ -162,7 +182,7 @@ function buildPublicLinearMemoSeed(payload: ReleaseReadinessSharePayload): Publi
     source_jurisdiction: sourceJurisdiction,
     destination_jurisdiction: destinationJurisdiction,
     exposure_class: selectedRouteType,
-    verdict: cleanText(payload.decision),
+    verdict: selectedRouteDecision,
     risk_level: cleanText(payload.riskLevel || 'Evidence-gated release'),
     data_quality: 'Public release-readiness snapshot',
     data_quality_note: 'Built from the published compact read model; private source files remain gate-controlled.',
@@ -173,21 +193,21 @@ function buildPublicLinearMemoSeed(payload: ReleaseReadinessSharePayload): Publi
       headline_metric: {
         label: 'Selected route all-in outlay',
         value: allInValue || 'Signed gate controls release',
-        description: cleanText(payload.rationale || payload.releaseRule),
+        description: selectedRouteRationale,
       },
       evidence_basis_note: 'Public claims source-backed; private release evidence remains gate-controlled.',
     },
     input_snapshot: {
       house_standard_intake: {
         live_move_the_room_does_not_fully_trust_yet: cleanText(payload.move),
-        current_substitute_story: cleanText(inputFrame?.intro || payload.purpose),
-        house_relief_to_be_earned: [cleanText(payload.releaseRule)],
+        current_substitute_story: cleanText(inputFrame?.intro || selectedRoutePurpose),
+        house_relief_to_be_earned: [selectedRouteReleaseRule],
         what_cannot_fail: payload.holdConditions?.slice(0, 4) ?? [],
         trust_gap_signals: payload.stopConditions?.slice(0, 4) ?? [],
       },
       mandate: {
         move_description: cleanText(payload.move),
-        expected_outcome: cleanText(payload.decision),
+        expected_outcome: selectedRouteDecision,
         target_locations: [destinationJurisdiction],
       },
       constraints: {
@@ -202,21 +222,21 @@ function buildPublicLinearMemoSeed(payload: ReleaseReadinessSharePayload): Publi
     },
     house_grade_memo: {
       decision_signal: {
-        value: cleanText(payload.decision),
-        rationale: cleanText(payload.rationale || payload.releaseRule),
-        release_rule: cleanText(payload.releaseRule),
+        value: selectedRouteDecision,
+        rationale: selectedRouteRationale,
+        release_rule: selectedRouteReleaseRule,
       },
       corrected_thesis: {
         room_believed: cleanText(inputFrame?.intro || 'The room was evaluating the move through market attractiveness and family-use logic.'),
-        actual_truth: cleanText(`${payload.decision}. ${payload.releaseRule}`),
+        actual_truth: cleanText(`${selectedRouteDecision}. ${selectedRouteReleaseRule}`),
         what_changed: 'Route selection, capital release, tax, title, source, bank rails, authority, continuity, and decision memory are governed together.',
       },
       house_mandate_at_risk: {
-        headline: cleanText(payload.purpose),
+        headline: selectedRoutePurpose,
         items: [
-          cleanText(payload.purpose),
+          selectedRoutePurpose,
           cleanText(payload.capitalRule),
-          cleanText(payload.releaseRule),
+          selectedRouteReleaseRule,
         ].filter(Boolean),
       },
       route_architecture: {
@@ -356,7 +376,7 @@ export function buildPublicRouteScopedMemoSurface(
   payload: ReleaseReadinessSharePayload,
   selectedRoute: RouteIntelligenceOptionV2,
 ) {
-  const seed = buildPublicLinearMemoSeed(payload);
+  const seed = buildPublicLinearMemoSeed(payload, selectedRoute);
   const route = payload.routeIntelligenceV2;
   return buildRouteScopedDecisionMemoSurface({
     memoData: seed.memoData,
