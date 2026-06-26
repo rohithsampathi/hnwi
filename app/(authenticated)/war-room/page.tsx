@@ -519,6 +519,24 @@ function usdMillions(value: unknown): string {
   return `US$${(numeric / 1_000_000).toFixed(2)}M`;
 }
 
+function parseCorridorText(value: unknown): { source?: string; destination?: string } {
+  const text = normalizedRouteText(value);
+  if (!text) return {};
+
+  const parts = text.split(/\s*(?:->|→)\s*/).map(cleanRouteNode).filter(Boolean);
+  if (parts.length !== 2) return {};
+
+  return {
+    source: parts[0],
+    destination: parts[1],
+  };
+}
+
+function countryFromCorridorNode(value: string): string {
+  const parts = value.split('/').map(part => cleanRouteNode(part)).filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1] : value;
+}
+
 function buildFocusedAuditFromSurface(intakeId: string, payload: unknown): Audit | null {
   const root = asRecord(payload);
   const memoData = asRecord(root.memoData ?? root);
@@ -527,6 +545,10 @@ function buildFocusedAuditFromSurface(intakeId: string, payload: unknown): Audit
   const fullPreview = asRecord(fullArtifact.preview_data);
   const assumptionLedger = asRecord(preview.assumption_ledger ?? fullPreview.assumption_ledger);
   const riskAssessment = asRecord(preview.risk_assessment ?? fullPreview.risk_assessment);
+  const userInputs = asRecord(root.user_inputs ?? memoData.user_inputs);
+  const selectedRoute = asRecord(root.selectedRoute ?? root.selected_route ?? memoData.selectedRoute);
+  const routeIntelligence = asRecord(root.routeIntelligenceV2 ?? root.route_intelligence_v2 ?? memoData.routeIntelligenceV2);
+  const corridor = parseCorridorText(firstText(root.corridor, routeIntelligence.corridor));
 
   const source = firstText(
     preview.source_city,
@@ -535,6 +557,7 @@ function buildFocusedAuditFromSurface(intakeId: string, payload: unknown): Audit
     fullPreview.source_city,
     fullPreview.source_jurisdiction,
     fullPreview.source_country,
+    corridor.source,
   );
   const destination = firstText(
     preview.destination_city,
@@ -543,6 +566,7 @@ function buildFocusedAuditFromSurface(intakeId: string, payload: unknown): Audit
     fullPreview.destination_city,
     fullPreview.destination_jurisdiction,
     fullPreview.destination_country,
+    corridor.destination,
   );
 
   if (!source || !destination) {
@@ -553,6 +577,7 @@ function buildFocusedAuditFromSurface(intakeId: string, payload: unknown): Audit
     preview.transaction_value,
     preview.total_exposure,
     preview.purchase_price_usd,
+    userInputs.capital_at_risk,
     usdMillions(assumptionLedger.purchase_price_usd),
     usdMillions(assumptionLedger.direct_foreign_individual_all_in_usd),
   );
@@ -566,6 +591,9 @@ function buildFocusedAuditFromSurface(intakeId: string, payload: unknown): Audit
     preview.thesis_summary,
     preview.decision_thesis,
     preview.executive_summary?.headline,
+    root.move,
+    root.rationale,
+    userInputs.live_decision,
     memoData.documentTitle,
     'Current release-readiness memo corridor',
   );
@@ -574,12 +602,12 @@ function buildFocusedAuditFromSurface(intakeId: string, payload: unknown): Audit
     intake_id: intakeId,
     source_jurisdiction: source,
     destination_jurisdiction: destination,
-    source_country: firstText(preview.source_country, fullPreview.source_country, source),
-    destination_country: firstText(preview.destination_country, fullPreview.destination_country, destination),
+    source_country: firstText(preview.source_country, fullPreview.source_country, countryFromCorridorNode(source)),
+    destination_country: firstText(preview.destination_country, fullPreview.destination_country, countryFromCorridorNode(destination)),
     source_coordinates: null,
     destination_coordinates: null,
-    created_at: firstText(memoData.generated_at, root.generated_at, new Date().toISOString()),
-    type: 'Release Readiness Memo',
+    created_at: firstText(memoData.generated_at, root.generated_at, root.generatedAt, new Date().toISOString()),
+    type: cleanMemoType(firstText(selectedRoute.routeType, root.intakeType, 'Release Readiness Memo')),
     value,
     summary,
     status: 'completed',
@@ -734,21 +762,42 @@ export default function WarRoomPage() {
 
     let cancelled = false;
 
-    fetch(`/api/decision-memo/surface/${encodeURIComponent(focusedMemoId)}`, {
-      credentials: 'include',
-      cache: 'no-store',
-    })
-      .then(async response => {
-        if (!response.ok) return null;
-        return response.json();
-      })
-      .then(payload => {
-        if (cancelled || !payload) return;
-        setFocusedMemoAudit(buildFocusedAuditFromSurface(focusedMemoId, payload));
-      })
-      .catch(() => {
-        if (!cancelled) setFocusedMemoAudit(null);
-      });
+    const fetchFocusedMemoAudit = async () => {
+      const encodedMemoId = encodeURIComponent(focusedMemoId);
+      const endpoints = [
+        `/api/release-readiness/share/${encodedMemoId}`,
+        `/api/decision-memo/surface/${encodedMemoId}`,
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, {
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          if (!response.ok) continue;
+
+          const payload = await response.json();
+          const audit = buildFocusedAuditFromSurface(focusedMemoId, payload);
+          if (audit) {
+            if (!cancelled) setFocusedMemoAudit(audit);
+            return;
+          }
+        } catch {
+          // Try the next approved focused-memo read surface.
+        }
+      }
+
+      if (!cancelled) {
+        setFocusedMemoAudit(null);
+      }
+    };
+
+    fetchFocusedMemoAudit().catch(() => {
+      if (!cancelled) {
+        setFocusedMemoAudit(null);
+      }
+    });
 
     return () => {
       cancelled = true;
