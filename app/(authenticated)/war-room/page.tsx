@@ -775,22 +775,21 @@ export default function WarRoomPage() {
 
   const focusedAudit = useMemo(() => {
     if (!normalizedFocusedMemoId) return null;
-    return warRoomAudits.find(audit => normalizeMemoId(audit.intake_id) === normalizedFocusedMemoId) || null;
-  }, [warRoomAudits, normalizedFocusedMemoId]);
+    return focusedMemoAudit ? sanitizeWarRoomAudit(focusedMemoAudit) : null;
+  }, [focusedMemoAudit, normalizedFocusedMemoId]);
 
   const isFocusedMemoMode = Boolean(normalizedFocusedMemoId);
-  const focusedCorridorKey = focusedAudit ? buildCorridorGroupKey(focusedAudit) : null;
-
-  const visibleWarRoomAudits = useMemo(() => {
-    if (!isFocusedMemoMode) return warRoomAudits;
-    return focusedAudit ? [focusedAudit] : [];
-  }, [warRoomAudits, focusedAudit, isFocusedMemoMode]);
+  const focusedCorridorKey = focusedAudit
+    ? buildCorridorGroupKey(focusedAudit)
+    : isFocusedMemoMode
+      ? `loading-focus:${normalizedFocusedMemoId}`
+      : null;
 
   // Group audits by corridor (source-destination pair) for navigation
   const corridorGroups = useMemo(() => {
     const groups: Record<string, typeof audits> = {};
     const SKIP_VALUES = ['', 'not specified', 'n/a', 'unknown', 'none'];
-    visibleWarRoomAudits.forEach(audit => {
+    warRoomAudits.forEach(audit => {
       // Skip audits with empty / unspecified jurisdictions (both src AND dst must be usable)
       const srcRaw = (audit.source_jurisdiction || audit.source_country || '').trim();
       const dstRaw = (audit.destination_jurisdiction || audit.destination_country || '').trim();
@@ -807,7 +806,7 @@ export default function WarRoomPage() {
       groups[corridorKey].push(audit);
     });
     return groups;
-  }, [visibleWarRoomAudits]);
+  }, [warRoomAudits]);
 
   // Navigation state: track current audit index for each corridor
   const [corridorIndices, setCorridorIndices] = useState<Record<string, number>>({});
@@ -1225,9 +1224,9 @@ export default function WarRoomPage() {
                 <h1 className="text-base md:text-xl lg:text-2xl font-bold text-foreground">
                   War Room
                 </h1>
-                {visibleWarRoomAudits.length > 0 && (
+                {warRoomAudits.length > 0 && (
                   <span className="text-xs text-muted-foreground ml-1">
-                    {visibleWarRoomAudits.length} wealth movement{visibleWarRoomAudits.length !== 1 ? 's' : ''} reviewed
+                    {warRoomAudits.length} wealth movement{warRoomAudits.length !== 1 ? 's' : ''} reviewed
                   </span>
                 )}
               </div>
