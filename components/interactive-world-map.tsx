@@ -849,7 +849,7 @@ export function InteractiveWorldMap({
                 pathOptions={{
                   color: color,
                   weight: Math.max(arcWeight + 12, 18), // Always at least 18px wide for clicks
-                  opacity: 0, // Completely invisible
+                  opacity: 0.01, // Visually hidden but still pointer-hit-testable for hover labels
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
