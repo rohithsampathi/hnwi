@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const MAX_PUBLIC_OPPORTUNITIES = 5;
-const DEFAULT_PUBLIC_MEMO_ID = 'HC9L7M2A4Q8P6';
 
 const COMMAND_CENTRE_ARRAY_KEYS = [
   'opportunities',
@@ -96,17 +95,6 @@ const isCrownVaultRow = (row: RecordLike): boolean => {
   return source.includes('crown vault') || row.isCrownVault === true;
 };
 
-const formatUsd = (value: unknown): string => {
-  const amount = asFiniteNumber(value);
-  if (amount === null) return '';
-
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
-
 const redactPublicText = (value: unknown, maxLength = 720): string => {
   const raw = cleanText(value)
     .replace(/https?:\/\/\S+/gi, '')
@@ -129,16 +117,16 @@ const redactPublicText = (value: unknown, maxLength = 720): string => {
   return `${redacted.slice(0, maxLength - 1).trim()}…`;
 };
 
-const cityOffsets = [
-  { city: 'London', country: 'United Kingdom', latitude: 51.5074, longitude: -0.1278 },
-  { city: 'Mayfair', country: 'United Kingdom', latitude: 51.5104, longitude: -0.1456 },
-  { city: 'London', country: 'United Kingdom', latitude: 51.5008, longitude: -0.1246 },
-  { city: 'Dubai', country: 'United Arab Emirates', latitude: 25.2048, longitude: 55.2708 },
-  { city: 'Dubai', country: 'United Arab Emirates', latitude: 25.2148, longitude: 55.2808 },
-];
-
 const publicNote =
   'Public preview only. Executor directory, source follow-through, and introduction actions are private.';
+
+const normalizeTimeframe = (value: string | null): string => {
+  const normalized = cleanText(value).toUpperCase();
+  if (normalized === 'ALL' || normalized === 'LIVE' || normalized === '24H' || normalized === '7D' || normalized === '30D') {
+    return normalized;
+  }
+  return 'LIVE';
+};
 
 function centralRows(payload: unknown): RecordLike[] {
   if (!isRecord(payload)) return [];
@@ -214,66 +202,16 @@ function publicOpportunityFromCentral(row: RecordLike, index: number): PublicOpp
   };
 }
 
-function publicOpportunityFromRouteOption(
-  option: RecordLike,
-  snapshot: RecordLike,
-  index: number,
-): PublicOpportunity | null {
-  const coordinate = cityOffsets[index % cityOffsets.length];
-  const metrics = isRecord(option.metrics) ? option.metrics : {};
-  const propertyValue = formatUsd(metrics.propertyValueUsd);
-  const dutyDrag = asFiniteNumber(metrics.dutyDragPct);
-  const routeName = firstText(option.routeName, option.name, option.title, `Release readiness route ${index + 1}`);
-  const economicRead = firstText(option.economicRead);
-  const bestUse = firstText(option.bestUse);
-  const releaseEffect = firstText(option.releaseEffect);
-  const failureMode = firstText(option.failureMode);
-  const analysis = redactPublicText(
-    [
-      bestUse,
-      economicRead,
-      releaseEffect,
-      failureMode ? `Watchpoint: ${failureMode}` : '',
-    ].filter(Boolean).join(' '),
-  ) || 'Public-safe release readiness opportunity preview.';
-
-  return {
-    id: `public-command-centre-${firstText(snapshot.intakeId, DEFAULT_PUBLIC_MEMO_ID)}-${firstText(option.id, index)}`,
-    title: routeName,
-    name: coordinate.city,
-    location: `${coordinate.city}, ${coordinate.country}`,
-    city: coordinate.city,
-    country: coordinate.country,
-    latitude: coordinate.latitude,
-    longitude: coordinate.longitude,
-    value: propertyValue || undefined,
-    risk: firstText(option.verdict, option.releaseRule, snapshot.decision, 'Public preview') || undefined,
-    summary: analysis,
-    description: analysis,
-    analysis,
-    command_centre_display_summary: analysis,
-    category: firstText(option.routeType, 'Release readiness'),
-    industry: 'Private client route intelligence',
-    product: firstText(snapshot.title, 'Release readiness memo'),
-    source: 'Public Command Centre Preview',
-    source_surface: 'public_command_centre_preview_v1',
-    public_preview: true,
-    follow_through_blocked: true,
-    public_access_note: publicNote,
-    public_preview_source: 'published_release_readiness_public_snapshot',
-    source_development_id: firstText(snapshot.reference, snapshot.intakeId) || undefined,
-    dev_id: firstText(snapshot.reference, snapshot.intakeId) || undefined,
-    generated_at: firstText(snapshot.generatedAt) || new Date().toISOString(),
-    ...(dutyDrag !== null ? { victor_score: `Duty drag ${dutyDrag.toFixed(1)}%` } : {}),
-  } as PublicOpportunity;
-}
-
-async function fetchCentralPublicRows(limit: number): Promise<PublicOpportunity[]> {
+async function fetchCentralPublicRows(
+  limit: number,
+  timeframe: string,
+  includeStaleMap: boolean,
+): Promise<PublicOpportunity[]> {
   const params = new URLSearchParams({
     view: 'all',
-    timeframe: 'LIVE',
+    timeframe,
     include_crown_vault: 'false',
-    include_stale_map: 'false',
+    include_stale_map: includeStaleMap ? 'true' : 'false',
     limit: String(limit),
   });
 
@@ -295,45 +233,18 @@ async function fetchCentralPublicRows(limit: number): Promise<PublicOpportunity[
     .slice(0, limit);
 }
 
-async function fetchPublicSnapshotRows(intakeId: string, limit: number): Promise<PublicOpportunity[]> {
-  const response = await fetch(`${API_BASE_URL}/api/decision-memo/release-readiness/public/${encodeURIComponent(intakeId)}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    next: { revalidate: 300 },
-  });
-
-  if (!response.ok) {
-    logger.warn('Public Command Centre snapshot fetch failed', { status: response.status, intakeId });
-    return [];
-  }
-
-  const snapshot: unknown = await response.json();
-  if (!isRecord(snapshot)) return [];
-
-  const routeOptions = Array.isArray(snapshot.routeOptions) ? snapshot.routeOptions : [];
-  return routeOptions
-    .filter(isRecord)
-    .map((option, index) => publicOpportunityFromRouteOption(option, snapshot, index))
-    .filter((row): row is PublicOpportunity => Boolean(row))
-    .slice(0, limit);
-}
-
 export async function GET(request: NextRequest) {
   const limit = boundedLimit(request);
-  const memoId = cleanText(request.nextUrl.searchParams.get('memo')) || DEFAULT_PUBLIC_MEMO_ID;
+  const timeframe = normalizeTimeframe(request.nextUrl.searchParams.get('timeframe'));
+  const includeStaleMap = request.nextUrl.searchParams.get('include_stale_map') === 'true';
 
   try {
-    const central = await fetchCentralPublicRows(limit);
-    const opportunities = central.length > 0
-      ? central
-      : await fetchPublicSnapshotRows(memoId, limit);
+    const opportunities = await fetchCentralPublicRows(limit, timeframe, includeStaleMap);
 
     const payload = {
       success: true,
       status: opportunities.length > 0 ? 'ok' : 'empty',
-      source: central.length > 0
-        ? 'central_command_centre_redacted'
-        : 'published_release_readiness_public_snapshot',
+      source: 'central_command_centre_redacted',
       source_surface: 'public_command_centre_preview_v1',
       follow_through_blocked: true,
       public_access_note: publicNote,
@@ -345,11 +256,13 @@ export async function GET(request: NextRequest) {
       total_count: opportunities.length,
       metadata: {
         limit,
-        central_count: central.length,
-        memo_id: memoId,
+        central_count: opportunities.length,
+        timeframe,
+        include_stale_map: includeStaleMap,
         executor_directory: 'blocked_public_surface',
         source_follow_through: 'blocked_public_surface',
         contact_fields: 'omitted',
+        empty_reason: opportunities.length === 0 ? 'central_command_centre_public_rows_empty' : null,
       },
       generatedAt: new Date().toISOString(),
     };

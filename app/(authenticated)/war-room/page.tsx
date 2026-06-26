@@ -996,7 +996,8 @@ export default function WarRoomPage() {
 
   // Fetch opportunities using centralized hook (dashboard mode with personal mode support)
   const usePublicCommandCentrePreview = !userId;
-  const publicCommandCentreEndpoint = `/api/command-centre/opportunities/public?memo=${encodeURIComponent(focusedMemoId || 'HC9L7M2A4Q8P6')}&limit=5`;
+  const publicCommandCentreTimeframe = timeframe === 'live' ? 'LIVE' : timeframe === 'all' ? 'ALL' : timeframe.toUpperCase();
+  const publicCommandCentreEndpoint = `/api/command-centre/opportunities/public?timeframe=${encodeURIComponent(publicCommandCentreTimeframe)}&include_stale_map=${timeframe === 'all' ? 'true' : 'false'}&limit=5`;
   const {
     cities,
     loading,

@@ -781,8 +781,8 @@ export function InteractiveWorldMap({
 
           // Focus mode makes non-current memo corridors visible but non-dominant.
           const color = isFocusedCorridor
-            ? (rawHasAccess ? baseColor : '#666666')
-            : '#6B7280'
+            ? (rawHasAccess ? baseColor : '#8A8F98')
+            : '#A7AFBC'
           const auditCount = flow.midpoint?.totalAudits || 1
           const arcWeight = Math.min(1.5 + auditCount * 1, 6)
 
@@ -795,23 +795,25 @@ export function InteractiveWorldMap({
             !isFocusedCorridor ||
             (!rawHasAccess && (hoveredCorridorKey !== null || selectedCorridorKey !== null || hoveredDestination !== null) && !isHovered)
 
-          const accessOpacityMultiplier = !isFocusedCorridor ? 0.42 : (rawHasAccess ? 1 : 0.4)
-          const contextGlowOpacity = theme === 'dark' ? 0.16 : 0.22
-          const contextBaseOpacity = theme === 'dark' ? 0.28 : 0.38
-          const contextDashOpacity = theme === 'dark' ? 0.38 : 0.52
+          const accessOpacityMultiplier = !isFocusedCorridor ? 0.24 : (rawHasAccess ? 1 : 0.4)
+          const contextGlowOpacity = theme === 'dark' ? 0.05 : 0.07
+          const contextBaseOpacity = theme === 'dark' ? 0.09 : 0.12
+          const contextDashOpacity = theme === 'dark' ? 0.14 : 0.18
           const canHoverFlow = !cityFocusActive
           const canInteractWithFlow = !cityFocusActive && isFocusedCorridor
           const shouldShowPermanentRouteLabel = isFocusMode ? isFocusedCorridor : hasAccess
           const shouldShowHoverRouteLabel = !shouldShowPermanentRouteLabel && !cityFocusActive && isHovered
 
           // Destination marker — black dot with neon arc-color border/glow
+          const destinationOpacity = !isFocusedCorridor ? 0.34 : (rawHasAccess ? 1 : 0.58)
+          const destinationGlow = isFocusedCorridor ? `0 0 8px ${color}` : 'none'
           const destinationIcon = flow.midpoint ? L.divIcon({
             className: 'custom-marker',
             iconSize: [16, 16],
             iconAnchor: [8, 8],
             popupAnchor: [0, 15],
-            html: `<div style="position:relative;width:16px;height:16px;">
-              <div style="width:16px;height:16px;background:#0A0A0A;border:2px solid ${color};border-radius:50%;box-shadow:0 0 8px ${color};display:flex;align-items:center;justify-content:center;position:relative;">${flow.midpoint.iconSvg}</div>
+            html: `<div style="position:relative;width:16px;height:16px;opacity:${destinationOpacity};">
+              <div style="width:16px;height:16px;background:#0A0A0A;border:2px solid ${color};border-radius:50%;box-shadow:${destinationGlow};display:flex;align-items:center;justify-content:center;position:relative;">${flow.midpoint.iconSvg}</div>
             </div>`
           }) : null
 
@@ -821,7 +823,7 @@ export function InteractiveWorldMap({
           const labelTextColor = hasAccess ? color : '#D1D5DB'
           const badgeTextColor = hasAccess ? '#0A0A0A' : '#F2F2F2'
           const countBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:50%;background:${color};color:${badgeTextColor};font-size:11px;font-weight:900;flex-shrink:0;line-height:1;">${auditCount}</span>`
-          const labelOpacity = !isFocusedCorridor ? 0.72 : (isDimmed ? 0.2 : 1.0)
+          const labelOpacity = !isFocusedCorridor ? 0.48 : (isDimmed ? 0.2 : 1.0)
           // Keep non-current memo corridors legible as grey context; only locked
           // current-corridor labels blur when they are not actionable.
           const labelBlur = (!isFocusedCorridor || rawHasAccess || isHovered) ? 'none' : 'blur(3px)'
