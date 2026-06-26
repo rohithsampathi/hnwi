@@ -2862,8 +2862,7 @@ export default function RouteIntelligenceV2Report({
               <RouteFullMemoAnchor route={selectedRoute} fullMemo={fullMemo} />
             </RouteFullMemoErrorBoundary>
           </section>
-        ) : (
-          <>
+        ) : null}
         <ReviewerLayerNotice />
 
         <ZeroTrustRouteSummary data={zeroTrustMoveIntake} />
@@ -3096,8 +3095,6 @@ export default function RouteIntelligenceV2Report({
             </div>
           </div>
         </section>
-          </>
-        )}
       </div>
     </div>
   );
