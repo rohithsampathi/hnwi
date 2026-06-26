@@ -795,7 +795,8 @@ export function InteractiveWorldMap({
           const contextDashOpacity = theme === 'dark' ? 0.38 : 0.52
           const canHoverFlow = !cityFocusActive
           const canInteractWithFlow = !cityFocusActive && isFocusedCorridor
-          const shouldShowPermanentRouteLabel = isFocusMode ? isFocusedCorridor : hasAccess
+          const shouldShowContextRouteLabel = isFocusMode && !isFocusedCorridor && !cityFocusActive
+          const shouldShowPermanentRouteLabel = isFocusMode ? (isFocusedCorridor || shouldShowContextRouteLabel) : hasAccess
           const shouldShowHoverRouteLabel = !shouldShowPermanentRouteLabel && !cityFocusActive && isHovered
 
           // Destination marker — black dot with neon arc-color border/glow
