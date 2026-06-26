@@ -790,6 +790,9 @@ export function InteractiveWorldMap({
             (!rawHasAccess && (hoveredCorridorKey !== null || selectedCorridorKey !== null || hoveredDestination !== null) && !isHovered)
 
           const accessOpacityMultiplier = !isFocusedCorridor ? 0.42 : (rawHasAccess ? 1 : 0.4)
+          const contextGlowOpacity = theme === 'dark' ? 0.16 : 0.22
+          const contextBaseOpacity = theme === 'dark' ? 0.28 : 0.38
+          const contextDashOpacity = theme === 'dark' ? 0.38 : 0.52
           const canHoverFlow = !cityFocusActive && isFocusedCorridor
           const canInteractWithFlow = !cityFocusActive && isFocusedCorridor
           const shouldShowPermanentRouteLabel = isFocusMode ? isFocusedCorridor : hasAccess
@@ -812,7 +815,7 @@ export function InteractiveWorldMap({
           const labelTextColor = hasAccess ? color : '#D1D5DB'
           const badgeTextColor = hasAccess ? '#0A0A0A' : '#F2F2F2'
           const countBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:50%;background:${color};color:${badgeTextColor};font-size:11px;font-weight:900;flex-shrink:0;line-height:1;">${auditCount}</span>`
-          const labelOpacity = !isFocusedCorridor ? 0.56 : (isDimmed ? 0.2 : 1.0)
+          const labelOpacity = !isFocusedCorridor ? 0.72 : (isDimmed ? 0.2 : 1.0)
           // Keep non-current memo corridors legible as grey context; only locked
           // current-corridor labels blur when they are not actionable.
           const labelBlur = (!isFocusedCorridor || rawHasAccess || isHovered) ? 'none' : 'blur(3px)'
@@ -1013,7 +1016,9 @@ export function InteractiveWorldMap({
                 pathOptions={{
                   color: color,
                   weight: arcWeight + 5,
-                  opacity: (isDimmed ? 0.08 : (isHovered ? 0.2 : (rawHasAccess ? 0.15 : 0.12))) * accessOpacityMultiplier,
+                  opacity: !isFocusedCorridor
+                    ? contextGlowOpacity
+                    : (isDimmed ? 0.08 : (isHovered ? 0.2 : (rawHasAccess ? 0.15 : 0.12))) * accessOpacityMultiplier,
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
@@ -1025,7 +1030,9 @@ export function InteractiveWorldMap({
                 pathOptions={{
                   color: color,
                   weight: arcWeight,
-                  opacity: (isDimmed ? 0.18 : (isHovered ? 0.5 : (rawHasAccess ? 0.4 : 0.3))) * accessOpacityMultiplier,
+                  opacity: !isFocusedCorridor
+                    ? contextBaseOpacity
+                    : (isDimmed ? 0.18 : (isHovered ? 0.5 : (rawHasAccess ? 0.4 : 0.3))) * accessOpacityMultiplier,
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
@@ -1037,7 +1044,9 @@ export function InteractiveWorldMap({
                 pathOptions={{
                   color: color,
                   weight: arcWeight + 0.5,
-                  opacity: (isDimmed ? 0.25 : (isHovered ? 1 : (rawHasAccess ? 1 : 0.7))) * accessOpacityMultiplier,
+                  opacity: !isFocusedCorridor
+                    ? contextDashOpacity
+                    : (isDimmed ? 0.25 : (isHovered ? 1 : (rawHasAccess ? 1 : 0.7))) * accessOpacityMultiplier,
                   dashArray: '8, 16',
                   lineCap: 'round',
                   lineJoin: 'round'

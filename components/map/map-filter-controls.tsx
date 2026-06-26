@@ -379,6 +379,7 @@ export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
           {props.onToggleCrisisAlert && (
             <button
               onClick={props.onToggleCrisisAlert}
+              aria-label="Crisis Intel"
               className={`text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1 ${
                 props.showCrisisAlert
                   ? props.theme === 'dark'
