@@ -88,11 +88,24 @@ async function fetchCrisisIntelligenceCached(force: boolean = false): Promise<Cr
   return request
 }
 
+function resolveDisplayableCrisisData(data: CrisisIntelligenceResponse): CrisisIntelligenceResponse | null {
+  if (isCrisisIntelligenceFresh(data)) return data
+
+  // The backend may publish a route-control alert with no active zone rows,
+  // e.g. "no route-changing crisis delta". Keep that packet visible so the
+  // War Room does not collapse the Crisis Intel rail into a dead toggle.
+  if (data.alert?.title || data.alert?.body || data.zones?.length || data.locations?.length) {
+    return data
+  }
+
+  return null
+}
+
 export function CrisisIntelligenceProvider({ children }: { children: React.ReactNode }) {
   const [showCrisisAlert, setShowCrisisAlert] = useState(false)
   const [crisisData, setCrisisData] = useState<CrisisIntelligenceResponse | null>(() => {
     const cached = getValidCachedCrisisData()
-    return cached && isCrisisIntelligenceFresh(cached) ? cached : null
+    return cached ? resolveDisplayableCrisisData(cached) : null
   })
 
   const toggleCrisisAlert = useCallback(() => {
@@ -105,19 +118,19 @@ export function CrisisIntelligenceProvider({ children }: { children: React.React
 
     const doFetch = (force: boolean = false) =>
       fetchCrisisIntelligenceCached(force)
-        .then((data) => { if (!cancelled) setCrisisData(isCrisisIntelligenceFresh(data) ? data : null) })
+        .then((data) => { if (!cancelled) setCrisisData(resolveDisplayableCrisisData(data)) })
         .catch(() => {})
 
     let initTimeout: ReturnType<typeof setTimeout> | null = null
 
     initTimeout = setTimeout(() => {
       fetchCrisisIntelligenceCached()
-        .then((data) => { if (!cancelled) setCrisisData(isCrisisIntelligenceFresh(data) ? data : null) })
+        .then((data) => { if (!cancelled) setCrisisData(resolveDisplayableCrisisData(data)) })
         .catch(() => {
           if (!cancelled) {
             setTimeout(() => {
               fetchCrisisIntelligenceCached(true)
-                .then((data) => { if (!cancelled) setCrisisData(isCrisisIntelligenceFresh(data) ? data : null) })
+                .then((data) => { if (!cancelled) setCrisisData(resolveDisplayableCrisisData(data)) })
                 .catch(() => {})
             }, 5000)
           }
