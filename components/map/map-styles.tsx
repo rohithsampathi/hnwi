@@ -109,6 +109,11 @@ export function MapStyles({ theme }: MapStylesProps) {
         opacity: 0 !important;
         pointer-events: none !important;
       }
+      .hnwi-map-surface:has(.leaflet-popup-pane .leaflet-popup) .map-filter-controls-overlay {
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
       .border-border {
         border-color: ${theme === "dark" ? "#555" : "#e5e5e5"} !important;
       }

@@ -616,7 +616,7 @@ export function InteractiveWorldMap({
   const suppressOpportunityTooltips = openClusterId !== null
 
   return (
-    <div className={`relative w-full h-full overflow-hidden ${suppressOpportunityTooltips ? 'suppress-opportunity-tooltips' : ''} ${theme === 'dark' ? 'bg-[#202124]' : 'bg-[#f5f5f5]'}`}>
+    <div className={`hnwi-map-surface relative w-full h-full overflow-hidden ${suppressOpportunityTooltips ? 'suppress-opportunity-tooltips' : ''} ${theme === 'dark' ? 'bg-[#202124]' : 'bg-[#f5f5f5]'}`}>
       <SafeMapContainer
         center={[20, 0]}
         zoom={startingZoom}
