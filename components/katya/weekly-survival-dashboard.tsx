@@ -252,14 +252,18 @@ export function WeeklySurvivalDashboard() {
   }
 
   if (!dashboard) {
+    const checkedAt = lastSuccessAt || new Date().toISOString()
     return (
       <div className="mx-auto flex min-h-[calc(100dvh-5rem)] max-w-3xl items-center justify-center px-6">
         <Card className="w-full rounded-2xl border border-rose-500/25 bg-slate-950/75">
           <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
             <CircleAlert className="h-10 w-10 text-rose-300" />
             <div className="space-y-2">
-              <h1 className="text-2xl font-semibold text-white">Weekly survival proof unavailable</h1>
-              <p className="text-sm text-slate-300">{error || "No dashboard payload returned."}</p>
+              <h1 className="text-2xl font-semibold text-white">Source unavailable</h1>
+              <p className="text-sm text-slate-300">{error || "No weekly survival dashboard payload returned."}</p>
+              <p className="text-xs text-slate-500">
+                Missing endpoint/source: /api/katya/weekly-survival-dashboard · Last checked {formatTimestamp(checkedAt)}
+              </p>
             </div>
             <Button onClick={() => loadDashboard(true)}>Retry</Button>
           </CardContent>

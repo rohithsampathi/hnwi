@@ -307,7 +307,7 @@ export function PublicSiyaIntakeForm({ kind, initialUtm = {} }: PublicIntakeForm
         heading: "Tell us what you are looking to buy",
         description:
           "This intake creates a private requirement signal for the Siya Prive team. Matches are reviewed internally before any follow-up.",
-        endpoint: "/api/siya/intake/buyer",
+        endpoint: "/api/intake/buyer",
         source: "siya_prive_public_buyer_intake",
         alternateHref: "/developers",
         alternateLabel: "Submit a developer or listing intake",
@@ -319,7 +319,7 @@ export function PublicSiyaIntakeForm({ kind, initialUtm = {} }: PublicIntakeForm
       heading: "Submit a project or listing for review",
       description:
         "This intake creates a submitted inventory signal. Buyer demand and proposed matches stay private until the team reviews them.",
-      endpoint: "/api/siya/intake/developer",
+      endpoint: "/api/intake/developer",
       source: "siya_prive_public_developer_intake",
       alternateHref: "/buyers",
       alternateLabel: "Submit a buyer requirement",
