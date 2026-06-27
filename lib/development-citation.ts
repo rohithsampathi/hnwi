@@ -42,20 +42,6 @@ const V31_MARKER_FIELDS = [
   "castle_content_audit_band",
 ] as const
 
-const V31_BODY_FIELDS = [
-  "castle_original_brief",
-  "castle_brief_enriched",
-  "castle_brief",
-  "full_castle_brief",
-] as const
-
-const V31_SOURCE_NATIVE_FIELDS = [
-  "full_text",
-  "brief_source_text",
-  "public_mirror_excerpt",
-  "description",
-] as const
-
 const FIRST_ANALYSIS_SECTION =
   /(?:^|\n)\s*(?:#{1,6}\s*)?(?:\*\*)?(?:Why This Matters|Winners?|Losers?|Potential Moves?|Key Moves\s*(?:&|and)\s*Market Shifts|Market Shifts|Long[-\s]Term Wealth Impact|Wealth Impact|Sentiment Tracker|HNWI Sentiment)(?:\*\*)?\s*:?(?=\n|$)/i
 
@@ -124,20 +110,6 @@ function stripSummaryHeading(text: string): string {
     .trim()
 }
 
-function normalizeComparableText(text: string): string {
-  return stripSummaryHeading(text)
-    .replace(/\*\*/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase()
-}
-
-function containsComparableText(haystack: string, needle: string): boolean {
-  const normalizedHaystack = normalizeComparableText(haystack)
-  const normalizedNeedle = normalizeComparableText(needle)
-  return normalizedNeedle.length >= 24 && normalizedHaystack.includes(normalizedNeedle)
-}
-
 function sanitizePublicCitationText(text: string): string {
   return text
     .replace(/(?:^|\n)\s*(?:Source\s+URL|Source\s+link|URL)\s*:\s*https?:\/\/[^\n]+(?=\n|$)/gi, "\n")
@@ -168,71 +140,6 @@ function trimSourceNativeCitationText(text: string): string {
     return index >= 0 ? Math.min(currentCut, index) : currentCut
   }, sourceText.length)
   return sourceText.slice(0, cutAt).trim()
-}
-
-function significantSourceTokens(text: string): Set<string> {
-  const stopWords = new Set([
-    "about",
-    "after",
-    "around",
-    "brief",
-    "crore",
-    "estate",
-    "estates",
-    "home",
-    "homes",
-    "million",
-    "print",
-    "property",
-    "sale",
-    "seller",
-    "source",
-    "trophy",
-    "with",
-  ])
-
-  return new Set(
-    text
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, " ")
-      .split(/\s+/)
-      .map((token) => token.trim())
-      .filter((token) => token.length >= 4 && !stopWords.has(token))
-  )
-}
-
-function tokenOverlapCount(sourceTokens: Set<string>, candidateText: string): number {
-  const candidateTokens = significantSourceTokens(candidateText)
-  let overlap = 0
-  sourceTokens.forEach((token) => {
-    if (candidateTokens.has(token)) overlap += 1
-  })
-  return overlap
-}
-
-function shouldPreferSourceNativeText(
-  payload: DevelopmentPayload,
-  summaryText: string,
-  sourceNativeText: string
-): boolean {
-  if (!summaryText || !sourceNativeText) return false
-
-  const sourceIdentity = pickFirstText(payload, [
-    "source_title",
-    "title",
-    "brief_title",
-    "product",
-    "name",
-  ])
-  const sourceTokens = significantSourceTokens(sourceIdentity)
-  if (sourceTokens.size < 1) return false
-
-  const summaryLead = stripSummaryHeading(summaryText).slice(0, 260)
-  const sourceNativeLead = stripSummaryHeading(sourceNativeText).slice(0, 260)
-  const summaryOverlap = tokenOverlapCount(sourceTokens, summaryLead)
-  const sourceNativeOverlap = tokenOverlapCount(sourceTokens, sourceNativeLead)
-
-  return sourceNativeOverlap >= 1 && summaryOverlap < sourceNativeOverlap
 }
 
 function isTruncatedPreview(text: string): boolean {
@@ -323,51 +230,6 @@ function isV31CitationPayload(payload: DevelopmentPayload): boolean {
   )
 }
 
-function stripDuplicateLeadBlock(text: string, leadTexts: string[]): string {
-  const trimmed = text.trim()
-  if (!trimmed) return ""
-
-  const firstSectionMatch = trimmed.match(FIRST_ANALYSIS_SECTION)
-  if (!firstSectionMatch || firstSectionMatch.index === undefined) {
-    return leadTexts.some((leadText) => containsComparableText(leadText, trimmed)) ? "" : trimmed
-  }
-
-  const leadingText = trimmed.slice(0, firstSectionMatch.index).trim()
-  const shouldStripLead =
-    !leadingText ||
-    leadTexts.some(
-      (leadText) =>
-        containsComparableText(leadText, leadingText) ||
-        containsComparableText(leadingText, leadText)
-    )
-
-  return shouldStripLead ? trimmed.slice(firstSectionMatch.index).trimStart() : trimmed
-}
-
-function buildV31CitationAnalysis(
-  payload: DevelopmentPayload,
-  fullHByteSummary: string,
-  descriptionText: string
-): string {
-  const parts: string[] = []
-  const hbyteSummary = stripSummaryHeading(fullHByteSummary)
-
-  if (hbyteSummary) {
-    parts.push(`HByte Summary\n${hbyteSummary}`)
-  }
-
-  const body = pickFirstTextWithField(payload, V31_BODY_FIELDS)
-  const bodyWithoutDuplicateLead = stripDuplicateLeadBlock(body.text, [
-    hbyteSummary,
-    descriptionText,
-  ])
-  if (bodyWithoutDuplicateLead) {
-    parts.push(bodyWithoutDuplicateLead)
-  }
-
-  return sanitizePublicCitationText(parts.join("\n\n").trim())
-}
-
 function citationSummaryLabel(sourceField: string): string {
   if (
     sourceField === "full_castle_brief" ||
@@ -404,14 +266,8 @@ function pickCitationAnalysis(payload: DevelopmentPayload): {
   if (evidenceText) {
     return {
       text: sanitizePublicCitationText(trimSourceNativeCitationText(evidenceText)),
-      sourceField:
-        cleanText(evidenceSummary.display_field) ||
-        cleanText(evidenceSummary.displayField) ||
-        "source_evidence_record.summary.display_text",
-      label:
-        cleanText(evidenceSummary.display_label) ||
-        cleanText(evidenceSummary.displayLabel) ||
-        "Source Brief",
+      sourceField: "source_evidence_record.summary.display_text",
+      label: "Source Brief",
     }
   }
 
@@ -419,22 +275,10 @@ function pickCitationAnalysis(payload: DevelopmentPayload): {
   const descriptionText = cleanText(payload.description)
 
   if (isV31CitationPayload(payload)) {
-    const sourceNative = pickFirstTextWithField(payload, V31_SOURCE_NATIVE_FIELDS)
-    const sourceNativeText = trimSourceNativeCitationText(sourceNative.text)
-    if (shouldPreferSourceNativeText(payload, fullHByteSummary, sourceNativeText)) {
-      return {
-        text: sanitizePublicCitationText(sourceNativeText),
-        sourceField: sourceNative.field,
-        label: "Source Brief",
-      }
-    }
-
-    const v31Body = pickFirstTextWithField(payload, V31_BODY_FIELDS)
-    const v31Text = buildV31CitationAnalysis(payload, fullHByteSummary, descriptionText)
     return {
-      text: v31Text,
-      sourceField: fullHByteSummary ? "hbyte_summary" : (v31Body.field || (v31Text ? "source_record" : "")),
-      label: fullHByteSummary ? "HByte" : (v31Body.text ? "Source Brief" : "Source Record"),
+      text: "",
+      sourceField: "",
+      label: "Source Brief",
     }
   }
 

@@ -5,11 +5,28 @@ import {
 } from "@/lib/development-citation";
 
 describe("development citation payload mapping", () => {
-  it("leads v31 source records with HByte while preserving source sections", () => {
+  it("leads v31 source records from the canonical source evidence envelope", () => {
     const payload = {
-      hbyte_summary: "The room should read this as route readiness, not a property headline.",
-      summary: "This is the shorter source summary for the same record.",
-      castle_original_brief: "Why This Matters\nThis gives the buyer a decision consequence.\nKey Moves & Market Shifts\nThe route should stay gated.",
+      source_evidence_record: {
+        contract: "castle_v31_source_evidence_record_v1",
+        citation_id: "source-id",
+        source_ids: {
+          castle_brief_id: "source-id",
+          source_development_id: "dev-source-id",
+        },
+        source: {
+          title: "Route Readiness Source",
+          category: "Real Estate",
+          product: "Route Readiness",
+          url: "https://example.invalid/source",
+          article_date: "2026-06-26",
+        },
+        summary: {
+          display_text: "The room should read this as route readiness, not a property headline.",
+          display_field: "source_evidence_record.summary.display_text",
+          display_label: "Source Brief",
+        },
+      },
       final_verdict: {
         verdict: "RESTRUCTURE",
         decision_posture: "WATCH_ONLY_UNTIL_UNDERWRITTEN",
@@ -21,10 +38,9 @@ describe("development citation payload mapping", () => {
     };
     const development = buildCitationSourceDevelopment(payload, "source-id");
 
-    expect(development?.summaryLabel).toBe("HByte");
-    expect(development?.summarySourceField).toBe("hbyte_summary");
-    expect(development?.summary).toContain("HByte Summary\nThe room should read this as route readiness");
-    expect(development?.summary).toContain("Why This Matters");
+    expect(development?.summaryLabel).toBe("Source Brief");
+    expect(development?.summarySourceField).toBe("source_evidence_record.summary.display_text");
+    expect(development?.summary).toBe("The room should read this as route readiness, not a property headline.");
     expect(development?.summary).not.toContain("Source Summary");
     expect(development?.summary).not.toContain("Decision Posture");
     expect(development?.summary).not.toContain("Quality Read");
@@ -33,7 +49,7 @@ describe("development citation payload mapping", () => {
     expect(development?.summaryLabel).not.toContain("Castle");
   });
 
-  it("does not fall back to public summary or full_text for v31 source records", () => {
+  it("fails closed instead of falling back to legacy v31 summary fields", () => {
     const payload = {
       hbyte_summary: "This is the central HByte.",
       summary: "Why This Matters\nThis public summary should not become the citation body.",
@@ -42,13 +58,10 @@ describe("development citation payload mapping", () => {
     };
     const development = buildCitationSourceDevelopment(payload, "source-id");
 
-    expect(development?.summaryLabel).toBe("HByte");
-    expect(development?.summary).toBe("HByte Summary\nThis is the central HByte.");
-    expect(development?.summary).not.toContain("public summary");
-    expect(development?.summary).not.toContain("legacy full_text");
+    expect(development).toBeNull();
   });
 
-  it("uses source-native text when a v31 HByte lead is from a related record", () => {
+  it("does not repair polluted v31 HByte leads in the frontend", () => {
     const payload = {
       title: "Delhi Trophy Homes: $131.2M Sale",
       source_title: "Delhi Trophy Home: USD 131.2M Sale Print",
@@ -60,10 +73,7 @@ describe("development citation payload mapping", () => {
     };
     const development = buildCitationSourceDevelopment(payload, "source-id");
 
-    expect(development?.summaryLabel).toBe("Source Brief");
-    expect(development?.summarySourceField).toBe("full_text");
-    expect(development?.summary).toContain("Subhash Chandra's Delhi bungalow");
-    expect(development?.summary).not.toContain("Lake Maggiore");
+    expect(development).toBeNull();
   });
 
   it("uses the canonical source evidence record before legacy summary fields", () => {
@@ -89,7 +99,7 @@ describe("development citation payload mapping", () => {
           summary: {
             display_text:
               "Subhash Chandra's Delhi bungalow sold for USD $131.2M (INR 1,260 crore).",
-            display_field: "full_text",
+            display_field: "source_evidence_record.summary.display_text",
             display_label: "Source Brief",
           },
         },
@@ -101,7 +111,7 @@ describe("development citation payload mapping", () => {
     expect(development?.id).toBe("castle_delhi_002");
     expect(development?.title).toBe("Delhi Trophy Home: USD 131.2M Sale Print");
     expect(development?.summaryLabel).toBe("Source Brief");
-    expect(development?.summarySourceField).toBe("full_text");
+    expect(development?.summarySourceField).toBe("source_evidence_record.summary.display_text");
     expect(development?.summary).toContain("Subhash Chandra's Delhi bungalow");
     expect(development?.summary).not.toContain("Legacy HByte");
     expect(development?.industry).toBe("Real Estate");
