@@ -33,7 +33,6 @@ const HBYTE_SUMMARY_FIELDS = [
 ] as const
 
 const V31_MARKER_FIELDS = [
-  "hbyte_summary",
   "castle_brief_enriched",
   "castle_brief",
   "castle_original_brief",
@@ -48,6 +47,13 @@ const V31_BODY_FIELDS = [
   "castle_brief_enriched",
   "castle_brief",
   "full_castle_brief",
+] as const
+
+const V31_SOURCE_NATIVE_FIELDS = [
+  "full_text",
+  "brief_source_text",
+  "public_mirror_excerpt",
+  "description",
 ] as const
 
 const FIRST_ANALYSIS_SECTION =
@@ -133,6 +139,71 @@ function sanitizePublicCitationText(text: string): string {
     .trim()
 }
 
+function significantSourceTokens(text: string): Set<string> {
+  const stopWords = new Set([
+    "about",
+    "after",
+    "around",
+    "brief",
+    "crore",
+    "estate",
+    "estates",
+    "home",
+    "homes",
+    "million",
+    "print",
+    "property",
+    "sale",
+    "seller",
+    "source",
+    "trophy",
+    "with",
+  ])
+
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 4 && !stopWords.has(token))
+  )
+}
+
+function tokenOverlapCount(sourceTokens: Set<string>, candidateText: string): number {
+  const candidateTokens = significantSourceTokens(candidateText)
+  let overlap = 0
+  sourceTokens.forEach((token) => {
+    if (candidateTokens.has(token)) overlap += 1
+  })
+  return overlap
+}
+
+function shouldPreferSourceNativeText(
+  payload: DevelopmentPayload,
+  summaryText: string,
+  sourceNativeText: string
+): boolean {
+  if (!summaryText || !sourceNativeText) return false
+
+  const sourceIdentity = pickFirstText(payload, [
+    "source_title",
+    "title",
+    "brief_title",
+    "product",
+    "name",
+  ])
+  const sourceTokens = significantSourceTokens(sourceIdentity)
+  if (sourceTokens.size < 1) return false
+
+  const summaryLead = stripSummaryHeading(summaryText).slice(0, 260)
+  const sourceNativeLead = stripSummaryHeading(sourceNativeText).slice(0, 260)
+  const summaryOverlap = tokenOverlapCount(sourceTokens, summaryLead)
+  const sourceNativeOverlap = tokenOverlapCount(sourceTokens, sourceNativeLead)
+
+  return sourceNativeOverlap >= 1 && summaryOverlap < sourceNativeOverlap
+}
+
 function isTruncatedPreview(text: string): boolean {
   return /(?:\.\.\.|…|\.\.)\s*$/.test(stripSummaryHeading(text))
 }
@@ -197,8 +268,13 @@ function mergeFullHByteSummary(
   return `${replacement}\n\n${analysisText.slice(firstSectionMatch.index).trimStart()}`
 }
 
-function hasAnyText(payload: DevelopmentPayload, fields: readonly string[]): boolean {
-  return fields.some((field) => Boolean(cleanText(payload[field])))
+function hasAnyPresentValue(payload: DevelopmentPayload, fields: readonly string[]): boolean {
+  return fields.some((field) => {
+    const value = payload[field]
+    if (typeof value === "string") return Boolean(value.trim())
+    if (typeof value === "number") return Number.isFinite(value)
+    return value !== undefined && value !== null
+  })
 }
 
 function isV31CitationPayload(payload: DevelopmentPayload): boolean {
@@ -212,7 +288,7 @@ function isV31CitationPayload(payload: DevelopmentPayload): boolean {
 
   return (
     sourceCollection.includes("castle_briefs_v31") ||
-    hasAnyText(payload, V31_MARKER_FIELDS)
+    hasAnyPresentValue(payload, V31_MARKER_FIELDS)
   )
 }
 
@@ -291,12 +367,21 @@ function pickCitationAnalysis(payload: DevelopmentPayload): {
   const descriptionText = cleanText(payload.description)
 
   if (isV31CitationPayload(payload)) {
+    const sourceNative = pickFirstTextWithField(payload, V31_SOURCE_NATIVE_FIELDS)
+    if (shouldPreferSourceNativeText(payload, fullHByteSummary, sourceNative.text)) {
+      return {
+        text: sanitizePublicCitationText(sourceNative.text),
+        sourceField: sourceNative.field,
+        label: "Source Brief",
+      }
+    }
+
     const v31Body = pickFirstTextWithField(payload, V31_BODY_FIELDS)
     const v31Text = buildV31CitationAnalysis(payload, fullHByteSummary, descriptionText)
     return {
       text: v31Text,
-      sourceField: v31Body.field || (fullHByteSummary ? "hbyte_summary" : (v31Text ? "source_record" : "")),
-      label: v31Body.text ? "Source Brief" : (fullHByteSummary ? "HByte" : "Source Record"),
+      sourceField: fullHByteSummary ? "hbyte_summary" : (v31Body.field || (v31Text ? "source_record" : "")),
+      label: fullHByteSummary ? "HByte" : (v31Body.text ? "Source Brief" : "Source Record"),
     }
   }
 

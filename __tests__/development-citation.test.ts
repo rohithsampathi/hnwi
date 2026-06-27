@@ -48,6 +48,24 @@ describe("development citation payload mapping", () => {
     expect(development?.summary).not.toContain("legacy full_text");
   });
 
+  it("uses source-native text when a v31 HByte lead is from a related record", () => {
+    const payload = {
+      title: "Delhi Trophy Homes: $131.2M Sale",
+      source_title: "Delhi Trophy Home: USD 131.2M Sale Print",
+      hbyte_summary:
+        "Lake Maggiore Heritage Trophy Estates: USD 6.3M Seller Ask is the sharper proof point for adjacent premium inventory.",
+      full_text:
+        "Subhash Chandra's Delhi bungalow sold for USD $131.2M (INR 1,260 crore). Essel Group chairman Subhash Chandra is selling a prime bungalow in Lutyens' Delhi.",
+      castle_quality_score: 9.1,
+    };
+    const development = buildCitationSourceDevelopment(payload, "source-id");
+
+    expect(development?.summaryLabel).toBe("Source Brief");
+    expect(development?.summarySourceField).toBe("full_text");
+    expect(development?.summary).toContain("Subhash Chandra's Delhi bungalow");
+    expect(development?.summary).not.toContain("Lake Maggiore");
+  });
+
   it("fails closed when a v31 source record has no HByte or real v31 brief body", () => {
     const payload = {
       title: "Thin v31 source",
