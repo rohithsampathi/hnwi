@@ -44,6 +44,8 @@ type PublicOpportunity = {
   public_preview_source: string;
   source_development_id?: string;
   dev_id?: string;
+  castle_brief_id?: string;
+  citation_ids: string[];
   generated_at: string;
 };
 
@@ -84,9 +86,10 @@ const rowIdentity = (row: RecordLike, index: number, sourceKey: string): string 
     row.id,
     row._id,
     row.opportunity_id,
-    row.source_development_id,
     row.dev_id,
     row.devid,
+    row.castle_brief_id,
+    row.source_development_id,
     `${sourceKey}:${index}`,
   );
 
@@ -169,7 +172,12 @@ function publicOpportunityFromCentral(row: RecordLike, index: number): PublicOpp
       row.hbyte_summary,
     ),
   ) || 'Public-safe Command Centre preview. Private executor follow-through is withheld.';
-  const sourceId = firstText(row.source_development_id, row.dev_id, row.devid);
+  const sourceDevelopmentId = firstText(row.source_development_id);
+  const sourceBriefId = firstText(row.dev_id, row.devid, row.castle_brief_id, row.mongo_article_id);
+  const citationIds = Array.from(new Set([
+    sourceBriefId,
+    sourceDevelopmentId,
+  ].filter(Boolean)));
 
   return {
     id: `public-command-centre-${rowIdentity(row, index, 'central')}`,
@@ -181,7 +189,7 @@ function publicOpportunityFromCentral(row: RecordLike, index: number): PublicOpp
     country,
     latitude,
     longitude,
-    value: firstText(row.value, row.minimum_investment_display, row.value_original, row.value_native) || undefined,
+    value: firstText(row.brief_raw_value, row.value_original, row.value, row.minimum_investment_display, row.value_native) || undefined,
     risk: firstText(row.risk, row.verdict, row.projection_status, 'Preview') || undefined,
     summary: analysis,
     description: analysis,
@@ -190,15 +198,17 @@ function publicOpportunityFromCentral(row: RecordLike, index: number): PublicOpp
     category: firstText(row.category, row.industry, row.product, 'Command Centre'),
     industry: firstText(row.industry) || undefined,
     product: firstText(row.product) || undefined,
-    source: 'Public Command Centre Preview',
+    source: firstText(row.source, 'Public Command Centre Preview'),
     source_surface: 'public_command_centre_preview_v1',
     public_preview: true,
     follow_through_blocked: true,
     public_access_note: publicNote,
-    public_preview_source: 'central_command_centre_redacted',
-    source_development_id: sourceId || undefined,
-    dev_id: sourceId || undefined,
-    generated_at: new Date().toISOString(),
+    public_preview_source: firstText(row.public_preview_source, 'central_command_centre_redacted'),
+    source_development_id: sourceDevelopmentId || undefined,
+    dev_id: sourceBriefId || sourceDevelopmentId || undefined,
+    castle_brief_id: sourceBriefId.startsWith('castle_') ? sourceBriefId : undefined,
+    citation_ids: citationIds,
+    generated_at: firstText(row.generated_at, row.updated_at, row.created_at) || new Date().toISOString(),
   };
 }
 
@@ -208,14 +218,12 @@ async function fetchCentralPublicRows(
   includeStaleMap: boolean,
 ): Promise<PublicOpportunity[]> {
   const params = new URLSearchParams({
-    view: 'all',
     timeframe,
-    include_crown_vault: 'false',
     include_stale_map: includeStaleMap ? 'true' : 'false',
     limit: String(limit),
   });
 
-  const response = await fetch(`${API_BASE_URL}/api/command-centre/opportunities?${params.toString()}`, {
+  const response = await fetch(`${API_BASE_URL}/api/command-centre/opportunities/public?${params.toString()}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
     cache: 'no-store',
