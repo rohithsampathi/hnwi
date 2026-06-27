@@ -41,6 +41,17 @@ function getFirstParagraph(text: string | undefined): string {
   return paragraphs[0]?.trim() || text
 }
 
+function addPublicAnalysisLeadIn(title: string | undefined, text: string): string {
+  const clean = text.trim()
+  const cleanOpportunityTitle = cleanTitle(title || "", "")
+
+  if (!clean || !cleanOpportunityTitle) return clean
+  if (clean.toLowerCase().startsWith(cleanOpportunityTitle.toLowerCase())) return clean
+  if (!/^[a-z]/.test(clean)) return clean
+
+  return `${cleanOpportunityTitle} ${clean}`
+}
+
 export function MapPopupSingle({
   city,
   theme,
@@ -60,9 +71,12 @@ export function MapPopupSingle({
     city.map_visibility === 'stale_historical' ||
     city.projection_status?.toLowerCase().includes('stale')
   )
-  const analysisText = cleanAnalysisText(city.analysis)
-  const analysisPreview = getFirstParagraph(analysisText)
   const isPublicPreview = Boolean(city.public_preview || city.follow_through_blocked)
+  const cleanedAnalysisText = cleanAnalysisText(city.analysis) || ""
+  const analysisText = isPublicPreview
+    ? addPublicAnalysisLeadIn(city.title, cleanedAnalysisText)
+    : cleanedAnalysisText
+  const analysisPreview = getFirstParagraph(analysisText)
   const publicAccessNote =
     city.public_access_note ||
     "Public preview only. Executor directory and introductions require member access."

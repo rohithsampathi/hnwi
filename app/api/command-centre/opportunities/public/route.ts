@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const MAX_PUBLIC_OPPORTUNITIES = 5;
+const MAX_PUBLIC_ANALYSIS_TEXT_LENGTH = 2400;
 
 const COMMAND_CENTRE_ARRAY_KEYS = [
   'opportunities',
@@ -98,7 +99,7 @@ const isCrownVaultRow = (row: RecordLike): boolean => {
   return source.includes('crown vault') || row.isCrownVault === true;
 };
 
-const redactPublicText = (value: unknown, maxLength = 720): string => {
+const redactPublicText = (value: unknown, maxLength = MAX_PUBLIC_ANALYSIS_TEXT_LENGTH): string => {
   const raw = cleanText(value)
     .replace(/https?:\/\/\S+/gi, '')
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '')
