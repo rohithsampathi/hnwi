@@ -1278,7 +1278,7 @@ export function InteractiveWorldMap({
       </SafeMapContainer>
 
       {/* Filter Controls - Mobile */}
-      {onToggleCrownAssets && onTogglePriveOpportunities && onToggleHNWIPatterns && (
+      {openClusterId === null && onToggleCrownAssets && onTogglePriveOpportunities && onToggleHNWIPatterns && (
         <MapFilterControlsMobile
           selectedPriceRange={selectedPriceRange}
           onPriceRangeChange={handlePriceRangeChange}
