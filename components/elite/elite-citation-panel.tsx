@@ -48,6 +48,7 @@ interface EliteCitationPanelProps {
   hideUnavailablePublicSources?: boolean
   preferRemoteSources?: boolean
   disableRemoteFetch?: boolean
+  skipRemoteForPreloadedSources?: boolean
 }
 
 export function EliteCitationPanel({
@@ -60,7 +61,8 @@ export function EliteCitationPanel({
   shareId,
   hideUnavailablePublicSources = false,
   preferRemoteSources = false,
-  disableRemoteFetch = false
+  disableRemoteFetch = false,
+  skipRemoteForPreloadedSources = false
 }: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
   const [loadingCitationId, setLoadingCitationId] = useState<string | null>(null)
@@ -140,10 +142,12 @@ export function EliteCitationPanel({
         setDevelopments(prev => new Map(prev).set(normalizedCitationId, preloadedSource))
       }
 
-      setLoading(!preloadedSource && !disableRemoteFetch)
-      setLoadingCitationId(disableRemoteFetch ? null : normalizedCitationId)
+      const shouldFetchRemote = !disableRemoteFetch && !(preloadedSource && skipRemoteForPreloadedSources)
 
-      if (disableRemoteFetch) {
+      setLoading(!preloadedSource && shouldFetchRemote)
+      setLoadingCitationId(shouldFetchRemote ? normalizedCitationId : null)
+
+      if (!shouldFetchRemote) {
         if (!preloadedSource) {
           setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
         }
@@ -226,7 +230,7 @@ export function EliteCitationPanel({
 
     // Select the citation
     onCitationSelect(normalizedCitationId)
-  }, [allCitations, developments, disableRemoteFetch, effectivePreloadedSources, hideUnavailablePublicSources, localCitationMap, onCitationSelect, shareId])
+  }, [allCitations, developments, disableRemoteFetch, effectivePreloadedSources, hideUnavailablePublicSources, localCitationMap, onCitationSelect, shareId, skipRemoteForPreloadedSources])
 
   // Auto-load the selected citation when panel opens (if one is selected)
   useEffect(() => {
