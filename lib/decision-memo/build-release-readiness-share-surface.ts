@@ -55,6 +55,30 @@ export interface ReleaseReadinessShareSource {
   url: string;
 }
 
+export interface ReleaseReadinessSourceMap {
+  source?: string;
+  builder?: string;
+  omits?: string[];
+  authority: string;
+  storageRail: string;
+  graphEdgeShape: string;
+  centralSourceBriefs: {
+    linkedSourceBriefs: number;
+    sourceBriefRows: number;
+    missingSourceBriefRows: number;
+  };
+  evidenceRows: {
+    publicSourceRows: number;
+    privateEvidenceClasses: number;
+    evidenceMethodologyRows: number;
+    routeJudgmentRows: number;
+  };
+  readback: {
+    status: string;
+    dueStates: string[];
+  };
+}
+
 export interface ReleaseReadinessPrivateEvidence {
   label: string;
   status: string;
