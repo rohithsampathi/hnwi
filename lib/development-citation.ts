@@ -122,12 +122,15 @@ function containsComparableText(haystack: string, needle: string): boolean {
 
 function sanitizePublicCitationText(text: string): string {
   return text
+    .replace(/(?:^|\n)\s*(?:Source\s+URL|Source\s+link|URL)\s*:\s*https?:\/\/[^\n]+(?=\n|$)/gi, "\n")
     .replace(/\bCastle Briefs?\b/g, "Source Brief")
     .replace(/\bcastle briefs?\b/g, "source brief")
     .replace(/\bCastle confirmations?\b/g, "source confirmations")
     .replace(/\bcastle confirmations?\b/g, "source confirmations")
     .replace(/\bCastle\b/g, "Source")
     .replace(/\bcastle\b/g, "source")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
 }
 
 function isTruncatedPreview(text: string): boolean {

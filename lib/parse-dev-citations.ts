@@ -57,11 +57,7 @@ function getFromMapOrObject(
 }
 
 function normalizeDevelopmentCitationId(value: string): string {
-  const raw = String(value || '').trim()
-  if (raw.startsWith('castle_')) {
-    return `dev_${raw.slice('castle_'.length)}`
-  }
-  return raw
+  return String(value || '').trim()
 }
 
 export function parseDevCitations(

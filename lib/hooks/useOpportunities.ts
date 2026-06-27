@@ -96,6 +96,7 @@ interface Opportunity {
   devid?: string;
   mongo_article_id?: string;
   castle_brief_id?: string;
+  citation_ids?: string[];
   source_development_id?: string;
   value_usd?: number | string;
   value_native?: number | string;
@@ -275,12 +276,6 @@ const normalizeDevelopmentCitationId = (value: string | undefined): string | nul
   const raw = String(value || '').trim();
   if (!raw) return null;
 
-  // Public source packets resolve on the outward development id. Some
-  // Command Centre rows carry the internal source-brief id with the same hash.
-  if (raw.startsWith('castle_')) {
-    return `dev_${raw.slice('castle_'.length)}`;
-  }
-
   return raw;
 };
 
@@ -361,7 +356,11 @@ const transformOpportunityToCity = (
     opportunityAnalysis,
     katherineAnalysisText,
   ].filter(Boolean).join('\n'));
+  const rowCitationIds = Array.isArray(displayOpp.citation_ids)
+    ? displayOpp.citation_ids
+    : [];
   const structuredCitationIds = normalizeDevelopmentCitationIds([
+    ...rowCitationIds,
     displayOpp.source_development_id,
     displayOpp.dev_id,
     displayOpp.devid,
@@ -369,10 +368,10 @@ const transformOpportunityToCity = (
     displayOpp.castle_brief_id,
   ]);
   const devIds = normalizeDevelopmentCitationIds([
+    ...structuredCitationIds,
     ...devIdsFromAnalysis,
     ...devIdsFromElitePulse,
     ...devIdsFromSourceText,
-    ...structuredCitationIds,
   ]);
   const displayCitationIds = structuredCitationIds.length > 0 ? structuredCitationIds : devIds;
   const opportunityAnalysisWithCitation = appendOpportunityCitationText(opportunityAnalysis, displayCitationIds);
@@ -482,6 +481,7 @@ const transformOpportunityToCity = (
     devid: displayOpp.devid,
     mongo_article_id: displayOpp.mongo_article_id,
     castle_brief_id: displayOpp.castle_brief_id,
+    citation_ids: rowCitationIds,
     victor_score: displayOpp.victor_score,
     elite_pulse_analysis: displayOpp.elite_pulse_analysis,
     category: correctedCategory,
