@@ -41,15 +41,14 @@ function getFirstParagraph(text: string | undefined): string {
   return paragraphs[0]?.trim() || text
 }
 
-function addPublicAnalysisLeadIn(title: string | undefined, text: string): string {
+function normalizePublicAnalysisOpening(text: string): string {
   const clean = text.trim()
-  const cleanOpportunityTitle = cleanTitle(title || "", "")
 
-  if (!clean || !cleanOpportunityTitle) return clean
-  if (clean.toLowerCase().startsWith(cleanOpportunityTitle.toLowerCase())) return clean
+  if (!clean) return clean
+  if (/^matters\b/i.test(clean)) return `This ${clean}`
   if (!/^[a-z]/.test(clean)) return clean
 
-  return `${cleanOpportunityTitle} ${clean}`
+  return `${clean.charAt(0).toUpperCase()}${clean.slice(1)}`
 }
 
 export function MapPopupSingle({
@@ -74,7 +73,7 @@ export function MapPopupSingle({
   const isPublicPreview = Boolean(city.public_preview || city.follow_through_blocked)
   const cleanedAnalysisText = cleanAnalysisText(city.analysis) || ""
   const analysisText = isPublicPreview
-    ? addPublicAnalysisLeadIn(city.title, cleanedAnalysisText)
+    ? normalizePublicAnalysisOpening(cleanedAnalysisText)
     : cleanedAnalysisText
   const analysisPreview = getFirstParagraph(analysisText)
   const publicAccessNote =
