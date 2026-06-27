@@ -1298,6 +1298,202 @@ function isReleaseRoute(route: RouteIntelligenceOptionV2): boolean {
   );
 }
 
+function matchingRouteGate(gates: RouteEvidenceGate[], matcher: RegExp): RouteEvidenceGate | undefined {
+  return gates.find((gate) => matcher.test(`${gate.gate} ${gate.evidenceRequired} ${gate.owner}`));
+}
+
+function releaseEvidenceRecord(
+  route: RouteIntelligenceOptionV2,
+  gate: RouteEvidenceGate | undefined,
+  domain: string,
+  fallback: {
+    owner: string;
+    evidenceRequired: string;
+    consequenceIfMissing: string;
+    releaseStatus?: string;
+  },
+): RecordLike {
+  const owner = text(gate?.owner, fallback.owner);
+  const evidenceRequired = text(gate?.evidenceRequired, fallback.evidenceRequired);
+  const consequence = text(gate?.consequenceIfMissing, fallback.consequenceIfMissing);
+  const status = text(gate?.releaseStatus, fallback.releaseStatus || 'signed gate controls release');
+
+  return {
+    domain,
+    record: domain,
+    label: domain,
+    current_record: evidenceRequired,
+    release_effect: `${consequence} Release status: ${status}.`,
+    owner,
+    evidence_state: 'gate_mapped',
+    state: 'gate_mapped',
+    route_id: route.id,
+    route_name: route.routeName,
+  };
+}
+
+function buildRouteReleaseEvidenceRecords(route: RouteIntelligenceOptionV2): RecordLike[] {
+  const gates = routeEvidenceGates(route);
+  const titleGate = matchingRouteGate(gates, /title|buyer|capacity|completion|deposit/i);
+  const dutyGate = matchingRouteGate(gates, /sdlt|duty|surcharge|tax|filing/i);
+  const sourceGate = matchingRouteGate(gates, /\bsow\b|\bsof\b|source|wealth|funds|beneficial/i);
+  const bankGate = matchingRouteGate(gates, /bank|rail|fx|kyc|signer|transfer/i);
+  const authorityGate = matchingRouteGate(gates, /authority|veto|approve|sign|move funds/i);
+  const familyGate = matchingRouteGate(gates, /family|use|purpose|visibility|occup|reside/i) ?? authorityGate;
+  const fairnessGate = matchingRouteGate(gates, /fairness|succession|generation|g1|g2|g3|veto/i) ?? familyGate;
+  const memoryGate = matchingRouteGate(gates, /decision|memory|retriev|record|succession/i) ?? fairnessGate;
+
+  return [
+    releaseEvidenceRecord(route, titleGate, 'Title / buyer capacity', {
+      owner: 'UK property counsel',
+      evidenceRequired: 'Buyer name, title class, seller authority, restrictions, searches, deposit terms, exclusivity terms, exchange sequence, and completion timetable must describe the same route.',
+      consequenceIfMissing: 'The family can harden a seller commitment before title and buyer authority match the route.',
+      releaseStatus: 'signed before bid hardening, deposit, exchange, or transfer authority',
+    }),
+    releaseEvidenceRecord(route, dutyGate, 'SDLT / duty treatment', {
+      owner: 'UK private-client tax counsel',
+      evidenceRequired: 'Buyer profile, residence status, property count, surcharge posture, relief exclusions, filing responsibility, and payment timing must be signed for this route.',
+      consequenceIfMissing: 'The room can accept duty drag, relief assumptions, or structure friction without owning the real all-in consequence.',
+      releaseStatus: 'signed before duty payment or route approval',
+    }),
+    releaseEvidenceRecord(route, sourceGate, 'Source wealth / source funds', {
+      owner: 'Family office operator / CFO + source tax counsel + UAE source bank',
+      evidenceRequired: 'Source wealth, source funds, beneficial-owner chart, tax support, account trail, transfer purpose, and signer mandate must reconcile to the proposed buyer.',
+      consequenceIfMissing: 'Capital may exist but fail the bank, tax, or receiving-rail acceptance test after seller timing has started.',
+      releaseStatus: 'signed before bank submission or reliance by receiving rail',
+    }),
+    releaseEvidenceRecord(route, bankGate, 'Bank rails / FX / signer', {
+      owner: 'UAE source bank + UK receiving bank + family office operator / CFO',
+      evidenceRequired: 'Source rail, UK receiving rail, alternate rail, FX authority, transfer limits, sanctions/KYC, timetable, escalation owner, and signer mandate must clear the same buyer route.',
+      consequenceIfMissing: 'The purchase can become hostage to one rail, one signer, one banker, or one unresolved KYC question.',
+      releaseStatus: 'signed or bank-accepted before irrevocable capital movement',
+    }),
+    releaseEvidenceRecord(route, authorityGate, 'Authority / stop right', {
+      owner: 'Principal + family office operator / CFO',
+      evidenceRequired: 'Approval, stop authority, signer authority, adviser-instruction authority, funds-movement authority, and record-retrieval owner must be named before commitment.',
+      consequenceIfMissing: 'Advice can be locally correct while the family still lacks one governed release moment.',
+      releaseStatus: 'signed before seller-facing commitment',
+    }),
+    releaseEvidenceRecord(route, familyGate, 'Family-use / purpose boundary', {
+      owner: 'Principal + named family-use owner + family office operator / CFO',
+      evidenceRequired: `${route.bestUse || route.routeName} must be written as the accepted purpose; yield, prestige, residence, wrapper, or succession narratives cannot release capital unless separately signed.`,
+      consequenceIfMissing: 'Execution can succeed while the family objective fails because the asset purpose was never made operational.',
+      releaseStatus: 'signed before family visibility or use rights harden',
+    }),
+    releaseEvidenceRecord(route, fairnessGate, 'Fairness / succession boundary', {
+      owner: 'Succession counsel + family-fairness owner + family office operator / CFO',
+      evidenceRequired: 'Use rights, carry responsibility, notice, veto, non-user treatment, future-beneficiary treatment, and clean opt-out paths must be written.',
+      consequenceIfMissing: 'A family-use asset can become an implied entitlement, fairness conflict, or next-generation memory problem.',
+      releaseStatus: 'signed before completion or family-use commencement',
+    }),
+    releaseEvidenceRecord(route, memoryGate, 'Decision memory / retrieval', {
+      owner: 'Family office operator / CFO + succession counsel',
+      evidenceRequired: 'Route verdict, rejected routes, accepted duty drag, source anchors, evidence index, stop triggers, adviser confirmations, owner, and retrieval location must be recorded.',
+      consequenceIfMissing: 'The route can become explainable only by one memory-holder instead of a durable family-office record.',
+      releaseStatus: 'signed before completion',
+    }),
+  ];
+}
+
+function buildRouteZeroTrustMoveIntake(
+  route: RouteIntelligenceOptionV2,
+  existing: unknown,
+): RecordLike {
+  const current = asRecord(existing);
+  const records = buildRouteReleaseEvidenceRecords(route);
+  const acquisitionReleased = route.metrics.totalAcquisitionCostUsd > 0 && isReleaseRoute(route);
+  const releaseCondition = acquisitionReleased
+    ? 'No bid hardening, deposit, exchange, funds movement, title transfer, custody movement, seller commitment, or ownership-structure change until all signed release gates align.'
+    : 'No acquisition is released on this route; capital remains blocked until the written reopen or rebuild condition clears.';
+  const adviserConfirmations = [
+    {
+      domain: 'UK property counsel',
+      state: 'gate_mapped',
+      required_answer: 'Counsel signs buyer capacity, title class, seller authority, searches, restrictions, deposit terms, exchange mechanics, and completion timetable before any seller commitment hardens.',
+    },
+    {
+      domain: 'UK private-client tax counsel',
+      state: 'gate_mapped',
+      required_answer: 'Counsel signs SDLT, non-resident surcharge, additional-dwelling posture, relief exclusions, residence/IHT boundary, and filing responsibility before bid, deposit, exchange, or title movement.',
+    },
+    {
+      domain: 'Source tax counsel',
+      state: 'gate_mapped',
+      required_answer: 'Source-side tax, distribution authority, beneficial-owner chart, remittance narrative, and transfer-purpose record align before the source leg is treated as release-ready.',
+    },
+    {
+      domain: 'Source and receiving banks',
+      state: 'gate_mapped',
+      required_answer: 'SoW/SoF, KYC, sanctions/adverse-media, signer, FX authority, transfer limits, alternate rail, and conveyancer timetable clear before funds move.',
+    },
+    {
+      domain: 'Immigration and education advisers',
+      state: 'gate_mapped',
+      required_answer: 'Residence, school/guardian, accommodation timing, and family-user assumptions stay separate from ownership approval before the property is treated as a family-use route.',
+    },
+    {
+      domain: 'Succession counsel and family-office operator',
+      state: 'gate_mapped',
+      required_answer: 'Family-use purpose, fairness treatment, carry owner, veto/stop rights, decision memory, and retrieval location are recorded before completion or family-use commencement.',
+    },
+  ];
+
+  return {
+    ...current,
+    section_label: 'Release Evidence Pack',
+    release_test: 'Evidence required before release',
+    release_boundary: `${route.routeName} remains controlled by the eight release domains: title, SDLT, source, bank, authority, family-use, fairness, and decision memory. ${releaseCondition}`,
+    declared_record_count: 8,
+    detailed_counts: {
+      evidence_records: records.length,
+      adviser_confirmations: adviserConfirmations.length,
+      states: {
+        gate_mapped: records.length,
+        missing: 0,
+        contradicted: 0,
+      },
+    },
+    records,
+    evidence_records: records,
+    evidence_states: {
+      missing: [],
+      contradicted: [],
+    },
+    banking_rails: {
+      source_bank: 'UAE source rail must match the SoW/SoF pack, beneficial-owner chart, tax support, signer mandate, transfer purpose, transfer limits, and FX authority.',
+      primary_receiving_bank: 'UK receiving rail must accept KYC, SoW/SoF, sanctions/adverse-media, buyer route, conveyancer timetable, transfer limits, and completion sequence.',
+      fallback_receiving_bank: 'Alternate rail may be used only after the same SoW/SoF, signer, FX, KYC, sanctions, timetable, and buyer-route conditions clear.',
+      release_condition: releaseCondition,
+    },
+    adviser_confirmations: adviserConfirmations,
+    adviser_inputs: adviserConfirmations,
+  };
+}
+
+function routeDecisionGateDays(count: number): number[] {
+  const anchors = [1, 2, 3, 5, 7, 10, 14, 21];
+  if (count <= anchors.length) return anchors.slice(0, count);
+  return Array.from({ length: count }, (_item, index) => anchors[index] ?? 21 + (index - anchors.length + 1) * 7);
+}
+
+function routeDecisionGatePass(
+  route: RouteIntelligenceOptionV2,
+  gate: RouteEvidenceGate,
+  index: number,
+  total: number,
+): string {
+  const owner = text(gate.owner, 'Gate owner');
+  if (index === total - 1) {
+    return `${owner} signs the final route record; the principal may continue only inside the capital rule for ${route.routeName}.`;
+  }
+  return `${owner} signs or bank-accepts this gate; the route advances to the next domain without moving capital.`;
+}
+
+function routeDecisionGateFail(route: RouteIntelligenceOptionV2, gate: RouteEvidenceGate): string {
+  const owner = text(gate.owner, 'Gate owner');
+  return `${route.routeName} stays blocked at ${text(gate.gate, 'this release gate')}; ${owner} must remediate before bid hardening, deposit, exchange, funds movement, title transfer, seller commitment, or structure change.`;
+}
+
 function routeStructure(route: RouteIntelligenceOptionV2, selectedRouteId: string): RecordLike {
   const gates = routeEvidenceGates(route);
   const selected = route.id === selectedRouteId;
@@ -1365,6 +1561,7 @@ function buildRouteScenarioTree(route: RouteIntelligenceOptionV2): RecordLike {
   const verdictCode = routeVerdictCode(route);
   const releaseRoute = isReleaseRoute(route);
   const holdRoute = text(route.releaseRule).toLowerCase().includes('hold');
+  const gateDays = routeDecisionGateDays(gates.length);
   const weightedNetOutcome = scenarios.reduce((sum, scenario, index) => {
     const weight = index === 0 ? 0.6 : index === 1 ? 0.25 : 0.15;
     return sum + (scenario.netOutcomeUsd * weight);
@@ -1446,7 +1643,12 @@ function buildRouteScenarioTree(route: RouteIntelligenceOptionV2): RecordLike {
         verdict_conditions: ['Use when evidence, authority, or banking cannot clear inside the decision window.'],
       },
     ],
-    decision_gates: gates.slice(0, 8).map((gate) => ({
+    decision_gates: gates.slice(0, 8).map((gate, index) => ({
+      gate_number: index + 1,
+      day: gateDays[index] || gateDays[gateDays.length - 1] || 7,
+      check: text(gate.gate, 'Release gate'),
+      if_pass: routeDecisionGatePass(route, gate, index, Math.min(gates.length, 8)),
+      if_fail: routeDecisionGateFail(route, gate),
       gate: text(gate.gate, 'Release gate'),
       owner: text(gate.owner, 'Family office operator / CFO'),
       status: text(gate.releaseStatus, 'Signed gate controls release'),
@@ -1671,6 +1873,7 @@ export function buildRouteScopedDecisionMemoSurface({
     verdict: route.verdict,
     best_use: route.bestUse,
   };
+  preview.zero_trust_move_intake = buildRouteZeroTrustMoveIntake(route, preview.zero_trust_move_intake);
   preview.executive_summary = {
     ...asRecord(preview.executive_summary),
     headline_metric: {

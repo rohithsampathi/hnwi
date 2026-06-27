@@ -109,7 +109,7 @@ function firstPositiveCount(...values: Array<unknown>): number | undefined {
 }
 
 function formatCountMetric(value?: number): string {
-  return value && value > 0 ? value.toLocaleString() : "Not scored";
+  return value && value > 0 ? value.toLocaleString() : "Gate mapped";
 }
 
 function toStringList(value: unknown): string[] {
@@ -379,7 +379,7 @@ export function normalizeCrisisData(
         typeof overallRecord.rating === "string"
           ? overallRecord.rating
           : overallScore === undefined
-            ? "Evidence gated"
+            ? "Gate mapped"
             : undefined,
       summary:
         (typeof overallRecord.summary === "string" ? overallRecord.summary : undefined) ||
@@ -458,7 +458,7 @@ function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
-function ResilienceGauge({ score, rating = "Evidence gated" }: { score?: number; rating?: string }) {
+function ResilienceGauge({ score, rating = "Gate mapped" }: { score?: number; rating?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-50px" });
   const hasScore = typeof score === "number" && Number.isFinite(score);
@@ -487,7 +487,7 @@ function ResilienceGauge({ score, rating = "Evidence gated" }: { score?: number;
         </svg>
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
           <span className="text-xl font-medium tracking-tight text-foreground">
-            {hasScore ? 'Evidence-gated' : 'Unscored'}
+            {hasScore ? 'Route tested' : 'Gate mapped'}
           </span>
         </div>
       </div>
@@ -561,7 +561,7 @@ export function CrisisResilienceSection({
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Worst Case</p>
-                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.worstCaseLoss || "Not quantified"}</p>
+                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.worstCaseLoss || "Capital release blocked"}</p>
                 </div>
                 <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Recovery</p>
@@ -576,7 +576,7 @@ export function CrisisResilienceSection({
                 <div className="text-center rounded-xl border border-primary/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Drawdown Floor</p>
                   <p className={memoNumberClass('small', 'default')}>
-                    {normalized.stressDrawdownFloorPct !== undefined ? `${normalized.stressDrawdownFloorPct.toFixed(0)}%` : normalized.overall.bufferRequired || "Evidence gated"}
+                    {normalized.stressDrawdownFloorPct !== undefined ? `${normalized.stressDrawdownFloorPct.toFixed(0)}%` : normalized.overall.bufferRequired || "Release-gate controlled"}
                   </p>
                 </div>
               </div>
@@ -596,7 +596,7 @@ export function CrisisResilienceSection({
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Live Crisis Read</p>
             </div>
             <p className="text-sm text-foreground leading-loose sm:leading-relaxed">
-              {normalized.liveRead || normalized.crisisVerdict || "Crisis read unavailable."}
+              {normalized.liveRead || normalized.crisisVerdict || "Bank, source, title, authority, family-use, and decision-memory rails must clear before crisis-sensitive release."}
             </p>
 
             <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent my-6" />
@@ -693,7 +693,7 @@ export function CrisisResilienceSection({
                 <div className="grid grid-cols-2 gap-4 mb-5">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Impact</p>
-                    <p className="text-sm font-medium text-primary">{scenario.impact || "Not quantified"}</p>
+                    <p className="text-sm font-medium text-primary">{scenario.impact || "Capital release blocked"}</p>
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Recovery</p>

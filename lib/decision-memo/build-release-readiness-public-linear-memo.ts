@@ -216,7 +216,24 @@ function buildPublicLinearMemoSeed(
         capital_rule: cleanText(payload.capitalRule),
       },
       decision_rails: {
-        advisors: ['UK tax counsel', 'UK property counsel', 'bank rail owner', 'family office operator / CFO'],
+        advisors: [
+          {
+            role: 'UK tax counsel',
+            burden: 'Written SDLT, surcharge, residence/IHT, relief-exclusion, overseas-property, and filing position controls whether capital can move.',
+          },
+          {
+            role: 'UK property counsel',
+            burden: 'Title class, seller authority, searches, restrictions, deposit terms, exchange mechanics, and completion timetable control whether the seller file can harden.',
+          },
+          {
+            role: 'Bank rail owner',
+            burden: 'Source rail, UK receiving rail, alternate rail, FX authority, transfer limits, signer authority, KYC, sanctions, and rate-refresh rule must clear before funds move.',
+          },
+          {
+            role: 'Family-office operator / CFO',
+            burden: 'Family-use purpose, carry owner, fairness record, stop authority, decision memory, and evidence-index location must be fixed before the route becomes executable.',
+          },
+        ],
         heirs: ['G1 principal', 'G2 named family user', 'G2 fairness owner', 'G3 next-generation record'],
       },
     },

@@ -926,44 +926,118 @@ function buildPublicConstraintItems(inputConstraints: Record<string, any>, liveD
   return [...items, ...remaining];
 }
 
+function railRecord(value: unknown): Record<string, any> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {};
+}
+
+function isPlaceholderRailText(value: unknown): boolean {
+  const normalized = asText(value, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  return (
+    !normalized ||
+    normalized === 'advisor' ||
+    normalized === 'adviser' ||
+    normalized === 'evidence gated' ||
+    normalized === 'gate mapped' ||
+    /^advisors?\s+\d+$/i.test(normalized) ||
+    /^advisers?\s+\d+$/i.test(normalized)
+  );
+}
+
+function firstRailText(...values: unknown[]): string {
+  for (const value of values) {
+    const resolved = asText(value, '');
+    if (!isPlaceholderRailText(resolved)) return resolved;
+  }
+  return '';
+}
+
+function advisorName(value: unknown): string {
+  if (typeof value === 'string') return firstRailText(value);
+  const advisor = railRecord(value);
+  return firstRailText(advisor.name, advisor.label, advisor.title, advisor.owner, advisor.advisor);
+}
+
+function advisorRole(value: unknown): string {
+  const advisor = railRecord(value);
+  return firstRailText(advisor.role, advisor.type, advisor.desk, advisor.domain);
+}
+
+function advisorDisplay(value: unknown): string {
+  const name = advisorName(value);
+  const role = advisorRole(value);
+  return role && name && role !== name ? `${name} — ${role}` : role || name;
+}
+
+function advisorBurden(value: unknown): string {
+  const advisor = railRecord(value);
+  return firstRailText(
+    advisor.burden,
+    advisor.release_burden,
+    advisor.required_answer,
+    advisor.release_effect,
+    advisor.note,
+    advisor.detail,
+  );
+}
+
+function decisionRailStatus(combined: string): string {
+  if (combined.includes('tax')) return 'Tax sign-off';
+  if (combined.includes('property') || combined.includes('transaction') || combined.includes('counsel')) {
+    return 'Property counsel';
+  }
+  if (combined.includes('bank')) return 'Bank rail';
+  if (combined.includes('succession') || combined.includes('will') || combined.includes('family office') || combined.includes('cfo')) {
+    return 'Continuity rail';
+  }
+  return 'Release rail';
+}
+
+function heirName(value: unknown): string {
+  if (typeof value === 'string') return firstRailText(value);
+  const heir = railRecord(value);
+  return firstRailText(heir.name, heir.label, heir.title, heir.role);
+}
+
 function buildDecisionRailItems(
   inputRails: Record<string, any>,
   routeLabel: string,
   destinationAsset: string,
 ): NormalizedItem[] {
-  const advisorItems = asArray<Record<string, any>>(inputRails.advisors).map((advisor) => {
-    const name = asText(advisor.name, 'Advisor');
-    const role = asText(advisor.role, '');
+  const advisorItems = asArray<unknown>(inputRails.advisors).flatMap((advisor) => {
+    const name = advisorName(advisor);
+    const role = advisorRole(advisor);
+    const label = role || name;
+    if (!label) return [];
     const combined = `${name} ${role}`.toLowerCase();
 
-    let note =
-      'This rail cannot remain advisory only once the move enters a live signing window.';
+    let note = advisorBurden(advisor) ||
+      `${label} must state the approval right, evidence standard, and stop condition for ${routeLabel} before seller timing, banking, title, or family-use commitments harden.`;
 
     if (combined.includes('tax')) {
-      note =
+      note = advisorBurden(advisor) ||
         'Must confirm current residence, long-term UK residence / IHT exposure, and overseas property treatment before signing.';
     } else if (combined.includes('property') || combined.includes('transaction') || combined.includes('counsel')) {
-      note =
+      note = advisorBurden(advisor) ||
         `Must clear ${routeLabel}, title, SPA terms, service-charge stack, and purchase documentation before ${destinationAsset} execution.`;
     } else if (combined.includes('bank')) {
-      note =
+      note = advisorBurden(advisor) ||
         'Must have onboarding, source-of-funds, remittance rails, and test transfer cleared before funds move.';
     } else if (combined.includes('succession') || combined.includes('will')) {
-      note =
+      note = advisorBurden(advisor) ||
         'Must lock the succession route and governing documents before close, not as post-completion clean-up.';
     }
 
-    return {
-      text: role || name,
-      status: 'Advisor',
+    return [{
+      text: label,
+      status: decisionRailStatus(combined),
       note,
       value: role && role !== name ? name : undefined,
-    };
+    }];
   });
 
-  const heirs = asArray<Record<string, any>>(inputRails.heirs);
+  const heirs = asArray<unknown>(inputRails.heirs);
   const heirNames = heirs
-    .map((heir) => asText(heir.name, ''))
+    .map(heirName)
     .filter(Boolean);
   const familyItems: NormalizedItem[] = heirNames.length
     ? [
@@ -979,9 +1053,9 @@ function buildDecisionRailItems(
   return [...advisorItems, ...familyItems];
 }
 
-function findAdvisorByKeywords(advisors: Record<string, any>[], keywords: string[]) {
+function findAdvisorByKeywords(advisors: unknown[], keywords: string[]) {
   return advisors.find((advisor) => {
-    const combined = `${asText(advisor.name, '')} ${asText(advisor.role, '')}`.toLowerCase();
+    const combined = `${advisorName(advisor)} ${advisorRole(advisor)}`.toLowerCase();
     return keywords.some((keyword) => combined.includes(keyword));
   });
 }
@@ -992,8 +1066,8 @@ function buildOwnershipSeats({
   decisionOwner,
   routeLabel,
 }: {
-  advisors: Record<string, any>[];
-  heirs: Record<string, any>[];
+  advisors: unknown[];
+  heirs: unknown[];
   decisionOwner?: string;
   routeLabel: string;
 }): OwnershipSeat[] {
@@ -1002,7 +1076,7 @@ function buildOwnershipSeats({
   const bankAdvisor = findAdvisorByKeywords(advisors, ['bank', 'banking', 'private bank', 'wealth manager']);
   const successionAdvisor = findAdvisorByKeywords(advisors, ['succession', 'estate', 'private client', 'will', 'trust']);
 
-  const heirNames = heirs.map((heir) => asText(heir.name, '')).filter(Boolean);
+  const heirNames = heirs.map(heirName).filter(Boolean);
 
   const seats: OwnershipSeat[] = [
     {
@@ -1027,7 +1101,7 @@ function buildOwnershipSeats({
     seats.push(
       {
         seat: 'UK Tax Sign-Off',
-        owner: taxAdvisor ? `${asText(taxAdvisor.name, 'Advisor')}${taxAdvisor.role ? ` — ${asText(taxAdvisor.role, '')}` : ''}` : 'UK international tax counsel',
+        owner: taxAdvisor ? advisorDisplay(taxAdvisor) : 'UK international tax counsel',
         approvalRight: 'Controls whether the route can proceed from a UK residence, IHT, and overseas property reporting perspective.',
         burden: 'Issue the written view on current residence, long-term UK exposure, overseas property treatment, and post-close reporting before signing.',
         stop: 'The tax position is absent, inconsistent, or unsuitable for the route the house is trying to execute.',
@@ -1035,7 +1109,7 @@ function buildOwnershipSeats({
       },
       {
         seat: 'Property Route Counsel',
-        owner: propertyAdvisor ? `${asText(propertyAdvisor.name, 'Advisor')}${propertyAdvisor.role ? ` — ${asText(propertyAdvisor.role, '')}` : ''}` : 'Property / transaction counsel',
+        owner: propertyAdvisor ? advisorDisplay(propertyAdvisor) : 'Property / transaction counsel',
         approvalRight: 'Controls whether the chosen purchase route, title package, and contract mechanics are actually executable.',
         burden: 'Clear buyer capacity, title, encumbrances, service-charge or management obligations, contract terms, and completion mechanics before any commitment is treated as hard.',
         stop: 'Title, allocation, or route mechanics fail and the file is still being advanced on broker comfort.',
@@ -1043,7 +1117,7 @@ function buildOwnershipSeats({
       },
       {
         seat: 'Banking Release',
-        owner: bankAdvisor ? `${asText(bankAdvisor.name, 'Advisor')}${bankAdvisor.role ? ` — ${asText(bankAdvisor.role, '')}` : ''}` : 'Source and receiving bank leads to be named',
+        owner: bankAdvisor ? advisorDisplay(bankAdvisor) : 'Source and receiving bank leads to be named',
         approvalRight: 'Controls whether capital can legally and operationally move through the route on time.',
         burden: 'Complete onboarding, source-of-funds package, remittance path, receiving-bank acceptance, and test transfer before the contract execution window.',
         stop: 'Funds cannot move cleanly, test transfer fails, or onboarding remains conditional while the house is being asked to proceed.',
@@ -1052,7 +1126,7 @@ function buildOwnershipSeats({
       {
         seat: 'Continuity And Succession',
         owner: successionAdvisor
-          ? `${asText(successionAdvisor.name, 'Advisor')}${successionAdvisor.role ? ` — ${asText(successionAdvisor.role, '')}` : ''}`
+          ? advisorDisplay(successionAdvisor)
           : heirNames.length
             ? `Family continuity seat — ${heirNames.join(' and ')}`
             : 'Succession counsel / family continuity seat',
@@ -2859,8 +2933,8 @@ export default function HouseGradeMemoSection({
 
   const railItems = buildDecisionRailItems(inputRails, routeLabel, destinationAsset);
   const ownershipSeats = buildOwnershipSeats({
-    advisors: asArray<Record<string, any>>(inputRails.advisors),
-    heirs: asArray<Record<string, any>>(inputRails.heirs),
+    advisors: asArray<unknown>(inputRails.advisors),
+    heirs: asArray<unknown>(inputRails.heirs),
     decisionOwner: authority.decision_owner,
     routeLabel,
   });

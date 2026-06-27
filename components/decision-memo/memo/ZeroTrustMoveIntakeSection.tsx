@@ -15,6 +15,7 @@ interface ZeroTrustMoveIntakeSectionProps {
 
 const STATE_STYLES: Record<string, string> = {
   confirmed: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+  gate_mapped: 'border-primary/25 bg-primary/10 text-primary',
   claimed_unverified: 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300',
   assumed: 'border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300',
   missing: 'border-red-500/25 bg-red-500/10 text-red-700 dark:text-red-300',
@@ -45,10 +46,52 @@ function asRecords(value: unknown): IntakeRecord[] {
     : [];
 }
 
-function text(value: unknown, fallback = 'Evidence gated'): string {
+function text(value: unknown, fallback = ''): string {
   if (typeof value === 'string' && value.trim()) return value.trim();
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   return fallback;
+}
+
+function isPlaceholderText(value: unknown): boolean {
+  const normalized = text(value, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  return (
+    !normalized ||
+    normalized === 'evidence gated' ||
+    normalized === 'gate mapped' ||
+    normalized === 'adviser' ||
+    normalized === 'advisor' ||
+    /^advisers?\s+\d+$/i.test(normalized) ||
+    /^advisors?\s+\d+$/i.test(normalized)
+  );
+}
+
+function firstRealText(...values: unknown[]): string {
+  for (const value of values) {
+    const resolved = text(value, '');
+    if (!isPlaceholderText(resolved)) return resolved;
+  }
+  return '';
+}
+
+function adviserInputTitle(input: IntakeRecord): string {
+  return firstRealText(input.desk, input.domain, input.label, input.title, input.owner, input.advisor);
+}
+
+function adviserInputDetail(input: IntakeRecord): string {
+  return firstRealText(input.required_answer, input.release_effect, input.detail, input.source_ref, input.question, input.evidence);
+}
+
+function adviserInputOwner(input: IntakeRecord, title: string): string {
+  const owner = firstRealText(input.owner, input.advisor);
+  return owner && owner.toLowerCase() !== title.toLowerCase() ? owner : '';
+}
+
+function renderableAdviserInputs(...groups: IntakeRecord[][]): IntakeRecord[] {
+  for (const group of groups) {
+    const usable = group.filter((input) => adviserInputTitle(input) && adviserInputDetail(input));
+    if (usable.length) return usable;
+  }
+  return [];
 }
 
 function titleize(value: string): string {
@@ -63,6 +106,7 @@ function evidenceLabel(value: string): string {
   const normalized = value.toLowerCase().replace(/\s+/g, '_');
   const labels: Record<string, string> = {
     confirmed: 'Indexed for Review',
+    gate_mapped: 'Gate Mapped',
     claimed_unverified: 'Adviser Confirmation Required',
     assumed: 'Model Assumption',
     missing: 'Missing Evidence',
@@ -73,7 +117,8 @@ function evidenceLabel(value: string): string {
 }
 
 function EvidenceBadge({ state }: { state: unknown }) {
-  const normalized = text(state, 'evidence_gated').toLowerCase().replace(/\s+/g, '_');
+  const normalized = text(state, '').toLowerCase().replace(/\s+/g, '_');
+  if (!normalized) return null;
   const className = STATE_STYLES[normalized] ?? 'border-border bg-muted text-muted-foreground';
 
   return (
@@ -107,9 +152,19 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
   const records = recordsFromNative.length ? recordsFromNative : asRecords(intake.evidence_records);
   const authority = asRecord(intake.authority);
   const bankingRails = asRecord(intake.banking_rails);
+  const bankingRows = [
+    { label: 'Source Rail', value: text(bankingRails.source_bank, '') },
+    { label: 'Primary Receiving Rail', value: text(bankingRails.primary_receiving_bank, '') },
+    { label: 'Alternate Rail', value: text(bankingRails.fallback_receiving_bank, '') },
+    { label: 'Release Condition', value: text(bankingRails.release_condition, '') },
+  ].filter((row) => row.value);
   const adviserInputsFromNative = asRecords(intake.adviser_inputs);
-  const adviserInputs = adviserInputsFromNative.length ? adviserInputsFromNative : asRecords(intake.adviser_asks);
-  const adviserConfirmationCount = adviserInputs.length || 6;
+  const adviserInputs = renderableAdviserInputs(
+    adviserInputsFromNative,
+    asRecords(intake.adviser_confirmations),
+    asRecords(intake.adviser_asks),
+  );
+  const adviserConfirmationCount = adviserInputs.length;
   const missing = asList(evidenceStates.missing).length ? asList(evidenceStates.missing) : asList(intake.missing_gates);
   const contradicted = asList(evidenceStates.contradicted).length ? asList(evidenceStates.contradicted) : asList(intake.contradictions);
   const openRecordGates = records
@@ -141,7 +196,7 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
           <p className="mt-5 text-sm leading-relaxed text-muted-foreground sm:text-base">
             {text(
               intake.release_boundary,
-              'The route should not release until buyer capacity, title, duty treatment, source-of-funds, primary and fallback bank rails, authority, succession/fairness, adviser sign-offs, and decision memory are evidenced.'
+              'The route should not release until buyer capacity, title, duty treatment, source-of-funds, primary and alternate bank rails, authority, succession/fairness, adviser sign-offs, and decision memory are evidenced.'
             )}
           </p>
         </div>
@@ -159,14 +214,16 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
               {openGates.length ? `${openGates.length} unresolved` : 'Evidence mapped'}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Gate ownership complete; release evidence remains open until signed evidence is received.
+              Eight release domains mapped; capital remains blocked until signed evidence is received and indexed.
             </p>
           </div>
-          <div className="border border-border bg-background p-4">
-            <CheckCircle2 className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Adviser Confirmations</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">{adviserConfirmationCount} desks</p>
-          </div>
+          {adviserConfirmationCount > 0 ? (
+            <div className="border border-border bg-background p-4">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Adviser Confirmations</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{adviserConfirmationCount} desks</p>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -209,30 +266,22 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
       ) : null}
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <div className="border border-border bg-background p-5">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-primary" />
-            <h3 className="text-base font-semibold text-foreground">Banking Rail Proof</h3>
+        {bankingRows.length > 0 ? (
+          <div className="border border-border bg-background p-5">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              <h3 className="text-base font-semibold text-foreground">Banking Rail Proof</h3>
+            </div>
+            <dl className="mt-4 grid gap-3 text-sm">
+              {bankingRows.map((row) => (
+                <div key={row.label}>
+                  <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{row.label}</dt>
+                  <dd className="mt-1 text-foreground">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
-          <dl className="mt-4 grid gap-3 text-sm">
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Source Rail</dt>
-              <dd className="mt-1 text-foreground">{text(bankingRails.source_bank)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Primary Receiving Rail</dt>
-              <dd className="mt-1 text-foreground">{text(bankingRails.primary_receiving_bank)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Fallback Rail</dt>
-              <dd className="mt-1 text-foreground">{text(bankingRails.fallback_receiving_bank)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Release Condition</dt>
-              <dd className="mt-1 text-muted-foreground">{text(bankingRails.release_condition)}</dd>
-            </div>
-          </dl>
-        </div>
+        ) : null}
 
         <div className="border border-border bg-background p-5">
           <div className="flex items-center gap-2">
@@ -242,7 +291,7 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
           <div className="mt-4 space-y-3">
             {(openGates.length
               ? openGates.slice(0, 5)
-              : ['Gate ownership complete; release evidence remains open until signed evidence is received.']
+              : ['Eight release domains are mapped; release remains blocked until signed title, SDLT, source, bank, authority, family-use, fairness, and decision-memory evidence is indexed.']
             ).map((boundary) => (
               <p key={boundary} className="text-sm leading-relaxed text-muted-foreground">
                 {boundary}
@@ -268,19 +317,19 @@ export function ZeroTrustMoveIntakeSection({ data }: ZeroTrustMoveIntakeSectionP
           <h3 className="text-base font-semibold text-foreground">Adviser Input Gates</h3>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {adviserInputs.map((input, index) => (
-              <div key={`${text(input.desk || input.label || input.detail || input.owner, 'adviser')}-${index}`} className="border border-border p-4">
+              <div key={`${adviserInputTitle(input)}-${index}`} className="border border-border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-foreground">
-                    {text(input.desk || input.label || input.detail || input.owner, `Adviser ${index + 1}`)}
+                    {adviserInputTitle(input)}
                   </p>
                   <EvidenceBadge state={input.state} />
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  {text(input.required_answer || input.release_effect || input.detail || input.source_ref)}
+                  {adviserInputDetail(input)}
                 </p>
-                {input.owner ? (
+                {adviserInputOwner(input, adviserInputTitle(input)) ? (
                   <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    Owner: {text(input.owner)}
+                    Owner: {adviserInputOwner(input, adviserInputTitle(input))}
                   </p>
                 ) : null}
               </div>

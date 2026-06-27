@@ -486,15 +486,58 @@ function zeroTrustList(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function zeroTrustText(value: unknown): string {
+  return typeof value === 'string' && value.trim() ? routeDisplayText(value.trim()) : '';
+}
+
+function isPlaceholderZeroTrustText(value: unknown): boolean {
+  const normalized = zeroTrustText(value).toLowerCase().replace(/\s+/g, ' ').trim();
+  return (
+    !normalized ||
+    normalized === 'evidence gated' ||
+    normalized === 'gate mapped' ||
+    normalized === 'adviser' ||
+    normalized === 'advisor' ||
+    /^advisers?\s+\d+$/i.test(normalized) ||
+    /^advisors?\s+\d+$/i.test(normalized)
+  );
+}
+
+function firstZeroTrustText(...values: unknown[]): string {
+  for (const value of values) {
+    const resolved = zeroTrustText(value);
+    if (!isPlaceholderZeroTrustText(resolved)) return resolved;
+  }
+  return '';
+}
+
+function zeroTrustAdviserTitle(record: Record<string, unknown>): string {
+  return firstZeroTrustText(record.desk, record.domain, record.label, record.title, record.owner, record.advisor);
+}
+
+function zeroTrustAdviserDetail(record: Record<string, unknown>): string {
+  return firstZeroTrustText(record.required_answer, record.release_effect, record.detail, record.source_ref, record.question, record.evidence);
+}
+
+function renderableZeroTrustAdviserInputs(...groups: Array<Array<Record<string, unknown>>>): Array<Record<string, unknown>> {
+  for (const group of groups) {
+    const usable = group.filter((record) => zeroTrustAdviserTitle(record) && zeroTrustAdviserDetail(record));
+    if (usable.length) return usable;
+  }
+  return [];
+}
+
 function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null }) {
   const intake = zeroTrustRecord(data);
   if (!Object.keys(intake).length) return null;
 
   const evidenceStates = zeroTrustRecord(intake.evidence_states);
   const records = zeroTrustRecords(intake.records).length ? zeroTrustRecords(intake.records) : zeroTrustRecords(intake.evidence_records);
-  const adviserInputs = zeroTrustRecords(intake.adviser_inputs).length
-    ? zeroTrustRecords(intake.adviser_inputs)
-    : zeroTrustRecords(intake.adviser_asks);
+  const adviserInputs = renderableZeroTrustAdviserInputs(
+    zeroTrustRecords(intake.adviser_inputs),
+    zeroTrustRecords(intake.adviser_confirmations),
+    zeroTrustRecords(intake.adviser_asks),
+  );
   const missing = zeroTrustList(evidenceStates.missing).length
     ? zeroTrustList(evidenceStates.missing)
     : zeroTrustList(intake.missing_gates);
@@ -514,7 +557,7 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
     .slice(0, 6);
   const openGateNames = [...missing, ...contradicted].length ? [...missing, ...contradicted] : openRecordNames;
   const openGateCount = openGateNames.length;
-  const adviserConfirmationCount = adviserInputs.length || 6;
+  const adviserConfirmationCount = adviserInputs.length;
   const canonicalReleaseDomains = [
     'Title',
     'SDLT',
@@ -532,7 +575,19 @@ function ZeroTrustRouteSummary({ data }: { data?: Record<string, unknown> | null
   const metrics = [
     { label: 'Release Domains', value: String(releaseDomains.length), read: releaseDomainRead },
     { label: 'Release Gate Status', value: openGateCount ? `${openGateCount} Open` : 'Evidence mapped', read: openGateRead },
-    { label: 'Adviser Confirmations', value: String(adviserConfirmationCount), read: 'Property, tax, bank, succession, insurance, and operator desks' },
+    ...(adviserConfirmationCount > 0
+      ? [
+          {
+            label: 'Adviser Confirmations',
+            value: String(adviserConfirmationCount),
+            read: adviserInputs
+              .map((record) => zeroTrustAdviserTitle(record))
+              .filter(Boolean)
+              .slice(0, 4)
+              .join(' / '),
+          },
+        ]
+      : []),
   ];
 
   return (
