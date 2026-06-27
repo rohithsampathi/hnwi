@@ -139,6 +139,25 @@ function sanitizePublicCitationText(text: string): string {
     .trim()
 }
 
+function trimSourceNativeCitationText(text: string): string {
+  const sourceText = cleanText(text)
+  if (!sourceText) return ""
+  const markers = [
+    "The library already places it next to",
+    "Balanced pattern memory:",
+    "current analogs:",
+    "[DEVID-",
+    "[DEVID_",
+    "[DEVID-dev_",
+  ]
+  const lower = sourceText.toLowerCase()
+  const cutAt = markers.reduce((currentCut, marker) => {
+    const index = lower.indexOf(marker.toLowerCase())
+    return index >= 80 ? Math.min(currentCut, index) : currentCut
+  }, sourceText.length)
+  return sourceText.slice(0, cutAt).trim()
+}
+
 function significantSourceTokens(text: string): Set<string> {
   const stopWords = new Set([
     "about",
@@ -368,9 +387,10 @@ function pickCitationAnalysis(payload: DevelopmentPayload): {
 
   if (isV31CitationPayload(payload)) {
     const sourceNative = pickFirstTextWithField(payload, V31_SOURCE_NATIVE_FIELDS)
-    if (shouldPreferSourceNativeText(payload, fullHByteSummary, sourceNative.text)) {
+    const sourceNativeText = trimSourceNativeCitationText(sourceNative.text)
+    if (shouldPreferSourceNativeText(payload, fullHByteSummary, sourceNativeText)) {
       return {
-        text: sanitizePublicCitationText(sourceNative.text),
+        text: sanitizePublicCitationText(sourceNativeText),
         sourceField: sourceNative.field,
         label: "Source Brief",
       }

@@ -55,7 +55,7 @@ describe("development citation payload mapping", () => {
       hbyte_summary:
         "Lake Maggiore Heritage Trophy Estates: USD 6.3M Seller Ask is the sharper proof point for adjacent premium inventory.",
       full_text:
-        "Subhash Chandra's Delhi bungalow sold for USD $131.2M (INR 1,260 crore). Essel Group chairman Subhash Chandra is selling a prime bungalow in Lutyens' Delhi.",
+        "Subhash Chandra's Delhi bungalow sold for USD $131.2M (INR 1,260 crore). Essel Group chairman Subhash Chandra is selling a prime bungalow in Lutyens' Delhi. The library already places it next to Lake Maggiore Heritage Trophy Estates.",
       castle_quality_score: 9.1,
     };
     const development = buildCitationSourceDevelopment(payload, "source-id");
