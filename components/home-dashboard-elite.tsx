@@ -19,6 +19,10 @@ import { useOpportunities } from "@/lib/hooks/useOpportunities"
 import { usePersonalMode } from "@/lib/hooks/usePersonalMode"
 import { fetchAssessmentHistory, hasRecentAssessmentResult } from "@/lib/client-assessment-history"
 import { resolveCanonicalUserId, resolveStoredUserId } from "@/lib/auth-user-normalization"
+import {
+  buildCitationSourceDevelopment,
+  type CitationSourceDevelopment,
+} from "@/lib/development-citation"
 
 // Dynamically import the map component with SSR disabled
 const InteractiveWorldMap = dynamic(
@@ -136,7 +140,45 @@ export function HomeDashboardElite({
     })
   }, [availableCategories])
 
-  // Extract citations from cities when they change
+  const preloadedCitationSources = React.useMemo(() => {
+    const sources = new Map<string, CitationSourceDevelopment>()
+
+    cities.forEach((city) => {
+      const sourceEvidenceRecord = city.source_evidence_record || city.sourceEvidenceRecord
+      if (!sourceEvidenceRecord) return
+
+      const sourceIds = (city.devIds || []).filter((id): id is string => Boolean(id))
+
+      sourceIds.forEach((sourceId) => {
+        const source = buildCitationSourceDevelopment({
+          ...city,
+          source_evidence_record: sourceEvidenceRecord,
+          sourceEvidenceRecord: sourceEvidenceRecord,
+          _id: sourceId,
+          id: sourceId,
+          dev_id: city.dev_id || city.castle_brief_id || city.citation_id || sourceId,
+          devid: city.devid || city.source_development_id || sourceId,
+          source_development_id: city.source_development_id || sourceId,
+          castle_brief_id: city.castle_brief_id || city.source_castle_brief_id || city.citation_id,
+          source_castle_brief_id: city.source_castle_brief_id || city.castle_brief_id || city.citation_id,
+          citation_id: city.citation_id || city.castle_brief_id || city.source_castle_brief_id || sourceId,
+          source_title: city.source_title,
+          date: city.source_article_date || city.source_published_at || city.published_at || city.article_date || city.start_date,
+          url: city.source_url || city.url,
+          source_url: city.source_url || city.url,
+          category: city.category || city.industry || "Market Intelligence",
+        }, sourceId)
+        if (source) {
+          sources.set(sourceId, source)
+          sources.set(source.id, source)
+        }
+      })
+    })
+
+    return sources
+  }, [cities])
+
+  // Extract citations from canonical source packets when they change.
   useEffect(() => {
     const allCitations: Citation[] = []
     const seenIds = new Set<string>()
@@ -145,12 +187,14 @@ export function HomeDashboardElite({
     cities.forEach(city => {
       if (city.devIds && city.devIds.length > 0) {
         city.devIds.forEach(devId => {
-          if (!seenIds.has(devId)) {
-            seenIds.add(devId)
+          const source = preloadedCitationSources.get(devId)
+          const sourceId = source?.id || devId
+          if (source && !seenIds.has(sourceId)) {
+            seenIds.add(sourceId)
             allCitations.push({
-              id: devId,
+              id: sourceId,
               number: citationNumber++,
-              originalText: `[Dev ID: ${devId}]`
+              originalText: `[Dev ID: ${sourceId}]`
             })
           }
         })
@@ -158,50 +202,7 @@ export function HomeDashboardElite({
     })
 
     setManagedCitations(allCitations)
-  }, [cities, setManagedCitations])
-
-  const preloadedCitationSources = React.useMemo(() => {
-    const sources = new Map<string, {
-      id: string
-      title: string
-      description: string
-      industry: string
-      product?: string
-      date?: string
-      summary: string
-      url?: string
-      numerical_data?: []
-    }>()
-
-    cities.forEach((city) => {
-      const summary = city.analysis || city.summary || city.elite_pulse_analysis || ""
-      const title = city.title || city.name
-      const sourceIds = [
-        city._id,
-        city.id,
-        ...(city.devIds || [])
-      ].filter((id): id is string => Boolean(id))
-
-      if (sourceIds.length === 0 || (!title && !summary)) {
-        return
-      }
-
-      sourceIds.forEach((sourceId) => {
-        sources.set(sourceId, {
-          id: sourceId,
-          title: title || "Source Evidence",
-          description: city.summary || summary.slice(0, 260),
-          industry: city.category || city.industry || "Market Intelligence",
-          product: city.product,
-          date: city.start_date,
-          summary,
-          numerical_data: []
-        })
-      })
-    })
-
-    return sources
-  }, [cities])
+  }, [cities, preloadedCitationSources, setManagedCitations])
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -774,6 +775,7 @@ export function HomeDashboardElite({
             citationMap={citationMap}
             preloadedSources={preloadedCitationSources}
             hideUnavailablePublicSources
+            skipRemoteForPreloadedSources
           />
         </div>
       )}
@@ -791,6 +793,7 @@ export function HomeDashboardElite({
             citationMap={citationMap}
             preloadedSources={preloadedCitationSources}
             hideUnavailablePublicSources
+            skipRemoteForPreloadedSources
           />
         </AnimatePresence>
       )}

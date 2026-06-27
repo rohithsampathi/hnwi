@@ -101,6 +101,8 @@ export interface City {
   url?: string
   source_article_date?: string
   source_published_at?: string
+  source_evidence_record?: Record<string, unknown>
+  sourceEvidenceRecord?: Record<string, unknown>
   published_at?: string
   article_date?: string
   activity_at?: string
@@ -118,6 +120,9 @@ export interface City {
   devid?: string
   mongo_article_id?: string
   castle_brief_id?: string
+  source_castle_brief_id?: string
+  citation_id?: string
+  citation_ids?: string[]
   victor_score?: string
   elite_pulse_analysis?: string
   category?: string

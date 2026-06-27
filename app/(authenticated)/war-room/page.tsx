@@ -1086,6 +1086,8 @@ export default function WarRoomPage() {
 
     cities.forEach(city => {
       if (!city.devIds || city.devIds.length === 0) return;
+      const sourceEvidenceRecord = city.source_evidence_record || city.sourceEvidenceRecord;
+      if (!sourceEvidenceRecord) return;
 
       city.devIds.forEach(devId => {
         const citationId = String(devId || '').trim();
@@ -1093,13 +1095,19 @@ export default function WarRoomPage() {
 
         const source = buildCitationSourceDevelopment({
           ...city,
+          source_evidence_record: sourceEvidenceRecord,
+          sourceEvidenceRecord: sourceEvidenceRecord,
           _id: citationId,
           id: citationId,
-          dev_id: citationId,
-          devid: citationId,
-          source_development_id: citationId,
+          dev_id: city.dev_id || city.castle_brief_id || city.citation_id || citationId,
+          devid: city.devid || city.source_development_id || citationId,
+          source_development_id: city.source_development_id || citationId,
+          castle_brief_id: city.castle_brief_id || city.source_castle_brief_id || city.citation_id,
+          source_castle_brief_id: city.source_castle_brief_id || city.castle_brief_id || city.citation_id,
+          citation_id: city.citation_id || city.castle_brief_id || city.source_castle_brief_id || citationId,
           title: city.title || city.name,
           name: city.title || city.name,
+          source_title: city.source_title,
           description: city.description || city.summary || city.analysis,
           hbyte_summary: city.hbyte_summary,
           card_summary: city.card_summary,
@@ -1124,6 +1132,7 @@ export default function WarRoomPage() {
 
         if (source) {
           sources.set(citationId, source);
+          sources.set(source.id, source);
         }
       });
     });
@@ -1139,12 +1148,14 @@ export default function WarRoomPage() {
     cities.forEach(city => {
       if (city.devIds && city.devIds.length > 0) {
         city.devIds.forEach(devId => {
-          if (!seenIds.has(devId)) {
-            seenIds.add(devId);
+          const source = citationPreloadedSources.get(devId);
+          const sourceId = source?.id || devId;
+          if (source && !seenIds.has(sourceId)) {
+            seenIds.add(sourceId);
             allCitations.push({
-              id: devId,
+              id: sourceId,
               number: citationNumber++,
-              originalText: `[Dev ID: ${devId}]`
+              originalText: `[Dev ID: ${sourceId}]`
             });
           }
         });
@@ -1152,7 +1163,7 @@ export default function WarRoomPage() {
     });
 
     setCitations(allCitations);
-  }, [cities, setCitations]);
+  }, [cities, citationPreloadedSources, setCitations]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -1381,7 +1392,8 @@ export default function WarRoomPage() {
             onCitationSelect={(id) => openCitation(id)}
             citationMap={citationMap}
             preloadedSources={citationPreloadedSources}
-            preferRemoteSources
+            hideUnavailablePublicSources
+            skipRemoteForPreloadedSources
           />
         </AnimatePresence>
       )}

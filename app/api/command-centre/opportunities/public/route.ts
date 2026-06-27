@@ -46,7 +46,14 @@ type PublicOpportunity = {
   source_development_id?: string;
   dev_id?: string;
   castle_brief_id?: string;
+  source_castle_brief_id?: string;
+  citation_id?: string;
   citation_ids: string[];
+  source_title?: string;
+  source_url?: string;
+  source_article_date?: string;
+  source_evidence_record?: Record<string, unknown>;
+  sourceEvidenceRecord?: Record<string, unknown>;
   generated_at: string;
 };
 
@@ -174,11 +181,17 @@ function publicOpportunityFromCentral(row: RecordLike, index: number): PublicOpp
     ),
   ) || 'Public-safe Command Centre preview. Private executor follow-through is withheld.';
   const sourceDevelopmentId = firstText(row.source_development_id);
-  const sourceBriefId = firstText(row.dev_id, row.devid, row.castle_brief_id, row.mongo_article_id);
+  const sourceBriefId = firstText(row.citation_id, row.source_castle_brief_id, row.castle_brief_id, row.dev_id, row.devid, row.mongo_article_id);
   const citationIds = Array.from(new Set([
+    ...(Array.isArray(row.citation_ids) ? row.citation_ids.map(cleanText) : []),
     sourceBriefId,
     sourceDevelopmentId,
   ].filter(Boolean)));
+  const sourceEvidenceRecord = isRecord(row.source_evidence_record)
+    ? row.source_evidence_record
+    : isRecord(row.sourceEvidenceRecord)
+      ? row.sourceEvidenceRecord
+      : undefined;
 
   return {
     id: `public-command-centre-${rowIdentity(row, index, 'central')}`,
@@ -208,7 +221,14 @@ function publicOpportunityFromCentral(row: RecordLike, index: number): PublicOpp
     source_development_id: sourceDevelopmentId || undefined,
     dev_id: sourceBriefId || sourceDevelopmentId || undefined,
     castle_brief_id: sourceBriefId.startsWith('castle_') ? sourceBriefId : undefined,
+    source_castle_brief_id: firstText(row.source_castle_brief_id) || undefined,
+    citation_id: firstText(row.citation_id) || sourceBriefId || undefined,
     citation_ids: citationIds,
+    source_title: firstText(row.source_title) || undefined,
+    source_url: firstText(row.source_url) || undefined,
+    source_article_date: firstText(row.source_article_date) || undefined,
+    source_evidence_record: sourceEvidenceRecord,
+    sourceEvidenceRecord: sourceEvidenceRecord,
     generated_at: firstText(row.generated_at, row.updated_at, row.created_at) || new Date().toISOString(),
   };
 }

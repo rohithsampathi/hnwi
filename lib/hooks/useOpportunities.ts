@@ -92,10 +92,14 @@ interface Opportunity {
   public_preview?: boolean;
   follow_through_blocked?: boolean;
   public_access_note?: string;
+  source_evidence_record?: Record<string, unknown>;
+  sourceEvidenceRecord?: Record<string, unknown>;
   dev_id?: string;
   devid?: string;
   mongo_article_id?: string;
   castle_brief_id?: string;
+  source_castle_brief_id?: string;
+  citation_id?: string;
   citation_ids?: string[];
   source_development_id?: string;
   value_usd?: number | string;
@@ -476,11 +480,15 @@ const transformOpportunityToCity = (
     public_preview: displayOpp.public_preview,
     follow_through_blocked: followThroughBlocked,
     public_access_note: displayOpp.public_access_note,
+    source_evidence_record: displayOpp.source_evidence_record,
+    sourceEvidenceRecord: displayOpp.sourceEvidenceRecord,
     source_development_id: displayOpp.source_development_id,
     dev_id: displayOpp.dev_id,
     devid: displayOpp.devid,
     mongo_article_id: displayOpp.mongo_article_id,
     castle_brief_id: displayOpp.castle_brief_id,
+    source_castle_brief_id: displayOpp.source_castle_brief_id,
+    citation_id: displayOpp.citation_id,
     citation_ids: rowCitationIds,
     victor_score: displayOpp.victor_score,
     elite_pulse_analysis: displayOpp.elite_pulse_analysis,

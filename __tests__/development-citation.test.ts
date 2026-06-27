@@ -118,6 +118,49 @@ describe("development citation payload mapping", () => {
     expect(development?.url).toBe("https://example.invalid/delhi");
   });
 
+  it("uses Castle v31 source evidence embedded on Command Centre opportunity rows", () => {
+    const payload = {
+      title: "Delhi Trophy Homes",
+      summary: "Command Centre projection summary should not become the citation panel body.",
+      analysis: "Opportunity analysis should stay on the map card.",
+      source_development_id: "dev_delhi_002",
+      dev_id: "castle_delhi_002",
+      source_evidence_record: {
+        contract: "castle_v31_source_evidence_record_v1",
+        citation_id: "castle_delhi_002",
+        source_collection: "castle_briefs_v31",
+        source_ids: {
+          castle_brief_id: "castle_delhi_002",
+          source_development_id: "dev_delhi_002",
+        },
+        source: {
+          title: "Delhi Trophy Home: USD 131.2M Sale Print",
+          url: "https://example.invalid/delhi",
+          article_date: "2026-06-26",
+          category: "Real Estate",
+          product: "Delhi Trophy Homes",
+        },
+        summary: {
+          display_text: "Subhash Chandra's Delhi bungalow sold for USD $131.2M (INR 1,260 crore).",
+          display_field: "source_evidence_record.summary.display_text",
+          display_label: "Source Brief",
+        },
+        body: {
+          full_castle_brief: "Why This Matters\nThe Delhi sale creates a hard comp for trophy-home underwriting.",
+        },
+      },
+    };
+
+    const development = buildCitationSourceDevelopment(payload, "castle_delhi_002");
+
+    expect(development?.id).toBe("castle_delhi_002");
+    expect(development?.title).toBe("Delhi Trophy Home: USD 131.2M Sale Print");
+    expect(development?.summaryLabel).toBe("Source Brief");
+    expect(development?.summary).toContain("Subhash Chandra's Delhi bungalow");
+    expect(development?.summary).not.toContain("Command Centre projection");
+    expect(development?.url).toBe("https://example.invalid/delhi");
+  });
+
   it("fails closed when a v31 source record has no HByte or real v31 brief body", () => {
     const payload = {
       title: "Thin v31 source",
