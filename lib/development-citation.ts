@@ -61,6 +61,18 @@ const FIRST_ANALYSIS_SECTION =
 
 type DevelopmentPayload = Record<string, unknown>
 
+function asRecord(value: unknown): DevelopmentPayload {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as DevelopmentPayload)
+    : {}
+}
+
+function sourceEvidenceRecord(payload: DevelopmentPayload): DevelopmentPayload {
+  const direct = payload.source_evidence_record || payload.sourceEvidenceRecord
+  if (direct && typeof direct === "object") return direct as DevelopmentPayload
+  return {}
+}
+
 export interface CitationSourceDevelopment {
   id: string
   title: string
@@ -153,7 +165,7 @@ function trimSourceNativeCitationText(text: string): string {
   const lower = sourceText.toLowerCase()
   const cutAt = markers.reduce((currentCut, marker) => {
     const index = lower.indexOf(marker.toLowerCase())
-    return index >= 80 ? Math.min(currentCut, index) : currentCut
+    return index >= 0 ? Math.min(currentCut, index) : currentCut
   }, sourceText.length)
   return sourceText.slice(0, cutAt).trim()
 }
@@ -382,6 +394,27 @@ function pickCitationAnalysis(payload: DevelopmentPayload): {
   sourceField: string
   label: string
 } {
+  const evidence = sourceEvidenceRecord(payload)
+  const evidenceSummary = asRecord(evidence.summary)
+  const evidenceText =
+    cleanText(evidenceSummary.display_text) ||
+    cleanText(evidenceSummary.displayText) ||
+    cleanText(evidenceSummary.source_brief) ||
+    cleanText(evidenceSummary.sourceBrief)
+  if (evidenceText) {
+    return {
+      text: sanitizePublicCitationText(trimSourceNativeCitationText(evidenceText)),
+      sourceField:
+        cleanText(evidenceSummary.display_field) ||
+        cleanText(evidenceSummary.displayField) ||
+        "source_evidence_record.summary.display_text",
+      label:
+        cleanText(evidenceSummary.display_label) ||
+        cleanText(evidenceSummary.displayLabel) ||
+        "Source Brief",
+    }
+  }
+
   const fullHByteSummary = pickHByteSummary(payload)
   const descriptionText = cleanText(payload.description)
 
@@ -483,18 +516,23 @@ export function buildCitationSourceDevelopment(
     source
   ) as DevelopmentPayload
 
+  const evidence = sourceEvidenceRecord(nestedPayload)
+  const evidenceSource = asRecord(evidence.source)
+  const evidenceIds = asRecord(evidence.source_ids)
   const analysis = pickCitationAnalysis(nestedPayload)
   const summary = analysis.text
   if (isV31CitationPayload(nestedPayload) && !summary) {
     return null
   }
 
-  const title = pickFirstText(nestedPayload, [
-    "title",
-    "brief_title",
-    "source_title",
-    "name",
-  ])
+  const title =
+    cleanText(evidenceSource.title) ||
+    pickFirstText(nestedPayload, [
+      "title",
+      "brief_title",
+      "source_title",
+      "name",
+    ])
   const description =
     pickCitationDescription(nestedPayload, summary) ||
     pickFirstText(nestedPayload, [
@@ -505,6 +543,8 @@ export function buildCitationSourceDevelopment(
       "public_mirror_excerpt",
     ])
   const id =
+    cleanText(evidenceIds.castle_brief_id) ||
+    cleanText(evidence.citation_id) ||
     pickFirstText(nestedPayload, [
       "_id",
       "id",
@@ -523,10 +563,12 @@ export function buildCitationSourceDevelopment(
     title: title || "Source Evidence",
     description,
     industry:
+      cleanText(evidenceSource.category) ||
       pickFirstText(nestedPayload, ["industry", "category"]) ||
       "Market Intelligence",
-    product: pickFirstText(nestedPayload, ["product"]) || undefined,
+    product: cleanText(evidenceSource.product) || pickFirstText(nestedPayload, ["product"]) || undefined,
     date:
+      cleanText(evidenceSource.article_date) ||
       pickFirstText(nestedPayload, [
         "source_article_date",
         "source_published_at",
@@ -541,6 +583,7 @@ export function buildCitationSourceDevelopment(
     summaryLabel: analysis.label,
     summarySourceField: analysis.sourceField || undefined,
     url:
+      cleanText(evidenceSource.url) ||
       pickFirstText(nestedPayload, ["url", "source_url"]) ||
       undefined,
     numerical_data: Array.isArray(nestedPayload.numerical_data)

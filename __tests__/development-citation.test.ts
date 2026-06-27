@@ -66,6 +66,48 @@ describe("development citation payload mapping", () => {
     expect(development?.summary).not.toContain("Lake Maggiore");
   });
 
+  it("uses the canonical source evidence record before legacy summary fields", () => {
+    const payload = {
+      development: {
+        title: "Legacy title",
+        hbyte_summary: "Legacy HByte should not win.",
+        castle_quality_score: 9.1,
+        source_evidence_record: {
+          contract: "castle_v31_source_evidence_record_v1",
+          citation_id: "castle_delhi_002",
+          source_ids: {
+            castle_brief_id: "castle_delhi_002",
+            source_development_id: "dev_delhi_002",
+          },
+          source: {
+            title: "Delhi Trophy Home: USD 131.2M Sale Print",
+            url: "https://example.invalid/delhi",
+            article_date: "2026-06-26",
+            category: "Real Estate",
+            product: "Delhi Trophy Homes",
+          },
+          summary: {
+            display_text:
+              "Subhash Chandra's Delhi bungalow sold for USD $131.2M (INR 1,260 crore).",
+            display_field: "full_text",
+            display_label: "Source Brief",
+          },
+        },
+      },
+    };
+
+    const development = buildCitationSourceDevelopment(payload, "fallback-id");
+
+    expect(development?.id).toBe("castle_delhi_002");
+    expect(development?.title).toBe("Delhi Trophy Home: USD 131.2M Sale Print");
+    expect(development?.summaryLabel).toBe("Source Brief");
+    expect(development?.summarySourceField).toBe("full_text");
+    expect(development?.summary).toContain("Subhash Chandra's Delhi bungalow");
+    expect(development?.summary).not.toContain("Legacy HByte");
+    expect(development?.industry).toBe("Real Estate");
+    expect(development?.url).toBe("https://example.invalid/delhi");
+  });
+
   it("fails closed when a v31 source record has no HByte or real v31 brief body", () => {
     const payload = {
       title: "Thin v31 source",
