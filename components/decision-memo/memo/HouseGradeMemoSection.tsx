@@ -2703,6 +2703,13 @@ export default function HouseGradeMemoSection({
   const heirCards = asArray<Record<string, any>>(continuity.heir_cards || []);
 
   const sourceBasisCurrency = asText(crossBorderAudit.acquisition_audit?.source_currency, 'GBP');
+  const routeConfidenceSignal =
+    asText(preview.route_confidence_signal, '') ||
+    (preview.hnwi_trends_confidence ? `${Math.round(preview.hnwi_trends_confidence * 100)}%` : 'Release-gated');
+  const routeConfidenceDetail = asText(
+    preview.route_confidence_detail,
+    'The route has enough market, tax, duty, bank, title, source, and family-authority context to govern negotiation, while capital remains blocked until signed gates clear.',
+  );
   const trendItems = normalizeListItems(preview.hnwi_trends || preview.peer_cohort_stats?.native_driver_bullets || []).map((item) =>
     item.text
       .replace(/SGD source-basis/gi, `${sourceBasisCurrency} source-basis`)
@@ -3213,8 +3220,8 @@ export default function HouseGradeMemoSection({
                 },
                 {
                   label: 'Route Confidence Signal',
-                  value: preview.hnwi_trends_confidence ? `${Math.round(preview.hnwi_trends_confidence * 100)}%` : 'Sign-off required',
-                  detail: 'Route signal is drawn from route-core evidence, legal and tax posture, bank readiness, title work, and family-authority rails under review.',
+                  value: routeConfidenceSignal,
+                  detail: routeConfidenceDetail,
                 },
               ]}
               tone="default"

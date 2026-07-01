@@ -6,10 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, ClipboardCheck, Crown, Route as RouteIcon, ScrollText } from "lucide-react";
 import { EliteCitationPanel } from "@/components/elite/elite-citation-panel";
 import { useCitationManager } from "@/hooks/use-citation-manager";
-import HouseDecisionMemoLinearReport from "@/components/decision-memo/memo/DecisionMemoLinearReport";
+import HouseGradeMemoSection from "@/components/decision-memo/memo/HouseGradeMemoSection";
 import RouteIntelligenceV2Report from "@/components/decision-memo/v2/RouteIntelligenceV2Report";
 import { buildPublicRouteScopedMemoSurface } from "@/lib/decision-memo/build-release-readiness-public-linear-memo";
-import { formatUsdCompact, type RouteIntelligenceV2 } from "@/lib/decision-memo/route-intelligence-v2";
+import { formatUsdCompact, type RouteIntelligenceOptionV2, type RouteIntelligenceV2 } from "@/lib/decision-memo/route-intelligence-v2";
 import type { Citation } from "@/lib/parse-dev-citations";
 import type { CitationSourceDevelopment } from "@/lib/development-citation";
 import type {
@@ -36,7 +36,7 @@ interface PrincipalReleaseReadinessSharePageProps {
 
 const VIEW_LABELS: Array<{ id: ViewMode; label: string; description: string }> = [
   { id: "principal", label: "Principal View", description: "Family decision, capital rule, gates, and consequences." },
-  { id: "route", label: "Route View", description: "Full route memo with scenario, crisis, succession, and execution depth." },
+  { id: "route", label: "Route View", description: "Selected route intelligence with scenarios, gates, and owner reads." },
   { id: "evidence", label: "Evidence & Methodology", description: "Source register, evidence boundary, and method receipt." },
 ];
 
@@ -432,6 +432,81 @@ function MetricCard({ label, value, note }: { label: string; value: string; note
   );
 }
 
+function PrincipalCapitalFlow({
+  metrics,
+}: {
+  metrics: ReleaseReadinessSharePayload["selectedRoute"]["metrics"];
+}) {
+  const propertyValue = numberValue(metrics.propertyValueUsd);
+  const duties = numberValue(metrics.totalDutiesUsd);
+  const allIn = numberValue(metrics.totalAcquisitionCostUsd);
+  const annualCarry = numberValue(metrics.annualCarryingCostUsd);
+  const maxValue = Math.max(propertyValue, duties, allIn, annualCarry, 1);
+  const bars = [
+    {
+      label: "Guide value",
+      value: propertyValue,
+      read: "Seller guide before route, duty, and carry discipline.",
+      tone: "bg-foreground",
+    },
+    {
+      label: "Day-one duties",
+      value: duties,
+      read: "Tax friction that must clear counsel and route gates.",
+      tone: "bg-amber-500",
+    },
+    {
+      label: "All-in exposure",
+      value: allIn,
+      read: "Acquisition exposure before operating costs.",
+      tone: "bg-primary",
+    },
+    {
+      label: "Annual carry",
+      value: annualCarry,
+      read: "Recurring owner, liquidity, and reporting burden.",
+      tone: "bg-muted-foreground",
+    },
+  ].filter((bar) => bar.value > 0);
+
+  if (!bars.length) return null;
+
+  return (
+    <div className="rounded-md border border-border bg-card/70 p-5">
+      <div className="grid gap-5 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Capital path</p>
+          <h3 className="mt-3 text-2xl font-semibold leading-8 text-foreground">
+            The route is judged on full release exposure, not headline price.
+          </h3>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            The guide price is only the first line. Duties, all-in exposure, and recurring carry determine whether the route can advance under signed gates.
+          </p>
+        </div>
+        <div className="space-y-4">
+          {bars.map((bar) => (
+            <div key={bar.label}>
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{bar.label}</p>
+                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{bar.read}</p>
+                </div>
+                <p className="shrink-0 text-lg font-semibold text-foreground">{money(bar.value)}</p>
+              </div>
+              <div className="mt-3 h-3 overflow-hidden rounded-full bg-muted">
+                <div
+                  className={`h-full rounded-full ${bar.tone}`}
+                  style={{ width: `${Math.max(4, Math.min(100, (bar.value / maxValue) * 100))}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PrincipalInfoCard({
   label,
   title,
@@ -475,34 +550,30 @@ function PrincipalTable({
   if (!rows.length) return null;
 
   return (
-    <div className="overflow-x-auto rounded-md border border-border">
-      <table className="min-w-full border-collapse text-left text-sm">
-        <thead className="bg-muted/40 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-          <tr>
-            {columns.map((column) => (
-              <th key={column} className="border-b border-border px-4 py-3 font-semibold">
-                {cleanDisplayText(column)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, rowIndex) => (
-            <tr key={`${row.join("-")}-${rowIndex}`} className="border-b border-border last:border-b-0">
-              {row.map((cell, cellIndex) => (
-                <td
-                  key={`${cell}-${cellIndex}`}
-                  className={`min-w-52 px-4 py-4 align-top leading-6 ${
+    <div className="grid gap-3">
+      {rows.map((row, rowIndex) => (
+        <article
+          key={`${row.join("-")}-${rowIndex}`}
+          className="rounded-md border border-border bg-card/70 p-4"
+        >
+          <div className="grid gap-4 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+            {row.map((cell, cellIndex) => (
+              <div key={`${cell}-${cellIndex}`} className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  {cleanDisplayText(columns[cellIndex] || `Read ${cellIndex + 1}`)}
+                </p>
+                <p
+                  className={`mt-2 max-w-[44rem] break-words text-sm leading-6 ${
                     cellIndex === 0 ? "font-semibold text-foreground" : "text-muted-foreground"
                   }`}
                 >
-                  <span className="block max-w-[34rem] break-words">{cleanDisplayText(cell)}</span>
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  {cleanDisplayText(cell)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </article>
+      ))}
     </div>
   );
 }
@@ -715,12 +786,6 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
   const metrics = payload.selectedRoute.metrics;
   const principal = payload.principalView ?? fallbackPrincipalView(payload);
   const selectedRoute = payload.selectedRoute;
-  const routeSummaryRows = principal.routeAlternatives.map((route) => [
-    route.routeName,
-    route.currentDecision,
-    route.capitalConsequence,
-    route.releaseConsequence,
-  ]);
 
   return (
     <>
@@ -808,7 +873,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
       ) : null}
 
       <Section eyebrow="Capital truth" title="The family is not deciding on guide price alone">
-        <PrincipalTable columns={principal.capitalTruth.columns} rows={principal.capitalTruth.rows} />
+        <PrincipalCapitalFlow metrics={metrics} />
       </Section>
 
       <Section eyebrow="Purpose boundary" title="What the family is approving, and what it is not approving">
@@ -820,7 +885,7 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
       </Section>
 
       <Section eyebrow="Signed gate map" title="The gates that convert interest into release authority">
-        <PrincipalTable columns={principal.signedGateMap.columns} rows={principal.signedGateMap.rows} />
+        <ReleaseGateTable gateRows={payload.gateRows} />
       </Section>
 
       <Section eyebrow="What changed before capital moves" title="The review changed the permission structure">
@@ -832,10 +897,15 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
       </Section>
 
       <Section eyebrow="Route alternatives summary" title="The family is choosing a release path, not a property wrapper">
-        <PrincipalTable
-          columns={["Route", "Current decision", "Capital consequence", "Release consequence"]}
-          rows={routeSummaryRows}
-        />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {payload.routeOptions.map((option) => (
+            <RouteOptionCard
+              key={option.id}
+              option={option}
+              selected={option.id === selectedRoute.id}
+            />
+          ))}
+        </div>
       </Section>
 
       <Section eyebrow="Seven-day principal instruction" title="The family-office order for the next week">
@@ -847,14 +917,11 @@ export function PrincipalRouteView({ payload }: { payload: ReleaseReadinessShare
       </Section>
 
       <Section eyebrow="Final principal instruction" title="Proceed, hold, or stop is decided by gates, not appetite">
-        <PrincipalTable columns={principal.finalInstruction.columns} rows={principal.finalInstruction.rows} />
-        <div className="mt-6">
         <PrincipalConditionGrid
           advance={payload.advanceConditions}
           hold={payload.holdConditions}
           stop={payload.stopConditions}
         />
-        </div>
       </Section>
     </>
   );
@@ -1637,6 +1704,25 @@ export default function PrincipalReleaseReadinessSharePage({
     updateUrlView(view);
   }, [activeView, updateUrlView]);
 
+  const renderFullRouteMemo = useCallback((route: RouteIntelligenceOptionV2) => {
+    if (!payload) return null;
+    const surface = buildPublicRouteScopedMemoSurface(payload, route);
+    const preview = surface.memoData.preview_data || {};
+    return (
+      <HouseGradeMemoSection
+        data={surface.memoData}
+        previewData={preview}
+        sourceJurisdiction={preview.source_jurisdiction}
+        destinationJurisdiction={preview.destination_jurisdiction}
+        onCitationClick={openCitation}
+        citationMap={citationMap}
+        embedDetailedSchedules
+        releaseReadinessSharePayload={payload}
+        hideEvidenceAppendix
+      />
+    );
+  }, [citationMap, openCitation, payload]);
+
   if (initialSurfaceError && !payload) {
     return (
       <main className="min-h-screen bg-background px-5 py-12">
@@ -1651,6 +1737,13 @@ export default function PrincipalReleaseReadinessSharePage({
   if (!payload) {
     return null;
   }
+
+  const routeIntelligence = completedRouteIntelligence(payload);
+  const selectedRouteForReport =
+    routeIntelligence.routeOptions?.find((option) => option.id === routeIntelligence.recommendedRouteId) ??
+    routeIntelligence.selectedLiveOption ??
+    routeIntelligence.proposedRoute ??
+    routeIntelligence.routeOptions?.[0];
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -1721,29 +1814,15 @@ export default function PrincipalReleaseReadinessSharePage({
         {activeView === "principal" ? <PrincipalRouteView payload={payload} /> : null}
         {activeView === "route" ? (
           <RouteIntelligenceV2Report
-            intelligence={completedRouteIntelligence(payload)}
+            intelligence={routeIntelligence}
             publicMemoId={payload.reference}
             v1Href={`/release-readiness/review/${encodeURIComponent(payload.reference)}`}
             embedded
+            fullMemo={renderFullRouteMemo}
             onCitationClick={openCitation}
             citationMap={citationMap}
             sharePayload={payload}
-            zeroTrustMoveIntake={payload.user_inputs}
-            fullMemo={(selectedRoute) => {
-              const routeScopedSurface = buildPublicRouteScopedMemoSurface(payload, selectedRoute);
-              return (
-                <HouseDecisionMemoLinearReport
-                  memoData={routeScopedSurface.memoData as any}
-                  intakeId={payload.reference}
-                  backendData={routeScopedSurface.backendData}
-                  fullArtifact={routeScopedSurface.fullArtifact as any}
-                  onCitationClick={openCitation}
-                  citationMap={citationMap}
-                  releaseReadinessSharePayload={payload}
-                  hideEvidenceAppendix
-                />
-              );
-            }}
+            zeroTrustMoveIntake={selectedRouteForReport?.zeroTrustMoveIntake ?? selectedRouteForReport?.releaseEvidencePack}
           />
         ) : null}
         {activeView === "evidence" ? (

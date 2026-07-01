@@ -108,8 +108,8 @@ function firstPositiveCount(...values: Array<unknown>): number | undefined {
   return undefined;
 }
 
-function formatCountMetric(value?: number): string {
-  return value && value > 0 ? value.toLocaleString() : "Gate mapped";
+function formatCountMetric(value: number | undefined, fallback: string): string {
+  return value && value > 0 ? value.toLocaleString() : fallback;
 }
 
 function toStringList(value: unknown): string[] {
@@ -379,7 +379,7 @@ export function normalizeCrisisData(
         typeof overallRecord.rating === "string"
           ? overallRecord.rating
           : overallScore === undefined
-            ? "Gate mapped"
+            ? "Route-specific"
             : undefined,
       summary:
         (typeof overallRecord.summary === "string" ? overallRecord.summary : undefined) ||
@@ -458,11 +458,13 @@ function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
-function ResilienceGauge({ score, rating = "Gate mapped" }: { score?: number; rating?: string }) {
+function ResilienceGauge({ score, rating = "Route-specific" }: { score?: number; rating?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-50px" });
   const hasScore = typeof score === "number" && Number.isFinite(score);
   const scoreValue = hasScore ? score : 0;
+  const displayLabel = hasScore ? `${Math.round(scoreValue)}/100` : rating;
+  const badgeLabel = hasScore ? rating : "Crisis posture";
 
   const ring = Math.PI * 54;
   const offset = ring - (ring * Math.max(0, Math.min(100, scoreValue))) / 100;
@@ -487,12 +489,12 @@ function ResilienceGauge({ score, rating = "Gate mapped" }: { score?: number; ra
         </svg>
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
           <span className="text-xl font-medium tracking-tight text-foreground">
-            {hasScore ? 'Route tested' : 'Gate mapped'}
+            {displayLabel}
           </span>
         </div>
       </div>
       <span className="mt-3 text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/80">
-        {rating}
+        {badgeLabel}
       </span>
     </div>
   );
@@ -554,29 +556,29 @@ export function CrisisResilienceSection({
                 Overall Resilience Assessment
               </p>
               <p className="text-sm text-muted-foreground/60 mb-6 leading-loose sm:leading-relaxed">
-                {normalized.overall.summary || "Live corridor stress requires re-underwriting."}
+                {normalized.overall.summary || "The route remains crisis-sensitive until bank acceptance, source evidence, title authority, family veto, and record retrieval can operate under pressure."}
               </p>
 
               <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-6" />
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Worst Case</p>
-                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.worstCaseLoss || "Capital release blocked"}</p>
+                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.worstCaseLoss || "Seller timing outruns bank, title, and source acceptance."}</p>
                 </div>
                 <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Recovery</p>
-                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.recoveryTime || "Response gated"}</p>
+                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.recoveryTime || "Pause seller commitment; reopen only after bank, title, source, and authority gates clear."}</p>
                 </div>
                 <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Decision Window</p>
                   <p className={memoNumberClass('small', 'default')}>
-                    {normalized.decisionWindowDays ? `${normalized.decisionWindowDays} days` : normalized.operatingWindow || "Gate by event"}
+                    {normalized.decisionWindowDays ? `${normalized.decisionWindowDays} days` : normalized.operatingWindow || "Before exclusivity, deposit, FX instruction, or exchange."}
                   </p>
                 </div>
                 <div className="text-center rounded-xl border border-primary/20 bg-card/50 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Drawdown Floor</p>
                   <p className={memoNumberClass('small', 'default')}>
-                    {normalized.stressDrawdownFloorPct !== undefined ? `${normalized.stressDrawdownFloorPct.toFixed(0)}%` : normalized.overall.bufferRequired || "Release-gate controlled"}
+                    {normalized.stressDrawdownFloorPct !== undefined ? `${normalized.stressDrawdownFloorPct.toFixed(0)}%` : normalized.overall.bufferRequired || "No capital into an uncleared rail."}
                   </p>
                 </div>
               </div>
@@ -636,15 +638,15 @@ export function CrisisResilienceSection({
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Signals</p>
-                <p className={memoNumberClass('stat', 'default')}>{formatCountMetric(normalized.signalCount ?? normalized.eventCount)}</p>
+                <p className={memoNumberClass('stat', 'default')}>{formatCountMetric(normalized.signalCount ?? normalized.eventCount, "Bank / title / source")}</p>
               </div>
               <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Regimes</p>
-                <p className={memoNumberClass('stat', 'default')}>{formatCountMetric(normalized.marketRegimeCount)}</p>
+                <p className={memoNumberClass('stat', 'default')}>{formatCountMetric(normalized.marketRegimeCount, "UK tax / bank / seller timing")}</p>
               </div>
               <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Sources</p>
-                <p className={memoNumberClass('stat', 'default')}>{formatCountMetric(normalized.sourceCount)}</p>
+                <p className={memoNumberClass('stat', 'default')}>{formatCountMetric(normalized.sourceCount, "Public + family gate")}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -693,11 +695,11 @@ export function CrisisResilienceSection({
                 <div className="grid grid-cols-2 gap-4 mb-5">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Impact</p>
-                    <p className="text-sm font-medium text-primary">{scenario.impact || "Capital release blocked"}</p>
+                    <p className="text-sm font-medium text-primary">{scenario.impact || "Seller timing, bank acceptance, or title/source mismatch can stop the move after the room has signaled intent."}</p>
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Recovery</p>
-                    <p className="text-sm font-medium text-foreground">{scenario.recovery || "Response gated"}</p>
+                    <p className="text-sm font-medium text-foreground">{scenario.recovery || "Pause seller commitment; reopen only after bank, title, source, authority, and family-use gates align."}</p>
                   </div>
                 </div>
 

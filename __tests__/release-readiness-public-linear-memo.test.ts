@@ -178,6 +178,76 @@ describe('buildPublicRouteScopedMemoSurface', () => {
         },
       ],
     });
+    (selectedRoute as any).crisisResilience = {
+      overall: {
+        rating: 'Release-critical',
+        summary: 'The Mayfair purchase survives only if bank acceptance, title authority, source evidence, family veto, and record retrieval remain operable under pressure.',
+        worst_case_loss: 'Duty drag, trapped deposit timing, bank freeze, and family conflict after public commitment.',
+        recovery_time: '72-hour proof drill before release; 7-day counsel, bank, and title close path after release.',
+        buffer_required: 'Primary rail, alternate rail, named signers, evidence index, and stop authority.',
+        key_vulnerabilities: ['single-bank rail', 'single-adviser dependency', 'unsigned family authority'],
+      },
+      read: 'The direct route releases only if the family can stop, explain, redirect, and retrieve the route under bank, principal-absence, counsel, and family-veto pressure.',
+      signalCount: 7,
+      eventCount: 6,
+      sourceCount: 2,
+      routeRisks: [
+        {
+          id: 'bank_acceptance',
+          label: 'Bank acceptance before seller timing',
+          status: 'Critical',
+          detail: 'Receiving-bank acceptance must precede irrevocable seller commitment.',
+          impact_channels: ['KYC', 'SoW/SoF', 'Transfer timing'],
+        },
+      ],
+      priorityEvents: [
+        {
+          id: 'absence_drill',
+          label: '72-hour absence drill',
+          status: 'Release-critical',
+          detail: 'Principal, bank lead, counsel, and operator absence must not stop retrieval, explanation, or stop authority.',
+          impact_channels: ['Key-person dependency', 'Decision documentation', 'Bank/counsel continuity'],
+        },
+      ],
+      bankComplianceEscalation: [
+        {
+          scenario: 'Receiving bank screening/KYC system flags enhanced due diligence after deposit timeline starts.',
+          breakpoint: 'No accepted SoW/SoF pack or named escalation owner.',
+          required_response: 'Pause release; use mapped alternate rail or extend option only after bank acceptance.',
+        },
+      ],
+      decisionFlags: [
+        'Hold if primary and alternate bank rails are not accepted.',
+        'Hold if family authority and succession records do not describe the same route.',
+      ],
+      scenarios: [
+        {
+          id: 'bank_escalation_1',
+          name: 'Receiving bank screening/KYC system flags enhanced due diligence after deposit timeline starts.',
+          impact: 'Bank acceptance or transfer timing can stop the purchase after seller timing starts.',
+          recovery: 'Route releases only with primary and alternate bank acceptance, signed source evidence, and transfer authority.',
+          risk_level: 'HIGH',
+          sources: ['Official bank-compliance source register', 'Family evidence pack'],
+        },
+        {
+          id: 'resilience_1',
+          name: 'Family resilience test 1',
+          impact: 'Authority, record, or adviser dependency blocks clean release.',
+          recovery: 'Name owner, proof file, alternate action, and stop authority before release.',
+          risk_level: 'HIGH',
+        },
+      ],
+    };
+    (selectedRoute as any).antiFragility = {
+      stressTest: [
+        {
+          control: 'Primary and alternate bank rails',
+          stress_response: 'If primary rail slows, transfer remains paused until the alternate rail clears the same SoW/SoF, signer, FX, KYC, sanctions, timetable, and buyer-route conditions.',
+          release_effect: 'Rail redundancy strengthens the route only when both rails are independently accepted.',
+          owner: 'Bank rail owner',
+        },
+      ],
+    };
     const payload = {
       surfaceContract: 'hnwi_release_readiness_principal_share_v2',
       reference: 'HC9L7M2A4Q8P6',
@@ -211,6 +281,32 @@ describe('buildPublicRouteScopedMemoSurface', () => {
         move: 'A family is reviewing a Mayfair townhouse.',
         recommendedRouteId: selectedRoute.id,
         routeOptions: [selectedRoute],
+        routeMemoSpine: {
+          marketBidDiscipline: {
+            rows: [
+              {
+                control: 'Guide price versus all-in exposure',
+                principal_question: 'Is the family approving the guide price or the full control exposure?',
+                release_test: 'Principal minute acknowledges duty drag before bid release.',
+              },
+            ],
+          },
+          capitalFlow: {
+            source: 'Dubai / United Arab Emirates',
+            destination: 'London / United Kingdom',
+            source_flows: [{ city: 'Dubai / GCC family capital', volume: 21, percentage: 100 }],
+            destination_flows: [{ city: 'Mayfair / Prime Central London', volume: 21, percentage: 100, highlight: true }],
+            flow_intensity_index: 72,
+            flow_intensity: 72,
+            peers_in_corridor: 21,
+            velocity_change: 'Release-gated',
+            pattern_signal: {
+              title: 'CORRIDOR ACTIVITY PATTERN',
+              badge: 'ACTIVE BUT GATED',
+              narrative: 'Market context supports active review, but release is governed by evidence.',
+            },
+          },
+        },
       },
     } as any;
 
@@ -228,6 +324,18 @@ describe('buildPublicRouteScopedMemoSurface', () => {
       'Fairness / succession boundary',
       'Decision memory / retrieval',
     ]);
+    expect(new Set(preview.zero_trust_move_intake.records.map((row: any) => row.current_record)).size).toBe(8);
+    expect(preview.zero_trust_move_intake.records.find((row: any) => row.domain === 'Bank rails / FX / signer').current_record)
+      .toContain('UAE source rail');
+    expect(preview.zero_trust_move_intake.records.find((row: any) => row.domain === 'Authority / stop right').current_record)
+      .toContain('Principal approval');
+    expect(preview.zero_trust_move_intake.records.find((row: any) => row.domain === 'Family-use / purpose boundary').current_record)
+      .toContain('London family-use and continuity base');
+    expect(preview.zero_trust_move_intake.records.find((row: any) => row.domain === 'Decision memory / retrieval').current_record)
+      .toContain('rejected routes');
+    expect(JSON.stringify(preview.zero_trust_move_intake.records)).not.toMatch(
+      /Family resilience test|Authority, record, or adviser dependency|Name owner, proof file|Evidence gated/,
+    );
     expect(preview.zero_trust_move_intake.banking_rails.source_bank).toContain('UAE source rail');
     expect(preview.zero_trust_move_intake.banking_rails.primary_receiving_bank).toContain('UK receiving rail');
     expect(preview.zero_trust_move_intake.banking_rails.fallback_receiving_bank).toContain('Alternate rail');
@@ -259,6 +367,35 @@ describe('buildPublicRouteScopedMemoSurface', () => {
     expect(JSON.stringify(preview.input_snapshot.decision_rails.advisors)).not.toMatch(
       /\bAdvis(?:e|o)r\s+\d\b|\bAdvisor\b|Evidence gated|This rail cannot remain/,
     );
+    expect(preview.crisis_data.overall_resilience.rating).toBe('Release-critical');
+    expect(preview.crisis_data.overall_resilience.worst_case_loss).toContain('Duty drag');
+    expect(preview.crisis_data.overall_resilience.recovery_time).toContain('72-hour proof drill');
+    expect(preview.crisis_data.signal_count).toBe(7);
+    expect(preview.crisis_data.event_count).toBe(6);
+    expect(preview.crisis_data.source_count).toBe(2);
+    expect(preview.crisis_data.market_regime_count).toBe(3);
+    expect(preview.crisis_data.route_risks[0].label).toBe('Bank acceptance before seller timing');
+    expect(preview.crisis_data.priority_events[0].label).toBe('72-hour absence drill');
+    expect(preview.crisis_data.bank_compliance_escalation_simulation[0].required_response).toContain('Pause release');
+    expect(preview.antifragile_resilience_test[0].control).toBe('Primary and alternate bank rails');
+    expect(preview.crisis_data.scenarios.map((scenario: any) => scenario.name)).toContain(
+      'Primary and alternate bank rails fail the same acceptance story',
+    );
+    expect(preview.crisis_data.scenarios[0].impact).toContain('A second rail does not protect the purchase');
+    expect(preview.crisis_data.scenarios[0].recovery).toContain('both primary and alternate rails independently clear');
+    expect(JSON.stringify(preview.crisis_data)).not.toMatch(
+      /Live corridor stress requires re-underwriting|Gate mapped|Capital release blocked|Response gated|Gate by event|Release-gate controlled|Family resilience test|Authority, record, or adviser dependency|Name owner, proof file|Bank acceptance or transfer timing can stop the purchase after seller timing starts|Route releases only with primary and alternate bank acceptance/,
+    );
+    expect(preview.peer_cohort_stats.total_peers).toBe(21);
+    expect(preview.peer_cohort_stats.metric_cards.map((card: any) => card.label)).toEqual([
+      'Corridor records',
+      'Flow intensity',
+      'Selected asset basis',
+    ]);
+    expect(preview.peer_cohort_stats.metric_cards.every((card: any) => card.value && card.value > 0)).toBe(true);
+    expect(preview.capital_flow_data.peers_in_corridor).toBe(21);
+    expect(preview.route_confidence_signal).toBe('Release-gated');
+    expect(preview.hnwi_trends_data_quality.scientific_grounding).toBe('native_library_route_compiler');
 
     const decisionGates = preview.scenario_tree_data.decision_gates;
     expect(decisionGates).toHaveLength(6);

@@ -82,6 +82,7 @@ interface CapitalFlowData {
   source_flows: Array<{ city: string; volume: number; percentage: number }>;
   destination_flows: Array<{ city: string; volume: number; percentage: number; highlight?: boolean }>;
   flow_intensity_index: number;
+  peers_in_corridor?: number;
   velocity_change: string;
   // Fix #11: Pattern signal for dynamic badge and narrative
   pattern_signal?: {
@@ -224,7 +225,7 @@ export function Page3PeerIntelligence({
 
   // Use backend-provided peer cohort stats ONLY - no legacy fallbacks
   const peerData = {
-    total: peerCohortStats?.total_peers ?? peerCount,
+    total: peerCohortStats?.total_peers ?? capitalFlowData?.peers_in_corridor ?? peerCount,
     last6Months: peerCohortStats?.last_6_months,
     averageValue: peerCohortStats?.avg_deal_value_m
   };

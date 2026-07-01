@@ -752,6 +752,8 @@ function sanitizeRouteOption(option: RouteIntelligenceOptionV2): RouteIntelligen
     counselQuestionPack: (option.counselQuestionPack ?? []).map((row) => sanitizeObject(row)),
     stressSignals: (option.stressSignals ?? []).map((row) => sanitizeObject(row)),
     scenarios: (option.scenarios ?? []).map((row) => sanitizeObject(row)),
+    zeroTrustMoveIntake: sanitizeObject(option.zeroTrustMoveIntake ?? option.releaseEvidencePack),
+    releaseEvidencePack: sanitizeObject(option.releaseEvidencePack ?? option.zeroTrustMoveIntake),
   }) as RouteIntelligenceOptionV2;
 }
 
